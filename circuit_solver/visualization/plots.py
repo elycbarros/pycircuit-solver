@@ -21,8 +21,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import os
+import sys
 import numpy as np
 import matplotlib
+
+# In headless/CI environments without display, avoid GUI backend issues
+if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY") and sys.platform.startswith("linux"):
+    matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 

@@ -132,9 +132,15 @@ class Circuit:
 
     def node_index(self, label: str) -> int | None:
         """Return the MNA row/column index for ``label``, or ``None`` for ground."""
-        if label == "0":
+        if str(label).strip() == "0":
             return None
-        return self.node_map[label]
+        lbl = str(label).strip()
+        if lbl in self.node_map:
+            return self.node_map[lbl]
+        for k, idx in self.node_map.items():
+            if k.lower() == lbl.lower():
+                return idx
+        return None
 
     def aux_index(self, name: str) -> int:
         """Return the auxiliary-block index for element ``name``."""

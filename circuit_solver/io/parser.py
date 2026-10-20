@@ -222,19 +222,29 @@ def parse_netlist_string(text: str) -> list[_Element]:
     # First line is always the title — skip it
     body = lines[1:] if lines else []
 
+    # Pre-process: merge continuation lines starting with '+'
+    logical_lines: list[tuple[int, str]] = []
     for lineno, raw in enumerate(body, start=2):
         stripped = raw.strip()
-        # Skip comments and blank lines
-        if not stripped or stripped.startswith("*") or stripped.startswith("+"):
+        if not stripped or stripped.startswith("*"):
             continue
+        if stripped.startswith("+"):
+            if logical_lines:
+                prev_no, prev_text = logical_lines[-1]
+                continuation = stripped[1:].strip()
+                logical_lines[-1] = (prev_no, f"{prev_text} {continuation}")
+            continue
+        logical_lines.append((lineno, stripped))
+
+    for lineno, line in logical_lines:
         # Stop at .end
-        if stripped.lower().startswith(".end"):
+        if line.lower().startswith(".end"):
             break
         # Skip other directives (.tran, .ac, .op, .model, etc.)
-        if stripped.startswith("."):
+        if line.startswith("."):
             continue
 
-        el = _parse_line(stripped, lineno)
+        el = _parse_line(line, lineno)
         if el is not None:
             elements.append(el)
 

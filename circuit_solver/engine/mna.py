@@ -53,6 +53,7 @@ from circuit_solver.core.elements import (
     CCCS,
     CCVS,
     OpAmp,
+    Inductor,
     _Element,
 )
 from circuit_solver.core.solution import Solution
@@ -226,6 +227,21 @@ def build_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
             if in_n is not None:
                 A[k, in_n] -= 1.0
             z[k] = 0.0
+
+        # ------------------------------------------------------------------
+        # Inductor in DC Steady-State (Ideal short circuit)
+        # ------------------------------------------------------------------
+        elif isinstance(el, Inductor):
+            # Model as high conductance (1 uOhm equivalent parasitic wire)
+            g = 1e6
+            p, n_node = idx(el.node_p), idx(el.node_n)
+            if p is not None:
+                A[p, p] += g
+            if n_node is not None:
+                A[n_node, n_node] += g
+            if p is not None and n_node is not None:
+                A[p, n_node] -= g
+                A[n_node, p] -= g
 
     return A, z
 

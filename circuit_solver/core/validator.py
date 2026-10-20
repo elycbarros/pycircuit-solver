@@ -26,7 +26,7 @@ Raises
 from __future__ import annotations
 
 import re
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Sequence
 
 from circuit_solver.core.elements import (
@@ -210,7 +210,9 @@ class CircuitValidator:
         self._check_resistances()
         self._check_controlling_sources()
         self._check_floating_nodes()
+        self._check_ground_connectivity()
         self._check_parallel_voltage_sources()
+        self._check_voltage_source_loops()
 
     # ------------------------------------------------------------------
     # Individual checks
@@ -304,3 +306,79 @@ class CircuitValidator:
                     "ideal voltage sources with different values are physically impossible."
                 )
             seen[key] = name
+
+    def _check_ground_connectivity(self) -> None:
+        """Every node must have a conductive path to reference ground '0'."""
+        if self.allow_floating:
+            return
+
+        adj: dict[str, set[str]] = defaultdict(set)
+        for el in self._elements:
+            if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS)):
+                adj[el.node_p].add(el.node_n)
+                adj[el.node_n].add(el.node_p)
+            elif isinstance(el, (VCVS, VCCS)):
+                adj[el.node_p].add(el.node_n)
+                adj[el.node_n].add(el.node_p)
+            elif isinstance(el, OpAmp):
+                adj[el.out].add(el.gnd)
+                adj[el.gnd].add(el.out)
+
+        visited: set[str] = set()
+        queue = deque(["0"])
+        visited.add("0")
+        while queue:
+            curr = queue.popleft()
+            for neighbor in adj[curr]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+
+        all_nodes = set(self._all_nodes())
+        unreachable = [
+            n for n in all_nodes
+            if n not in visited and n not in self.allowed_open_nodes
+        ]
+        if unreachable:
+            raise CircuitValidationError(
+                f"Disconnected subcircuit detected: node(s) {sorted(unreachable)} have no "
+                "conductive path to reference ground '0'. Every subcircuit must be connected to ground."
+            )
+
+    def _check_voltage_source_loops(self) -> None:
+        """Detect closed loops formed exclusively of ideal voltage sources."""
+        v_sources: list[tuple[str, str, str]] = []
+        for el in self._elements:
+            if isinstance(el, (VoltageSource, VCVS, CCVS)):
+                v_sources.append((el.name, el.node_p, el.node_n))
+
+        adj: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        for name, np, nn in v_sources:
+            adj[np].append((nn, name))
+            adj[nn].append((np, name))
+
+        visited: set[str] = set()
+
+        def dfs(node: str, edge_used: str | None, path: list[str]) -> list[str] | None:
+            visited.add(node)
+            for neighbor, s_name in adj[node]:
+                if s_name == edge_used:
+                    continue
+                if neighbor in path:
+                    idx_cycle = path.index(neighbor)
+                    return path[idx_cycle:] + [neighbor]
+                if neighbor not in visited:
+                    res = dfs(neighbor, s_name, path + [neighbor])
+                    if res:
+                        return res
+            return None
+
+        for n in list(adj.keys()):
+            if n not in visited:
+                cycle = dfs(n, None, [n])
+                if cycle:
+                    cycle_nodes = sorted(set(cycle))
+                    raise CircuitValidationError(
+                        f"Closed loop of ideal voltage sources detected involving nodes {cycle_nodes}. "
+                        "A closed loop of ideal voltage sources is physically impossible (KVL violation)."
+                    )

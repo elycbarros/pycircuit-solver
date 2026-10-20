@@ -81,8 +81,9 @@ pycircuit-solver/
 │   ├── cap05_opamp_inversor.py          # Amplificador Operacional Inversor com terra virtual
 │   └── cap09_filtro_rc_fasores.py       # Filtro passa-baixas RC, fasores e Diagrama de Bode
 │
-└── tests/                               # Suíte de validação analítica (46 testes pytest)
-    ├── test_textbook_benchmarks.py      # Validação multi-livros (Sadiku, Nilsson, Boylestad, Dorf)
+└── tests/                               # Suíte de testes automatizados (55 testes pytest)
+    ├── test_textbook_benchmarks.py      # Validação analítica multi-livros (Sadiku, Nilsson, Boylestad, Dorf)
+    ├── test_robustness_edge_cases.py    # Testes de robustez, BFS, loops KVL, R_th=0 e parser
     ├── test_validator.py                # Testes de validação topológica e sufixos
     ├── test_mna_engine.py               # Testes analíticos do motor MNA e 4 fontes dependentes
     ├── test_thevenin.py                 # Testes de Thévenin/Norton e máxima transferência

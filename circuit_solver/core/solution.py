@@ -73,9 +73,15 @@ class Solution:
         node : str
             Node label.  ``'0'`` always returns 0.0.
         """
-        if node == "0":
+        if str(node).strip() == "0":
             return 0.0
-        return float(self._x[self._circuit.node_map[node]])
+        n_str = str(node).strip()
+        if n_str in self._circuit.node_map:
+            return float(self._x[self._circuit.node_map[n_str]])
+        for k, idx in self._circuit.node_map.items():
+            if k.lower() == n_str.lower():
+                return float(self._x[idx])
+        raise KeyError(f"Node '{node}' is not in circuit.")
 
     def V_diff(self, node_p: str, node_n: str) -> float:
         """Differential voltage ``V(node_p) − V(node_n)``."""

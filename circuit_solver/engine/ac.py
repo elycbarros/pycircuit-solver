@@ -77,9 +77,15 @@ class ACSolution:
 
     def V(self, node: str) -> complex:
         """Complex phasor voltage at node."""
-        if node == "0":
+        if str(node).strip() == "0":
             return 0.0 + 0.0j
-        return complex(self.x[self.circuit.node_map[node]])
+        n_str = str(node).strip()
+        if n_str in self.circuit.node_map:
+            return complex(self.x[self.circuit.node_map[n_str]])
+        for k, idx in self.circuit.node_map.items():
+            if k.lower() == n_str.lower():
+                return complex(self.x[idx])
+        raise KeyError(f"Node '{node}' is not in circuit.")
 
     def V_mag(self, node: str) -> float:
         """Peak amplitude of node voltage in Volts."""

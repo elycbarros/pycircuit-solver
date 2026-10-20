@@ -61,6 +61,7 @@ def _cmd_monte_carlo(args: argparse.Namespace) -> int:
     res = monte_carlo(
         circuit,
         n_samples=args.samples,
+        seed=args.seed,
         override_tolerance=args.tolerance,
     )
     print(res.summary())
@@ -132,6 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_mc = subparsers.add_parser("monte-carlo", help="Análise estatística de tolerâncias de resistores")
     p_mc.add_argument("netlist", type=str, help="Caminho do arquivo netlist SPICE (.cir)")
     p_mc.add_argument("-n", "--samples", type=int, default=1000, help="Número de amostras (padrão 1000)")
+    p_mc.add_argument("-s", "--seed", type=int, default=42, help="Seed para reproduzibilidade estatística (padrão 42)")
     p_mc.add_argument("-t", "--tolerance", type=float, default=None, help="Sobrescrever tolerância (ex: 0.05 para ±5%%)")
     p_mc.add_argument("--plot", action="store_true", help="Exibir histogramas de distribuição")
     p_mc.add_argument("--save", type=str, default=None, help="Salvar histogramas em arquivo")

@@ -139,6 +139,9 @@ def thevenin_norton(
     TheveninResult
         All Thévenin / Norton parameters.
     """
+    if node_a == node_b:
+        raise ValueError(f"Os terminais A e B não podem ser o mesmo nó: '{node_a}'.")
+
     # ------------------------------------------------------------------
     # Step 1: Open-circuit voltage V_th
     # ------------------------------------------------------------------
@@ -146,56 +149,85 @@ def thevenin_norton(
     V_th = sol_oc.V(node_a) - sol_oc.V(node_b)
 
     # ------------------------------------------------------------------
-    # Step 2: Thévenin resistance via test source
+    # Step 2: Thévenin resistance via hybrid dual test
     # ------------------------------------------------------------------
     killed = _kill_independent_sources(circuit.elements)
-
-    # Add a 1 V test source between A and B
-    test_name = "_Vtest_"
-    # Ensure test name doesn't collide
     existing_names = {el.name for el in killed}
-    while test_name in existing_names:
-        test_name += "_"
 
-    test_source = VoltageSource(test_name, node_a, node_b, 1.0)
-    killed.append(test_source)
+    # Method A: Test Current Source I_test = 1 A from node_b to node_a
+    # This directly measures R_th = V(A) - V(B) and gracefully handles ideal
+    # voltage sources / zero-resistance branches between A and B (R_th = 0).
+    test_i_name = "_Itest_"
+    while test_i_name in existing_names:
+        test_i_name += "_"
 
-    # Build and solve the killed circuit (skip validation for internal use)
-    circ_test = Circuit(killed, validate=False)
-    sol_test = solve(circ_test)
-    # The auxiliary variable j is current into '+'. Current delivered into terminal A is -j.
-    I_test = -sol_test.I_vsource(test_name)
+    elements_i = list(killed)
+    elements_i.append(CurrentSource(test_i_name, node_a, node_b, 1.0))
 
-    # R_th = V_test / I_test
-    if abs(I_test) < 1e-15:
-        R_th = float("inf")
-    else:
-        R_th = 1.0 / I_test  # V_test = 1 V
+    r_th: float | None = None
+    try:
+        circ_i = Circuit(elements_i, validate=False)
+        sol_i = solve(circ_i, check_singular=True)
+        v_diff = sol_i.V(node_a) - sol_i.V(node_b)
+        r_calc = float(v_diff)
+        if abs(r_calc) < 1e-11:
+            r_th = 0.0
+        elif r_calc >= 0:
+            r_th = r_calc
+    except Exception:
+        # If port is open-circuit, current injection will be singular -> fallback to Method B
+        r_th = None
+
+    if r_th is None:
+        # Method B: Test Voltage Source V_test = 1 V between A and B
+        test_v_name = "_Vtest_"
+        while test_v_name in existing_names:
+            test_v_name += "_"
+
+        elements_v = list(killed)
+        elements_v.append(VoltageSource(test_v_name, node_a, node_b, 1.0))
+        try:
+            circ_v = Circuit(elements_v, validate=False)
+            sol_v = solve(circ_v, check_singular=True)
+            i_test = -sol_v.I_vsource(test_v_name)
+            if abs(i_test) < 1e-14:
+                r_th = float("inf")
+            else:
+                r_th = 1.0 / i_test
+        except Exception:
+            r_th = float("inf")
+
+    R_th = r_th
 
     # ------------------------------------------------------------------
     # Step 3: Norton current
     # ------------------------------------------------------------------
-    I_N = V_th / R_th if R_th != float("inf") else 0.0
+    if R_th == 0.0:
+        I_N = float("inf") if V_th != 0.0 else 0.0
+    elif R_th == float("inf"):
+        I_N = 0.0
+    else:
+        I_N = V_th / R_th
 
     # ------------------------------------------------------------------
     # Step 4: Maximum power transfer sweep
     # ------------------------------------------------------------------
-    P_max = (V_th ** 2) / (4.0 * R_th) if R_th > 0 else float("nan")
-
-    if R_th > 0 and R_th != float("inf"):
+    if R_th == 0.0:
+        P_max = float("inf") if V_th != 0.0 else 0.0
+        R_L_sweep = np.logspace(-2, 4, n_sweep)
+        P_L_sweep = (V_th ** 2) / R_L_sweep
+    elif R_th == float("inf"):
+        P_max = 0.0
+        R_L_sweep = np.logspace(-2, 4, n_sweep)
+        P_L_sweep = np.zeros_like(R_L_sweep)
+    else:
+        P_max = (V_th ** 2) / (4.0 * R_th)
         R_L_sweep = np.logspace(
             np.log10(max(r_min_factor * R_th, 1e-6)),
             np.log10(r_max_factor * R_th),
             n_sweep,
         )
-    else:
-        R_L_sweep = np.logspace(-2, 4, n_sweep)
-
-    # P_L = (V_th * R_L / (R_th + R_L))^2 / R_L = V_th^2 * R_L / (R_th + R_L)^2
-    if R_th != float("inf"):
         P_L_sweep = (V_th ** 2) * R_L_sweep / (R_th + R_L_sweep) ** 2
-    else:
-        P_L_sweep = np.zeros_like(R_L_sweep)
 
     return TheveninResult(
         V_th=V_th,
