@@ -354,3 +354,92 @@ def plot_bode(
         if show:
             plt.show()
     return fig
+
+
+def plot_transient(
+    time: np.ndarray,
+    node_voltages: dict[str, np.ndarray],
+    nodes_to_plot: Sequence[str] | None = None,
+    branch_currents: dict[str, np.ndarray] | None = None,
+    elements_to_plot: Sequence[str] | None = None,
+    *,
+    title: str = "Transient Waveforms",
+    show: bool = True,
+    save_path: str | None = None,
+) -> plt.Figure:
+    """Plot time-domain voltage and current waveforms.
+
+    Parameters
+    ----------
+    time : np.ndarray
+        Time points in seconds.
+    node_voltages : dict[str, np.ndarray]
+        Mapping of node name to voltage waveform array.
+    nodes_to_plot : Sequence[str] | None, optional
+        Specific node labels to display. If None, plots all nodes.
+    branch_currents : dict[str, np.ndarray] | None, optional
+        Mapping of element name to branch current waveform array.
+    elements_to_plot : Sequence[str] | None, optional
+        Specific elements whose branch currents to plot.
+    title : str, optional
+        Figure title.
+    show : bool, optional
+        Display interactive window if True.
+    save_path : str | None, optional
+        Save plot image to file if specified.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    has_currents = bool(branch_currents and elements_to_plot)
+    n_plots = 2 if has_currents else 1
+
+    colors = ["#38bdf8", "#34d399", "#f59e0b", "#a78bfa", "#f43f5e", "#10b981", "#60a5fa"]
+
+    with plt.rc_context(_STYLE):
+        fig, axes = plt.subplots(n_plots, 1, figsize=(9, 4.5 * n_plots), sharex=True)
+        if n_plots == 1:
+            ax_v = axes
+            ax_i = None
+        else:
+            ax_v, ax_i = axes
+
+        fig.patch.set_facecolor(_STYLE["figure.facecolor"])
+        _apply_style(ax_v)
+        fig.suptitle(title, fontsize=13, color="#ffffff", fontweight="bold")
+
+        # Voltage plot
+        target_nodes = nodes_to_plot or list(node_voltages.keys())
+        for idx, node in enumerate(target_nodes):
+            if node in node_voltages:
+                c = colors[idx % len(colors)]
+                ax_v.plot(time, node_voltages[node], color=c, linewidth=2.0, label=f"V({node})")
+
+        ax_v.set_ylabel("Voltage (V)", fontsize=10, color="#e0e0e0")
+        ax_v.legend(framealpha=0.15, edgecolor="#555", fontsize=9)
+
+        # Current plot if requested
+        if ax_i is not None and branch_currents and elements_to_plot:
+            _apply_style(ax_i)
+            for idx, el_name in enumerate(elements_to_plot):
+                if el_name in branch_currents:
+                    c = colors[(idx + 3) % len(colors)]
+                    ax_i.plot(time, branch_currents[el_name], color=c, linewidth=2.0, label=f"I({el_name})")
+
+            ax_i.set_ylabel("Current (A)", fontsize=10, color="#e0e0e0")
+            ax_i.legend(framealpha=0.15, edgecolor="#555", fontsize=9)
+
+        # Format X axis
+        target_ax = ax_i if ax_i is not None else ax_v
+        target_ax.set_xlabel("Time (s)", fontsize=10, color="#e0e0e0")
+
+        plt.tight_layout()
+
+        if save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        if show:
+            plt.show()
+
+    return fig
+

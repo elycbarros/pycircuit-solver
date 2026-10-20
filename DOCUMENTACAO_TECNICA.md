@@ -115,6 +115,31 @@ O cálculo analítico e computacional de circuitos equivalentes entre terminais 
 
 ---
 
+### 1.6 Análise Transitória no Domínio do Tempo (`engine/transient.py`)
+Para simular a dinâmica contínua $v(t)$ e $i(t)$ no tempo, as equações constitutivas diferenciais dos elementos reativos são discretizadas numericamente utilizando **modelos companheiros Norton (*companion models*)**:
+
+#### A. Discretização do Capacitor ($i = C \frac{dv}{dt}$):
+* **Regra dos Trapézios (*Trapezoidal Rule*, 2ª ordem, $A$-estável):**
+  $$i_{k} = G_{eq} \cdot v_{k} - I_{eq, k-1}$$
+  Onde:
+  $$G_{eq} = \frac{2C}{\Delta t}, \quad I_{eq, k-1} = G_{eq} \cdot v_{k-1} + i_{k-1}$$
+* **Euler Implícito (*Backward Euler*, 1ª ordem, $L$-estável):**
+  $$G_{eq} = \frac{C}{\Delta t}, \quad I_{eq, k-1} = G_{eq} \cdot v_{k-1}$$
+
+#### B. Discretização do Indutor ($v = L \frac{di}{dt}$):
+* **Regra dos Trapézios:**
+  $$i_k = G_{eq} \cdot v_k + I_{eq, k-1}$$
+  Onde:
+  $$G_{eq} = \frac{\Delta t}{2L}, \quad I_{eq, k-1} = G_{eq} \cdot v_{k-1} + i_{k-1}$$
+* **Euler Implícito:**
+  $$G_{eq} = \frac{\Delta t}{L}, \quad I_{eq, k-1} = i_{k-1}$$
+
+#### C. Otimização por Fatoração LU Pré-Computada:
+Para um passo de tempo fixo $\Delta t$, as condutâncias equivalentes $G_{eq}$ são estáticas ao longo de toda a simulação. Portanto, a matriz de coeficientes $\mathbf{A} \in \mathbb{R}^{M \times M}$ é invariante no tempo.
+O solver realiza a **decomposição LU de $\mathbf{A}$ apenas uma vez antes do laço temporal** (`scipy.linalg.lu_factor`). A cada instante $t_k$, apenas o vetor $\mathbf{z}(t_k)$ é atualizado com as correntes históricas e fontes variáveis, resolvendo cada passo de tempo via substituição direta e reversa (`lu_solve`) em complexidade $O(M^2)$, permitindo $10.000$ passos temporais em frações de segundo.
+
+---
+
 ## 2. 🛡️ Validação Topológica e Teoria dos Grafos (`validator.py`)
 
 A maior causa de falha em simuladores de circuitos (inclusive no SPICE original) são circuitos fisicamente incoerentes que resultam em matrizes singulares (`LinAlgError`). O `pycircuit-solver` intercepta esses problemas **antes** de montar as matrizes através de algoritmos de Teoria dos Grafos:

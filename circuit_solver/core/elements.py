@@ -69,9 +69,73 @@ class Resistor(_Element):
 # Independent sources
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Waveforms for Transient Analysis
+# ---------------------------------------------------------------------------
+
+@dataclass
+class StepWaveform:
+    """Step waveform: v1 for t < t_step, v2 for t >= t_step."""
+    v1: float = 0.0
+    v2: float = 1.0
+    t_step: float = 0.0
+
+    def __call__(self, t: float) -> float:
+        return self.v2 if t >= self.t_step else self.v1
+
+
+@dataclass
+class PulseWaveform:
+    """Standard SPICE pulse waveform: PULSE(v1 v2 td tr tf pw per)."""
+    v1: float
+    v2: float
+    td: float = 0.0       # Delay time
+    tr: float = 1e-9      # Rise time
+    tf: float = 1e-9      # Fall time
+    pw: float = 1.0       # Pulse width
+    per: float = 2.0      # Period
+
+    def __call__(self, t: float) -> float:
+        if t < self.td:
+            return self.v1
+        # Normalize into cycle
+        t_rel = (t - self.td) % self.per if self.per > 0 else (t - self.td)
+        if t_rel < self.tr:
+            return self.v1 + (self.v2 - self.v1) * (t_rel / self.tr) if self.tr > 0 else self.v2
+        elif t_rel < self.tr + self.pw:
+            return self.v2
+        elif t_rel < self.tr + self.pw + self.tf:
+            t_decay = t_rel - (self.tr + self.pw)
+            return self.v2 - (self.v2 - self.v1) * (t_decay / self.tf) if self.tf > 0 else self.v1
+        else:
+            return self.v1
+
+
+@dataclass
+class SineWaveform:
+    """Standard SPICE sine waveform: SIN(vo va freq td theta)."""
+    vo: float = 0.0      # Offset
+    va: float = 1.0      # Amplitude
+    freq: float = 60.0   # Frequency in Hz
+    td: float = 0.0      # Delay time
+    theta: float = 0.0   # Damping factor in 1/s
+
+    def __call__(self, t: float) -> float:
+        import math
+        if t < self.td:
+            return self.vo
+        t_eff = t - self.td
+        damping = math.exp(-t_eff * self.theta) if self.theta != 0 else 1.0
+        return self.vo + self.va * math.sin(2.0 * math.pi * self.freq * t_eff) * damping
+
+
+# ---------------------------------------------------------------------------
+# Independent sources
+# ---------------------------------------------------------------------------
+
 @dataclass
 class VoltageSource(_Element):
-    """Independent DC / AC voltage source.
+    """Independent DC / AC / Transient voltage source.
 
     Parameters
     ----------
@@ -87,6 +151,8 @@ class VoltageSource(_Element):
         AC peak/rms magnitude in Volts (defaults to 0.0).
     ac_phase : float, optional
         AC phase angle in degrees (defaults to 0.0).
+    waveform : Callable[[float], float] | None, optional
+        Time-dependent waveform function for transient analysis.
     """
 
     node_p: str
@@ -94,11 +160,18 @@ class VoltageSource(_Element):
     voltage: float
     ac_mag: float = 0.0
     ac_phase: float = 0.0
+    waveform: object = None
+
+    def value_at(self, t: float) -> float:
+        """Return the instantaneous voltage at time t."""
+        if callable(self.waveform):
+            return float(self.waveform(t))
+        return self.voltage
 
 
 @dataclass
 class CurrentSource(_Element):
-    """Independent DC / AC current source.
+    """Independent DC / AC / Transient current source.
 
     Conventional current direction: *from* ``node_n`` *into* ``node_p``
     (i.e. current enters the positive terminal of the source).
@@ -117,6 +190,8 @@ class CurrentSource(_Element):
         AC magnitude in Amperes (defaults to 0.0).
     ac_phase : float, optional
         AC phase angle in degrees (defaults to 0.0).
+    waveform : Callable[[float], float] | None, optional
+        Time-dependent waveform function for transient analysis.
     """
 
     node_p: str
@@ -124,6 +199,13 @@ class CurrentSource(_Element):
     current: float
     ac_mag: float = 0.0
     ac_phase: float = 0.0
+    waveform: object = None
+
+    def value_at(self, t: float) -> float:
+        """Return the instantaneous current at time t."""
+        if callable(self.waveform):
+            return float(self.waveform(t))
+        return self.current
 
 
 # ---------------------------------------------------------------------------
@@ -242,11 +324,14 @@ class Capacitor(_Element):
         Negative terminal node.
     capacitance : float
         Capacitance in Farads. Must be strictly positive.
+    ic : float, optional
+        Initial voltage V(node_p) - V(node_n) in Volts (defaults to 0.0).
     """
 
     node_p: str
     node_n: str
     capacitance: float
+    ic: float = 0.0
 
     def __post_init__(self) -> None:
         if self.capacitance <= 0:
@@ -269,11 +354,14 @@ class Inductor(_Element):
         Negative terminal node.
     inductance : float
         Inductance in Henries. Must be strictly positive.
+    ic : float, optional
+        Initial branch current from node_p to node_n in Amperes (defaults to 0.0).
     """
 
     node_p: str
     node_n: str
     inductance: float
+    ic: float = 0.0
 
     def __post_init__(self) -> None:
         if self.inductance <= 0:

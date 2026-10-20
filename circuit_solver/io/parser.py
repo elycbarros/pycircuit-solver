@@ -59,6 +59,8 @@ from circuit_solver.core.elements import (
     Capacitor,
     Inductor,
     OpAmp,
+    PulseWaveform,
+    SineWaveform,
     _Element,
 )
 from circuit_solver.core.validator import parse_value
@@ -73,6 +75,34 @@ def _strip_comment(line: str) -> str:
         if idx != -1:
             line = line[:idx]
     return line.strip()
+
+
+def _extract_waveform(line: str) -> object | None:
+    """Extract SPICE PULSE(...) or SIN(...) waveform from a source line."""
+    u = line.upper()
+    if "PULSE" in u:
+        m = re.search(r"PULSE\s*\(([^)]+)\)", line, re.IGNORECASE)
+        if m:
+            args = [parse_value(x) for x in m.group(1).replace(",", " ").split()]
+            v1 = args[0] if len(args) > 0 else 0.0
+            v2 = args[1] if len(args) > 1 else 1.0
+            td = args[2] if len(args) > 2 else 0.0
+            tr = args[3] if len(args) > 3 else 1e-9
+            tf = args[4] if len(args) > 4 else 1e-9
+            pw = args[5] if len(args) > 5 else 1.0
+            per = args[6] if len(args) > 6 else 2.0
+            return PulseWaveform(v1, v2, td, tr, tf, pw, per)
+    elif "SIN" in u:
+        m = re.search(r"SIN\s*\(([^)]+)\)", line, re.IGNORECASE)
+        if m:
+            args = [parse_value(x) for x in m.group(1).replace(",", " ").split()]
+            vo = args[0] if len(args) > 0 else 0.0
+            va = args[1] if len(args) > 1 else 1.0
+            freq = args[2] if len(args) > 2 else 60.0
+            td = args[3] if len(args) > 3 else 0.0
+            theta = args[4] if len(args) > 4 else 0.0
+            return SineWaveform(vo, va, freq, td, theta)
+    return None
 
 
 def _parse_line(line: str, lineno: int) -> _Element | None:
@@ -92,21 +122,31 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
             return Resistor(name.upper(), np.lower(), nn.lower(), parse_value(val_str))
 
         elif prefix == "C":
-            # C<name>  n+  n-  value
+            # C<name>  n+  n-  value  [IC=...]
             name, np, nn, val_str = tokens[0], tokens[1], tokens[2], tokens[3]
-            return Capacitor(name.upper(), np.lower(), nn.lower(), parse_value(val_str))
+            ic = 0.0
+            for t in tokens[4:]:
+                if t.upper().startswith("IC="):
+                    ic = parse_value(t[3:])
+            return Capacitor(name.upper(), np.lower(), nn.lower(), parse_value(val_str), ic=ic)
 
         elif prefix == "L":
-            # L<name>  n+  n-  value
+            # L<name>  n+  n-  value  [IC=...]
             name, np, nn, val_str = tokens[0], tokens[1], tokens[2], tokens[3]
-            return Inductor(name.upper(), np.lower(), nn.lower(), parse_value(val_str))
+            ic = 0.0
+            for t in tokens[4:]:
+                if t.upper().startswith("IC="):
+                    ic = parse_value(t[3:])
+            return Inductor(name.upper(), np.lower(), nn.lower(), parse_value(val_str), ic=ic)
 
         elif prefix == "V":
-            # V<name>  n+  n-  [DC val]  [AC mag [phase]]
+            # V<name>  n+  n-  [DC val]  [AC mag [phase]]  [PULSE(...)] [SIN(...)]
             name, np, nn = tokens[0], tokens[1], tokens[2]
             dc_val = 0.0
             ac_mag = 0.0
             ac_phase = 0.0
+            waveform = _extract_waveform(line)
+
             idx_t = 3
             while idx_t < len(tokens):
                 tok_u = tokens[idx_t].upper()
@@ -116,21 +156,32 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
                 elif tok_u == "AC":
                     idx_t += 1
                     ac_mag = parse_value(tokens[idx_t])
-                    if idx_t + 1 < len(tokens) and not tokens[idx_t + 1].isalpha():
+                    if idx_t + 1 < len(tokens) and not tokens[idx_t + 1].isalpha() and "(" not in tokens[idx_t + 1]:
                         idx_t += 1
                         ac_phase = parse_value(tokens[idx_t])
-                else:
-                    # Positional value
-                    dc_val = parse_value(tokens[idx_t])
+                elif not tok_u.startswith("PULSE") and not tok_u.startswith("SIN") and "(" not in tok_u and ")" not in tok_u:
+                    try:
+                        dc_val = parse_value(tokens[idx_t])
+                    except Exception:
+                        pass
                 idx_t += 1
-            return VoltageSource(name.upper(), np.lower(), nn.lower(), dc_val, ac_mag=ac_mag, ac_phase=ac_phase)
+
+            if waveform is not None and isinstance(waveform, PulseWaveform) and dc_val == 0.0:
+                dc_val = waveform.v1
+
+            return VoltageSource(
+                name.upper(), np.lower(), nn.lower(), dc_val,
+                ac_mag=ac_mag, ac_phase=ac_phase, waveform=waveform
+            )
 
         elif prefix == "I":
-            # I<name>  n+  n-  [DC val]  [AC mag [phase]]
+            # I<name>  n+  n-  [DC val]  [AC mag [phase]]  [PULSE(...)] [SIN(...)]
             name, np, nn = tokens[0], tokens[1], tokens[2]
             dc_val = 0.0
             ac_mag = 0.0
             ac_phase = 0.0
+            waveform = _extract_waveform(line)
+
             idx_t = 3
             while idx_t < len(tokens):
                 tok_u = tokens[idx_t].upper()
@@ -140,13 +191,20 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
                 elif tok_u == "AC":
                     idx_t += 1
                     ac_mag = parse_value(tokens[idx_t])
-                    if idx_t + 1 < len(tokens) and not tokens[idx_t + 1].isalpha():
+                    if idx_t + 1 < len(tokens) and not tokens[idx_t + 1].isalpha() and "(" not in tokens[idx_t + 1]:
                         idx_t += 1
                         ac_phase = parse_value(tokens[idx_t])
-                else:
-                    dc_val = parse_value(tokens[idx_t])
+                elif not tok_u.startswith("PULSE") and not tok_u.startswith("SIN") and "(" not in tok_u and ")" not in tok_u:
+                    try:
+                        dc_val = parse_value(tokens[idx_t])
+                    except Exception:
+                        pass
                 idx_t += 1
-            return CurrentSource(name.upper(), np.lower(), nn.lower(), dc_val, ac_mag=ac_mag, ac_phase=ac_phase)
+
+            return CurrentSource(
+                name.upper(), np.lower(), nn.lower(), dc_val,
+                ac_mag=ac_mag, ac_phase=ac_phase, waveform=waveform
+            )
 
         elif prefix == "E":
             # E<name>  n+  n-  nc+  nc-  gain

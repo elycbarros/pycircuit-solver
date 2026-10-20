@@ -110,10 +110,47 @@ def _cmd_ac(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_tran(args: argparse.Namespace) -> int:
+    from circuit_solver.engine.transient import solve_transient
+    from circuit_solver.visualization.plots import plot_transient
+
+    elements = parse_netlist(args.netlist)
+    circuit = Circuit(elements)
+
+    t_stop = args.tstop
+    dt = args.dt if args.dt is not None else (t_stop / 1000.0)
+
+    sol = solve_transient(
+        circuit,
+        t_stop=t_stop,
+        dt=dt,
+        method=args.method,
+        uic=args.uic,
+    )
+    print(sol.summary())
+
+    if args.plot or args.save:
+        nodes = [args.node] if args.node else None
+        plot_transient(
+            time=sol.time,
+            node_voltages=sol.node_voltages,
+            nodes_to_plot=nodes,
+            branch_currents=sol.branch_currents,
+            elements_to_plot=[args.element] if args.element else None,
+            title=f"Transient Analysis (t_stop = {t_stop:.2e} s)",
+            show=args.plot,
+            save_path=args.save,
+        )
+        if args.save:
+            print(f"Gráfico de transiente salvo em: {args.save}")
+
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pycircuit",
-        description="⚡ pycircuit-solver: Análise Nodal Modificada (MNA) DC e CA",
+        description="⚡ pycircuit-solver: Análise Nodal Modificada (MNA) DC, CA e Transitória",
     )
     subparsers = parser.add_subparsers(dest="command", help="Comando a executar")
 
@@ -148,6 +185,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_ac.add_argument("--plot", action="store_true", help="Exibir diagrama de Bode")
     p_ac.add_argument("--save", type=str, default=None, help="Salvar diagrama de Bode em arquivo")
 
+    # tran
+    p_tran = subparsers.add_parser("tran", help="Análise transitória no domínio do tempo (carga/descarga RC, RL, RLC)")
+    p_tran.add_argument("netlist", type=str, help="Caminho do arquivo netlist SPICE (.cir)")
+    p_tran.add_argument("--tstop", type=float, required=True, help="Tempo final de simulação em segundos (obrigatório)")
+    p_tran.add_argument("--dt", type=float, default=None, help="Passo de tempo em segundos (padrão tstop/1000)")
+    p_tran.add_argument("--method", choices=["trapezoidal", "euler"], default="trapezoidal",
+                        help="Método de integração numérica (padrão 'trapezoidal')")
+    p_tran.add_argument("--node", type=str, default=None, help="Nó específico para plotar")
+    p_tran.add_argument("--element", type=str, default=None, help="Elemento para plotar corrente")
+    p_tran.add_argument("--uic", action="store_true", help="Usar condições iniciais dos elementos (UIC)")
+    p_tran.add_argument("--plot", action="store_true", help="Exibir gráfico das formas de onda")
+    p_tran.add_argument("--save", type=str, default=None, help="Salvar gráfico das formas de onda em arquivo")
+
     return parser
 
 
@@ -168,6 +218,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_monte_carlo(args)
         elif args.command == "ac":
             return _cmd_ac(args)
+        elif args.command == "tran":
+            return _cmd_tran(args)
         else:
             parser.print_help()
             return 1

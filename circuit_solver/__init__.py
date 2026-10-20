@@ -16,10 +16,15 @@ from circuit_solver.core.elements import (
     CCCS,
     CCVS,
     OpAmp,
+    StepWaveform,
+    PulseWaveform,
+    SineWaveform,
 )
 from circuit_solver.core.solution import Solution
+from circuit_solver.core.transient_solution import TransientSolution
 from circuit_solver.engine.mna import solve
 from circuit_solver.engine.ac import solve_ac, ACSolution, ac_sweep
+from circuit_solver.engine.transient import solve_transient
 from circuit_solver.engine.thevenin import thevenin_norton
 from circuit_solver.engine.monte_carlo import monte_carlo
 from circuit_solver.visualization.plots import (
@@ -41,11 +46,16 @@ __all__ = [
     "CCCS",
     "CCVS",
     "OpAmp",
+    "StepWaveform",
+    "PulseWaveform",
+    "SineWaveform",
     "Solution",
     "ACSolution",
+    "TransientSolution",
     "solve",
     "solve_ac",
     "ac_sweep",
+    "solve_transient",
     "thevenin_norton",
     "monte_carlo",
     "plot_power_transfer",

@@ -224,7 +224,45 @@ pycircuit ac filtro_passa_baixas.cir --sweep 1 100000 100 --node out --plot
 
 ---
 
-## 🎲 9. Lição 7: Análise Estatística de Monte Carlo (Acelerada em Rust)
+## ⏱️ 9. Lição 7: Análise Transitória no Tempo (Carga/Descarga RC, RL e RLC)
+
+Quer saber **como a tensão sobe ou desce com o passar dos microssegundos** quando você liga a chave da fonte?
+
+### No Terminal (CLI):
+```bash
+# Simular de 0 a 10 ms com passo de 10 μs e abrir o gráfico da onda
+pycircuit tran filtro_passa_baixas.cir --tstop 0.01 --dt 1e-5 --node out --plot
+```
+
+### No Python (com fonte de degrau ou pulso):
+```python
+from circuit_solver import (
+    Circuit,
+    VoltageSource,
+    Resistor,
+    Capacitor,
+    StepWaveform,
+    solve_transient,
+)
+
+# Circuito RC com degrau de 0V para 10V
+circuito_rc = Circuit([
+    VoltageSource("V1", "1", "0", 10.0, waveform=StepWaveform(v1=0.0, v2=10.0, t_step=0.0)),
+    Resistor("R1", "1", "2", 1000.0),
+    Capacitor("C1", "2", "0", 1e-6, ic=0.0),
+])
+
+# Simula 5 milissegundos (5 constantes de tempo tau)
+sol_tran = solve_transient(circuito_rc, t_stop=0.005, dt=1e-5)
+
+print(sol_tran.summary())
+print(f"Tensão em 1 ms (1 tau): {sol_tran.V('2')[100]:.3f} V  (≈ 63.2% de 10V)")
+print(f"Tensão final em 5 ms:   {sol_tran.V('2')[-1]:.3f} V   (≈ 99.3% de 10V)")
+```
+
+---
+
+## 🎲 10. Lição 8: Análise Estatística de Monte Carlo (Acelerada em Rust)
 
 Resistores comerciais nunca têm o valor exato: eles têm tolerâncias de $1\%$, $5\%$ ou $10\%$.  
 O que acontece com a tensão da sua placa quando $10.000$ circuitos forem fabricados?
@@ -260,15 +298,15 @@ print(resultado.summary())
 
 ---
 
-## 📋 10. Tabela de Cola dos Elementos Suportados
+## 📋 11. Tabela de Cola dos Elementos Suportados
 
 | Elemento | Letra SPICE | Como Instanciar em Python | O que faz |
 | :--- | :---: | :--- | :--- |
 | **Resistor** | `R` | `Resistor("R1", "p", "n", 100.0, tolerance=0.05)` | Resistor linear em Ohms |
-| **Capacitor** | `C` | `Capacitor("C1", "p", "n", 10e-6)` | Capacitor ideal em Farads |
-| **Indutor** | `L` | `Inductor("L1", "p", "n", 1e-3)` | Indutor ideal em Henries |
-| **Fonte de Tensão** | `V` | `VoltageSource("V1", "p", "n", 12.0, ac_mag=1.0)` | Fonte DC ou CA |
-| **Fonte de Corrente** | `I` | `CurrentSource("I1", "p", "n", 2.0)` | Fonte DC ou CA (sai de n, entra em p) |
+| **Capacitor** | `C` | `Capacitor("C1", "p", "n", 10e-6, ic=0.0)` | Capacitor ideal em Farads |
+| **Indutor** | `L` | `Inductor("L1", "p", "n", 1e-3, ic=0.0)` | Indutor ideal em Henries |
+| **Fonte de Tensão** | `V` | `VoltageSource("V1", "p", "n", 12.0, ac_mag=1.0)` | Fonte DC, CA ou Transitória |
+| **Fonte de Corrente** | `I` | `CurrentSource("I1", "p", "n", 2.0)` | Fonte DC, CA ou Transitória |
 | **VCVS** | `E` | `VCVS("E1", "p", "n", "cp", "cn", gain=2.0)` | Tensão controlada por tensão |
 | **VCCS** | `G` | `VCCS("G1", "p", "n", "cp", "cn", transconductance=0.01)` | Corrente controlada por tensão |
 | **CCCS** | `F` | `CCCS("F1", "p", "n", vctrl_name="V1", gain=5.0)` | Corrente controlada por corrente |
@@ -277,7 +315,7 @@ print(resultado.summary())
 
 ---
 
-## ⚠️ 11. Erros Comuns e Como Evitá-los
+## ⚠️ 12. Erros Comuns e Como Evitá-los
 
 1. **"Missing ground node '0'":**
    * *Motivo:* Nenhum nó do circuito se chama `"0"`.

@@ -27,6 +27,7 @@ O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contr
 ### 2. Funcionalidades Nativas
 * **Arquitetura Híbrida de Alto Desempenho (Python + Rust):** Núcleo numérico em Rust (`rust_core/`) integrado via PyO3 e `maturin`. Acelera simulações de Monte Carlo com paralelismo multi-thread nativo (`rayon`) sem as travas do GIL do Python, com fallback transparente para NumPy.
 * **Motor MNA Dual (DC & CA):** Resolução matricial em números reais (DC) e complexos `complex128` (CA).
+* **Análise Transitória no Domínio do Tempo (`.tran`):** Simulação dinâmica de carga e descarga em capacitores e indutores (circuitos RC, RL e RLC de 2ª ordem) via modelos companheiros de integração implícita (**Trapezoidal Rule** e **Backward Euler**) com formas de onda `PULSE`, `SIN` e `STEP`.
 * **Fontes Dependentes Completas:** Suporte integral aos elementos SPICE $E$ (VCVS), $G$ (VCCS), $F$ (CCCS) e $H$ (CCVS).
 * **Elementos Reativos (L e C):** Modelagem de capacitores e indutores em regime permanente senoidal e curto-circuito indutivo em CC.
 * **CLI Integrada (`pycircuit`):** Resolução, Thévenin, Monte Carlo e análise CA diretamente no terminal.
@@ -69,17 +70,18 @@ pycircuit-solver/
 │   │   ├── __init__.py
 │   │   ├── mna.py                       # Algoritmo MNA estático (DC) em NumPy
 │   │   ├── ac.py                        # Motor fasorial e resposta em frequência (CA) em complex128
+│   │   ├── transient.py                 # Motor de análise transitória no tempo (Trapezoidal e Euler)
 │   │   ├── thevenin.py                  # Extração dual de Thévenin, Norton e Máxima Potência
 │   │   ├── monte_carlo.py               # Varredura estatística em Python puro (fallback)
 │   │   └── monte_carlo_rust.py          # Ponte de alta performance Python ↔ Rust (PyO3)
 │   │
 │   ├── io/
 │   │   ├── __init__.py
-│   │   └── parser.py                    # Leitor de arquivos Netlist padrão SPICE (.cir) com suporte a '+'
+│   │   └── parser.py                    # Leitor de arquivos Netlist SPICE (.cir) com PULSE e SIN
 │   │
 │   └── visualization/
 │       ├── __init__.py
-│       └── plots.py                     # Gráficos de potência, Monte Carlo e Diagramas de Bode
+│       └── plots.py                     # Gráficos de potência, Monte Carlo, Bode e Transiente
 │
 ├── rust_core/                           # Núcleo de cálculo de alta performance em Rust (PyO3 + rayon)
 │   ├── Cargo.toml                       # Manifesto Rust com rayon, nalgebra, numpy e pyo3
@@ -93,12 +95,14 @@ pycircuit-solver/
 │   ├── cap02_ponte_wheatstone.py        # Ponte de Wheatstone desbalanceada + Monte Carlo
 │   ├── cap04_thevenin_analise.py        # Equivalente Thévenin/Norton e curva P_max
 │   ├── cap05_opamp_inversor.py          # Amplificador Operacional Inversor com terra virtual
+│   ├── cap07_transiente_rlc.py          # Resposta ao degrau de RLC de 2ª ordem e overshoot
 │   └── cap09_filtro_rc_fasores.py       # Filtro passa-baixas RC, fasores e Diagrama de Bode
 │
-└── tests/                               # Suíte de testes automatizados (68 testes pytest)
+└── tests/                               # Suíte de testes automatizados (76 testes pytest)
     ├── test_textbook_benchmarks.py      # Validação analítica multi-livros (Sadiku, Nilsson, Boylestad, Dorf)
     ├── test_robustness_edge_cases.py    # Testes de robustez, BFS, loops KVL, R_th=0 e parser
     ├── test_rust_monte_carlo.py         # Testes de correção, reprodutibilidade e speedup do motor Rust
+    ├── test_transient.py                # Testes analíticos de transitório RC, RL, RLC e formas de onda
     ├── test_validator.py                # Testes de validação topológica e sufixos
     ├── test_mna_engine.py               # Testes analíticos do motor MNA e 4 fontes dependentes
     ├── test_thevenin.py                 # Testes de Thévenin/Norton e máxima transferência
@@ -127,6 +131,9 @@ pycircuit ac circuito.cir -f 60.0
 
 # Varredura de frequência e diagrama de Bode (10 Hz a 100 kHz)
 pycircuit ac circuito.cir --sweep 10 100000 100 --node out --plot
+
+# Análise transitória no tempo (0 a 10 ms com passo de 10 μs e gráfico)
+pycircuit tran circuito.cir --tstop 0.01 --dt 1e-5 --node out --plot
 ```
 
 ---
