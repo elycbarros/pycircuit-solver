@@ -1,0 +1,42 @@
+[package]
+name = "pycircuit_core"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance Rust core for pycircuit-solver (MNA assembly + Monte Carlo)"
+license = "MIT"
+
+[lib]
+name = "pycircuit_core"
+# cdylib = Python extension (.so / .pyd)
+# rlib   = native Rust tests
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# PyO3: Python ↔ Rust bindings (abi3 = stable ABI, works with all CPython 3.10+)
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py310"] }
+
+# rayon: data-parallelism (thread pool, par_iter) — no GIL constraint in Rust
+rayon = "1.10"
+
+# rand: fast PRNG (Xoshiro256++ via SmallRng, PCG via StdRng)
+rand = { version = "0.8", features = ["small_rng"] }
+rand_chacha = "0.3"
+
+# ndarray: n-dimensional arrays in Rust
+ndarray = { version = "0.16", features = ["rayon"] }
+
+# nalgebra: dense linear algebra (LU solver for MNA)
+nalgebra = "0.33"
+
+# numpy: zero-copy ndarray ↔ numpy bridge
+numpy = "0.23"
+
+[dev-dependencies]
+approx = "0.5"
+
+[profile.release]
+# Maximum optimisation for release builds
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true

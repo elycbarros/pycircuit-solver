@@ -49,3 +49,8 @@ Thumbs.db
 
 # Distribution
 MANIFEST
+
+# Rust build artifacts
+target/
+rust_core/target/
+*.whl

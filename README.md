@@ -21,16 +21,17 @@ O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contr
 * **Dorf & Svoboda** — *Introdução aos Circuitos Elétricos* (Rede em T para alto ganho em Op-Amps, isolamento de impedância)
 
 ### 2. Funcionalidades Nativas
+* **Arquitetura Híbrida de Alto Desempenho (Python + Rust):** Núcleo numérico em Rust (`rust_core/`) integrado via PyO3 e `maturin`. Acelera simulações de Monte Carlo com paralelismo multi-thread nativo (`rayon`) sem as travas do GIL do Python, com fallback transparente para NumPy.
 * **Motor MNA Dual (DC & CA):** Resolução matricial em números reais (DC) e complexos `complex128` (CA).
 * **Fontes Dependentes Completas:** Suporte integral aos elementos SPICE $E$ (VCVS), $G$ (VCCS), $F$ (CCCS) e $H$ (CCVS).
-* **Elementos Reativos (L e C):** Modelagem de capacitores e indutores em regime permanente senoidal.
+* **Elementos Reativos (L e C):** Modelagem de capacitores e indutores em regime permanente senoidal e curto-circuito indutivo em CC.
 * **CLI Integrada (`pycircuit`):** Resolução, Thévenin, Monte Carlo e análise CA diretamente no terminal.
-* **Validador Topológico Pré-Solver (`validator.py`):** Checagem de nós flutuantes, terra obrigatório, fontes em conflito e fontes de controle válidas.
+* **Validador Topológico Pré-Solver (`validator.py`):** Checagem por busca em largura (BFS) de conectividade com o terra, detecção de loops ilegais de fontes de tensão por DFS, impedância de controle de fontes dependentes e nós flutuantes.
 * **Conversor de Sufixos de Engenharia:** Leitura nativa de notações laboratoriais (`"4.7k"`, `"10mA"`, `"220u"`, `"4k7"`, `"1MEG"`).
-* **Extrator de Thévenin/Norton:** Parâmetros $V_{\text{th}}$, $I_{\text{N}}$, $R_{\text{th}}$ e varredura $P_{\text{max}}$.
-* **Auditoria de Potência (Tellegen):** Verificação de conservação global de energia ($\sum P = 0$) em DC e potência complexa em CA.
-* **Simulação de Monte Carlo:** Análise estatística de tolerâncias ($1\%, 5\%, 10\%$).
-* **Parser SPICE:** Leitura de arquivos `.cir`, `.net`, `.sp`.
+* **Extrator de Thévenin/Norton Dual:** Método híbrido (injeção de tensão e injeção de corrente) que resolve casos degenerados como fontes ideais nos terminais ($R_{th} = 0\ \Omega$) ou terminais abertos ($R_{th} \to \infty$).
+* **Auditoria de Potência (Tellegen):** Verificação de conservação global de energia ($\sum P = 0$) em DC e balanço de potência complexa em CA.
+* **Simulação de Monte Carlo:** Análise estatística de tolerâncias ($1\%, 5\%, 10\%$) em até dezenas de milhares de amostras por segundo.
+* **Parser SPICE:** Leitura de arquivos `.cir`, `.net`, `.sp` com suporte a linhas de continuação (`+`).
 * **Visualização:** Curvas de máxima potência, histogramas de Monte Carlo e diagramas de Bode.
 
 ---
@@ -50,30 +51,39 @@ pycircuit-solver/
 ├── pyproject.toml                       # Configuração do pacote Python moderno (PEP 621)
 ├── requirements.txt                     # Dependências mínimas de execução
 │
-├── circuit_solver/                      # Pacote principal
+├── circuit_solver/                      # Pacote principal em Python
 │   ├── __init__.py                      # Facade de importação pública
 │   ├── cli.py                           # Interface de Linha de Comando (CLI pycircuit)
 │   ├── core/
 │   │   ├── __init__.py
 │   │   ├── elements.py                  # Dataclasses (R, C, L, V, I, VCVS, VCCS, CCCS, CCVS, OpAmp)
 │   │   ├── circuit.py                   # Container de topologia e mapeamento de nós
-│   │   ├── validator.py                 # Validador topológico e conversor de sufixos de engenharia
+│   │   ├── validator.py                 # Validador topológico (BFS, detecção de loops KVL e sufixos)
 │   │   └── solution.py                  # Processamento de tensões, correntes e balanço de Tellegen
 │   │
 │   ├── engine/
 │   │   ├── __init__.py
-│   │   ├── mna.py                       # Algoritmo MNA estático (DC)
-│   │   ├── ac.py                        # Motor fasorial e resposta em frequência (CA)
-│   │   ├── thevenin.py                  # Extração de Thévenin, Norton e Máxima Potência
-│   │   └── monte_carlo.py               # Varredura estatística de tolerâncias
+│   │   ├── mna.py                       # Algoritmo MNA estático (DC) em NumPy
+│   │   ├── ac.py                        # Motor fasorial e resposta em frequência (CA) em complex128
+│   │   ├── thevenin.py                  # Extração dual de Thévenin, Norton e Máxima Potência
+│   │   ├── monte_carlo.py               # Varredura estatística em Python puro (fallback)
+│   │   └── monte_carlo_rust.py          # Ponte de alta performance Python ↔ Rust (PyO3)
 │   │
 │   ├── io/
 │   │   ├── __init__.py
-│   │   └── parser.py                    # Leitor de arquivos Netlist padrão SPICE (.cir)
+│   │   └── parser.py                    # Leitor de arquivos Netlist padrão SPICE (.cir) com suporte a '+'
 │   │
 │   └── visualization/
 │       ├── __init__.py
 │       └── plots.py                     # Gráficos de potência, Monte Carlo e Diagramas de Bode
+│
+├── rust_core/                           # Núcleo de cálculo de alta performance em Rust (PyO3 + rayon)
+│   ├── Cargo.toml                       # Manifesto Rust com rayon, nalgebra, numpy e pyo3
+│   └── src/
+│       ├── lib.rs                       # Interface CPython/PyO3 e funções exportadas
+│       ├── types.rs                     # Estruturas de dados pré-resolvidas sem overhead de strings
+│       ├── mna_core.rs                  # Montagem MNA e resolução LU com pivotamento total
+│       └── monte_carlo.rs               # Simulação de Monte Carlo com paralelismo real via rayon (sem GIL)
 │
 ├── examples/                            # Scripts de problemas clássicos resolvidos
 │   ├── cap02_ponte_wheatstone.py        # Ponte de Wheatstone desbalanceada + Monte Carlo
@@ -81,9 +91,10 @@ pycircuit-solver/
 │   ├── cap05_opamp_inversor.py          # Amplificador Operacional Inversor com terra virtual
 │   └── cap09_filtro_rc_fasores.py       # Filtro passa-baixas RC, fasores e Diagrama de Bode
 │
-└── tests/                               # Suíte de testes automatizados (55 testes pytest)
+└── tests/                               # Suíte de testes automatizados (68 testes pytest)
     ├── test_textbook_benchmarks.py      # Validação analítica multi-livros (Sadiku, Nilsson, Boylestad, Dorf)
     ├── test_robustness_edge_cases.py    # Testes de robustez, BFS, loops KVL, R_th=0 e parser
+    ├── test_rust_monte_carlo.py         # Testes de correção, reprodutibilidade e speedup do motor Rust
     ├── test_validator.py                # Testes de validação topológica e sufixos
     ├── test_mna_engine.py               # Testes analíticos do motor MNA e 4 fontes dependentes
     ├── test_thevenin.py                 # Testes de Thévenin/Norton e máxima transferência
@@ -129,6 +140,14 @@ pip install -e .
 Para instalar dependências de desenvolvimento e testes:
 ```bash
 pip install -e .[dev]
+```
+
+#### Compilação do Núcleo em Rust (Opcional — Alto Desempenho)
+O `pycircuit-solver` opera em Python puro com NumPy por padrão. Para habilitar aceleração em Rust com paralelismo nativo multi-thread via `rayon`:
+```bash
+cd rust_core
+maturin build --release --interpreter python3
+pip install target/wheels/*.whl
 ```
 
 ### Exemplo em Python (Divisor com Carga e Op-Amp)
