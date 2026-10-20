@@ -46,6 +46,7 @@ Thumbs.db
 *.png
 *.svg
 *.pdf
+*.html
 
 # Distribution
 MANIFEST
