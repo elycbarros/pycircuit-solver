@@ -50,6 +50,8 @@ from circuit_solver.core.elements import (
     CurrentSource,
     VCVS,
     VCCS,
+    CCCS,
+    CCVS,
     OpAmp,
     _Element,
 )
@@ -167,6 +169,41 @@ def build_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
                 A[n_node, cp] += gm
             if n_node is not None and cn is not None:
                 A[n_node, cn] -= gm
+
+        # ------------------------------------------------------------------
+        # CCCS (F element)
+        # ------------------------------------------------------------------
+        elif isinstance(el, CCCS):
+            k_vctrl = aux(el.vctrl_name)
+            p, n_node = idx(el.node_p), idx(el.node_n)
+            # SPICE convention: I(vctrl) flows from + to - through vctrl, so I(vctrl) = -j_vctrl.
+            # I_out = gain * I(vctrl) = -gain * j_vctrl injected into node_p.
+            # KCL row p: - I_out = + gain * j_vctrl.
+            if p is not None:
+                A[p, k_vctrl] += el.gain
+            if n_node is not None:
+                A[n_node, k_vctrl] -= el.gain
+
+        # ------------------------------------------------------------------
+        # CCVS (H element)
+        # ------------------------------------------------------------------
+        elif isinstance(el, CCVS):
+            k = aux(el.name)
+            k_vctrl = aux(el.vctrl_name)
+            p, n_node = idx(el.node_p), idx(el.node_n)
+            # Output branch incidence
+            if p is not None:
+                A[p, k] += 1.0
+            if n_node is not None:
+                A[n_node, k] -= 1.0
+            # Constraint row: V(p) - V(n) - rm * I(vctrl) = 0
+            # Since I(vctrl) = -j_vctrl: V(p) - V(n) + rm * j_vctrl = 0.
+            if p is not None:
+                A[k, p] += 1.0
+            if n_node is not None:
+                A[k, n_node] -= 1.0
+            A[k, k_vctrl] += el.transresistance
+            z[k] = 0.0
 
         # ------------------------------------------------------------------
         # Ideal Op-Amp

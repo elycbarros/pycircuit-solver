@@ -12,6 +12,8 @@ from circuit_solver.core.elements import (
     Resistor,
     VCCS,
     VCVS,
+    CCCS,
+    CCVS,
     VoltageSource,
 )
 from circuit_solver.engine.mna import solve
@@ -89,6 +91,49 @@ def test_vccs_controlled_source():
 
     assert sol.V("in") == pytest.approx(4.0)
     assert sol.V("out") == pytest.approx(20.0)
+
+
+def test_cccs_controlled_source():
+    """Fonte de corrente controlada por corrente (CCCS - F):
+    Vin = 10V, Rin = 5Ω -> I(Vin) = 2A saindo do terminal positivo.
+    F1 tem ganho beta = 4 controlado por Vin.
+    Corrente controlada I_out = 4 * 2A = 8A injetada em Rload = 10Ω -> V_out = 80V.
+    """
+    elements = [
+        VoltageSource("Vin", "in", "0", 10.0),
+        Resistor("Rin", "in", "0", 5.0),
+        CCCS("F1", "out", "0", "Vin", 4.0),
+        Resistor("Rload", "out", "0", 10.0),
+    ]
+    circuit = Circuit(elements)
+    sol = solve(circuit)
+
+    assert sol.V("in") == pytest.approx(10.0)
+    assert sol.V("out") == pytest.approx(80.0)
+    assert sol.I_resistor("Rload") == pytest.approx(8.0)
+    audit = sol.power_audit()
+    assert audit["_total"] == pytest.approx(0.0, abs=1e-8)
+
+
+def test_ccvs_controlled_source():
+    """Fonte de tensão controlada por corrente (CCVS - H):
+    Vin = 10V, Rin = 5Ω -> I(Vin) = 2A.
+    H1 tem transresistência rm = 3.0 Ω controlado por Vin.
+    Tensão controlada V_out = 3 * 2A = 6V sobre Rload = 100Ω.
+    """
+    elements = [
+        VoltageSource("Vin", "in", "0", 10.0),
+        Resistor("Rin", "in", "0", 5.0),
+        CCVS("H1", "out", "0", "Vin", 3.0),
+        Resistor("Rload", "out", "0", 100.0),
+    ]
+    circuit = Circuit(elements)
+    sol = solve(circuit)
+
+    assert sol.V("in") == pytest.approx(10.0)
+    assert sol.V("out") == pytest.approx(6.0)
+    audit = sol.power_audit()
+    assert audit["_total"] == pytest.approx(0.0, abs=1e-8)
 
 
 def test_ideal_opamp_inverting():

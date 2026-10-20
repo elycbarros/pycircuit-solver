@@ -34,6 +34,7 @@ __all__ = [
     "plot_power_transfer",
     "plot_monte_carlo",
     "plot_monte_carlo_all",
+    "plot_bode",
 ]
 
 # ---------------------------------------------------------------------------
@@ -277,6 +278,67 @@ def plot_monte_carlo_all(
         # Hide unused subplots
         for ax in ax_list[n:]:
             ax.set_visible(False)
+
+        plt.tight_layout()
+
+        if save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        if show:
+            plt.show()
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Bode plot (Frequency Response)
+# ---------------------------------------------------------------------------
+
+def plot_bode(
+    frequencies: np.ndarray,
+    mag_db: np.ndarray,
+    phase_deg: np.ndarray,
+    *,
+    title: str = "Bode Diagram (Frequency Response)",
+    target_label: str = "Output",
+    show: bool = True,
+    save_path: str | None = None,
+) -> plt.Figure:
+    """Plot Bode magnitude and phase diagrams.
+
+    Parameters
+    ----------
+    frequencies : np.ndarray
+        Array of frequencies in Hz.
+    mag_db : np.ndarray
+        Magnitude in dB.
+    phase_deg : np.ndarray
+        Phase in degrees.
+    title : str
+    target_label : str
+    show : bool
+    save_path : str | None
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    with plt.rc_context(_STYLE):
+        fig, (ax_mag, ax_phase) = plt.subplots(2, 1, figsize=(9, 6), sharex=True)
+        fig.patch.set_facecolor(_STYLE["figure.facecolor"])
+        _apply_style(ax_mag)
+        _apply_style(ax_phase)
+
+        fig.suptitle(title, fontsize=13, color="#ffffff", fontweight="bold")
+
+        # Magnitude plot
+        ax_mag.semilogx(frequencies, mag_db, color=_ACCENT, linewidth=2.0, label=f"|{target_label}| (dB)")
+        ax_mag.set_ylabel("Magnitude (dB)", fontsize=10, color="#e0e0e0")
+        ax_mag.legend(framealpha=0.15, edgecolor="#555", fontsize=9)
+
+        # Phase plot
+        ax_phase.semilogx(frequencies, phase_deg, color="#f59e0b", linewidth=2.0, label=f"∠ {target_label} (°)")
+        ax_phase.set_xlabel("Frequency (Hz)", fontsize=10, color="#e0e0e0")
+        ax_phase.set_ylabel("Phase (°)", fontsize=10, color="#e0e0e0")
+        ax_phase.legend(framealpha=0.15, edgecolor="#555", fontsize=9)
 
         plt.tight_layout()
 

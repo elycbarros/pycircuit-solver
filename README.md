@@ -15,33 +15,23 @@ O projeto foi arquitetado para atender rigorosamente ao escopo acadêmico dos **
 
 ### 1. Cobertura Acadêmica (Referência: Alexander & Sadiku)
 * **Capítulos 1 & 2:** Leis básicas, Lei de Ohm, LKC, LKT, associações série/paralelo, transformações $\Delta - Y$ e balanço de potência.
-* **Capítulo 3:** Análise Nodal e de Malhas (com fontes independentes e dependentes).
+* **Capítulo 3:** Análise Nodal e de Malhas com todas as 4 fontes dependentes ($VCVS$, $VCCS$, $CCCS$, $CCVS$).
 * **Capítulo 4:** Teoremas de Circuitos (Superposição, Thévenin, Norton e Máxima Transferência de Potência).
 * **Capítulo 5:** Amplificadores Operacionais Ideais (circuitos inversores, não-inversores, somadores e diferenciais).
+* **Capítulos 9 & 10:** Análise Fasorial Senoidal em Regime Permanente (CA), impedâncias/admitâncias complexas ($R, L, C$), potência complexa ($P, Q, S$, fator de potência) e resposta em frequência (Bode).
 
 ### 2. Funcionalidades Nativas
-* **Motor MNA em Blocos:** Resolução de sistemas lineares $A\mathbf{x} = \mathbf{z}$ utilizando a formulação particionada da Análise Nodal Modificada.
-* **Validador Topológico Pré-Solver (`validator.py`):** Checagem automática de nós flutuantes (*dangling nodes*), verificação obrigatória do nó de referência Terra (`"0"`), detecção de fontes em conflito e restrições físicas de valores ($R > 0$).
-* **Conversor de Sufixos de Engenharia (`validator.py`):** Leitura nativa de notações corriqueiras de laboratório (ex: `"4.7k"`, `"10mA"`, `"220u"`, `"4k7"`, `"1MEG"`).
-* **Extrator de Thévenin/Norton (`thevenin.py`):** Cálculo automatizado de $V_{\text{th}}$, $I_{\text{N}}$, $R_{\text{th}}$ e varredura de máxima potência entre quaisquer dois terminais $(A, B)$.
-* **Auditoria de Potência (Teorema de Tellegen):** Verificação de conservação global de energia ($\sum P = 0$) em pós-processamento com precisão de máquina.
-* **Simulação de Monte Carlo (`monte_carlo.py`):** Análise estatística de pior caso (*worst-case*) considerando tolerâncias comerciais de resistores ($1\%, 5\%, 10\%$).
-* **Parser SPICE (`parser.py`):** Leitura direta de arquivos netlist SPICE padrão (`.cir`, `.net`, `.sp`).
-* **Visualização Elegante (`plots.py`):** Gráficos com tema escuro moderno para curva de potência e histogramas de Monte Carlo via Matplotlib.
-
----
-
-## 📐 Fundamentação Matemática (MNA)
-
-A Análise Nodal Modificada expande a análise nodal clássica acoplando tensões nodais e correntes auxiliares de restrição:
-
-$$\begin{bmatrix} \mathbf{G} & \mathbf{B} \\ \mathbf{C} & \mathbf{D} \end{bmatrix} \begin{bmatrix} \mathbf{v} \\ \mathbf{j} \end{bmatrix} = \begin{bmatrix} \mathbf{i} \\ \mathbf{e} \end{bmatrix}$$
-
-* **$\mathbf{G}$:** Matriz de condutâncias nodais e transcondutâncias de fontes controladas ($VCCS$).
-* **$\mathbf{B}$ e $\mathbf{C}$:** Matrizes de incidência e restrição de tensão (fontes independentes, VCVS e saídas de Op-Amps).
-* **$\mathbf{D}$:** Matriz de acoplamento entre variáveis dependentes (nula para fontes ideais independentes).
-* **$\mathbf{v}$ e $\mathbf{j}$:** Vetor de potenciais nodais desconhecidos e vetor de correntes auxiliares nas fontes e Op-Amps.
-* **$\mathbf{i}$ e $\mathbf{e}$:** Injeções de corrente nodais e valores nominais de restrição de tensão.
+* **Motor MNA Dual (DC & CA):** Resolução matricial em números reais (DC) e complexos `complex128` (CA).
+* **Fontes Dependentes Completas:** Suporte integral aos elementos SPICE $E$ (VCVS), $G$ (VCCS), $F$ (CCCS) e $H$ (CCVS).
+* **Elementos Reativos (L e C):** Modelagem de capacitores e indutores em regime permanente senoidal.
+* **CLI Integrada (`pycircuit`):** Resolução, Thévenin, Monte Carlo e análise CA diretamente no terminal.
+* **Validador Topológico Pré-Solver (`validator.py`):** Checagem de nós flutuantes, terra obrigatório, fontes em conflito e fontes de controle válidas.
+* **Conversor de Sufixos de Engenharia:** Leitura nativa de notações laboratoriais (`"4.7k"`, `"10mA"`, `"220u"`, `"4k7"`, `"1MEG"`).
+* **Extrator de Thévenin/Norton:** Parâmetros $V_{\text{th}}$, $I_{\text{N}}$, $R_{\text{th}}$ e varredura $P_{\text{max}}$.
+* **Auditoria de Potência (Tellegen):** Verificação de conservação global de energia ($\sum P = 0$) em DC e potência complexa em CA.
+* **Simulação de Monte Carlo:** Análise estatística de tolerâncias ($1\%, 5\%, 10\%$).
+* **Parser SPICE:** Leitura de arquivos `.cir`, `.net`, `.sp`.
+* **Visualização:** Curvas de máxima potência, histogramas de Monte Carlo e diagramas de Bode.
 
 ---
 
@@ -62,16 +52,18 @@ pycircuit-solver/
 │
 ├── circuit_solver/                      # Pacote principal
 │   ├── __init__.py                      # Facade de importação pública
+│   ├── cli.py                           # Interface de Linha de Comando (CLI pycircuit)
 │   ├── core/
 │   │   ├── __init__.py
-│   │   ├── elements.py                  # Dataclasses (Resistor, VoltageSource, CurrentSource, VCVS, VCCS, OpAmp)
+│   │   ├── elements.py                  # Dataclasses (R, C, L, V, I, VCVS, VCCS, CCCS, CCVS, OpAmp)
 │   │   ├── circuit.py                   # Container de topologia e mapeamento de nós
 │   │   ├── validator.py                 # Validador topológico e conversor de sufixos de engenharia
 │   │   └── solution.py                  # Processamento de tensões, correntes e balanço de Tellegen
 │   │
 │   ├── engine/
 │   │   ├── __init__.py
-│   │   ├── mna.py                       # Algoritmo de estampagem (stamping) e resolução linear
+│   │   ├── mna.py                       # Algoritmo MNA estático (DC)
+│   │   ├── ac.py                        # Motor fasorial e resposta em frequência (CA)
 │   │   ├── thevenin.py                  # Extração de Thévenin, Norton e Máxima Potência
 │   │   └── monte_carlo.py               # Varredura estatística de tolerâncias
 │   │
@@ -81,17 +73,43 @@ pycircuit-solver/
 │   │
 │   └── visualization/
 │       ├── __init__.py
-│       └── plots.py                     # Gráficos de curvas de potência e distribuição
+│       └── plots.py                     # Gráficos de potência, Monte Carlo e Diagramas de Bode
 │
 ├── examples/                            # Scripts de problemas clássicos resolvidos
 │   ├── cap02_ponte_wheatstone.py        # Ponte de Wheatstone desbalanceada + Monte Carlo
 │   ├── cap04_thevenin_analise.py        # Equivalente Thévenin/Norton e curva P_max
-│   └── cap05_opamp_inversor.py          # Amplificador Operacional Inversor com terra virtual
+│   ├── cap05_opamp_inversor.py          # Amplificador Operacional Inversor com terra virtual
+│   └── cap09_filtro_rc_fasores.py       # Filtro passa-baixas RC, fasores e Diagrama de Bode
 │
 └── tests/                               # Suíte de validação analítica (pytest)
     ├── test_validator.py                # Testes de validação topológica e sufixos
-    ├── test_mna_engine.py               # Testes analíticos do motor MNA e SPICE parser
-    └── test_thevenin.py                 # Testes de Thévenin/Norton e máxima transferência
+    ├── test_mna_engine.py               # Testes analíticos do motor MNA e 4 fontes dependentes
+    ├── test_thevenin.py                 # Testes de Thévenin/Norton e máxima transferência
+    ├── test_ac_engine.py                # Testes de análise CA, ressonância e corte
+    └── test_cli.py                      # Testes da interface de terminal pycircuit
+```
+
+---
+
+## 💻 Interface de Linha de Comando (CLI)
+
+O comando `pycircuit` fica disponível no terminal após a instalação:
+
+```bash
+# Resolver circuito DC a partir de netlist SPICE
+pycircuit solve circuito.cir
+
+# Extrair equivalente de Thévenin / Norton entre nós 3 e 0 com gráfico
+pycircuit thevenin circuito.cir -a 3 -b 0 --plot
+
+# Análise de Monte Carlo com 1000 amostras e tolerância de 5%
+pycircuit monte-carlo circuito.cir -n 1000 -t 0.05 --plot
+
+# Análise fasorial CA a 60 Hz
+pycircuit ac circuito.cir -f 60.0
+
+# Varredura de frequência e diagrama de Bode (10 Hz a 100 kHz)
+pycircuit ac circuito.cir --sweep 10 100000 100 --node out --plot
 ```
 
 ---

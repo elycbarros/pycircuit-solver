@@ -36,6 +36,10 @@ from circuit_solver.core.elements import (
     VCVS,
     VCCS,
     OpAmp,
+    Capacitor,
+    Inductor,
+    CCCS,
+    CCVS,
     _Element,
 )
 
@@ -204,6 +208,7 @@ class CircuitValidator:
         self._check_ground()
         self._check_self_shorts()
         self._check_resistances()
+        self._check_controlling_sources()
         self._check_floating_nodes()
         self._check_parallel_voltage_sources()
 
@@ -221,7 +226,7 @@ class CircuitValidator:
     @staticmethod
     def _nodes_of(el: _Element) -> list[str]:
         """Extract node labels from any element type."""
-        if isinstance(el, (Resistor, VoltageSource, CurrentSource)):
+        if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS)):
             return [el.node_p, el.node_n]
         if isinstance(el, (VCVS, VCCS)):
             return [el.node_p, el.node_n, el.ctrl_p, el.ctrl_n]
@@ -238,7 +243,7 @@ class CircuitValidator:
 
     def _check_self_shorts(self) -> None:
         for el in self._elements:
-            if isinstance(el, (Resistor, VoltageSource, CurrentSource)):
+            if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS)):
                 if el.node_p == el.node_n:
                     raise CircuitValidationError(
                         f"Element '{el.name}' has node_p == node_n == '{el.node_p}'. "
@@ -253,6 +258,18 @@ class CircuitValidator:
                     f"Resistor '{el.name}' has non-positive resistance "
                     f"({el.resistance} Ω). Physical resistors must have R > 0."
                 )
+
+    def _check_controlling_sources(self) -> None:
+        """Verify that current-controlled sources reference a valid VoltageSource."""
+        vsource_names = {el.name for el in self._elements if isinstance(el, VoltageSource)}
+        for el in self._elements:
+            if isinstance(el, (CCCS, CCVS)):
+                if el.vctrl_name not in vsource_names:
+                    raise CircuitValidationError(
+                        f"Element '{el.name}' references controlling voltage source '{el.vctrl_name}', "
+                        "which does not exist in the circuit. In MNA/SPICE, current-controlled sources "
+                        "must reference a defined independent VoltageSource (or a 0V dummy source)."
+                    )
 
     def _check_floating_nodes(self) -> None:
         """Every non-ground node must appear in ≥ 2 element connections."""
@@ -275,7 +292,7 @@ class CircuitValidator:
         """Detect two ideal voltage sources directly in parallel (same node pair)."""
         v_sources: list[tuple[str, str, str]] = []  # (name, node_p, node_n)
         for el in self._elements:
-            if isinstance(el, (VoltageSource, VCVS)):
+            if isinstance(el, (VoltageSource, VCVS, CCVS)):
                 v_sources.append((el.name, el.node_p, el.node_n))
         seen: dict[frozenset[str], str] = {}
         for name, np, nn in v_sources:

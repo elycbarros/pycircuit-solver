@@ -54,6 +54,10 @@ from circuit_solver.core.elements import (
     CurrentSource,
     VCVS,
     VCCS,
+    CCCS,
+    CCVS,
+    Capacitor,
+    Inductor,
     OpAmp,
     _Element,
 )
@@ -87,17 +91,62 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
             name, np, nn, val_str = tokens[0], tokens[1], tokens[2], tokens[3]
             return Resistor(name.upper(), np.lower(), nn.lower(), parse_value(val_str))
 
+        elif prefix == "C":
+            # C<name>  n+  n-  value
+            name, np, nn, val_str = tokens[0], tokens[1], tokens[2], tokens[3]
+            return Capacitor(name.upper(), np.lower(), nn.lower(), parse_value(val_str))
+
+        elif prefix == "L":
+            # L<name>  n+  n-  value
+            name, np, nn, val_str = tokens[0], tokens[1], tokens[2], tokens[3]
+            return Inductor(name.upper(), np.lower(), nn.lower(), parse_value(val_str))
+
         elif prefix == "V":
-            # V<name>  n+  n-  [DC]  value
+            # V<name>  n+  n-  [DC val]  [AC mag [phase]]
             name, np, nn = tokens[0], tokens[1], tokens[2]
-            val_str = tokens[4] if len(tokens) > 4 and tokens[3].upper() == "DC" else tokens[3]
-            return VoltageSource(name.upper(), np.lower(), nn.lower(), parse_value(val_str))
+            dc_val = 0.0
+            ac_mag = 0.0
+            ac_phase = 0.0
+            idx_t = 3
+            while idx_t < len(tokens):
+                tok_u = tokens[idx_t].upper()
+                if tok_u == "DC":
+                    idx_t += 1
+                    dc_val = parse_value(tokens[idx_t])
+                elif tok_u == "AC":
+                    idx_t += 1
+                    ac_mag = parse_value(tokens[idx_t])
+                    if idx_t + 1 < len(tokens) and not tokens[idx_t + 1].isalpha():
+                        idx_t += 1
+                        ac_phase = parse_value(tokens[idx_t])
+                else:
+                    # Positional value
+                    dc_val = parse_value(tokens[idx_t])
+                idx_t += 1
+            return VoltageSource(name.upper(), np.lower(), nn.lower(), dc_val, ac_mag=ac_mag, ac_phase=ac_phase)
 
         elif prefix == "I":
-            # I<name>  n+  n-  [DC]  value
+            # I<name>  n+  n-  [DC val]  [AC mag [phase]]
             name, np, nn = tokens[0], tokens[1], tokens[2]
-            val_str = tokens[4] if len(tokens) > 4 and tokens[3].upper() == "DC" else tokens[3]
-            return CurrentSource(name.upper(), np.lower(), nn.lower(), parse_value(val_str))
+            dc_val = 0.0
+            ac_mag = 0.0
+            ac_phase = 0.0
+            idx_t = 3
+            while idx_t < len(tokens):
+                tok_u = tokens[idx_t].upper()
+                if tok_u == "DC":
+                    idx_t += 1
+                    dc_val = parse_value(tokens[idx_t])
+                elif tok_u == "AC":
+                    idx_t += 1
+                    ac_mag = parse_value(tokens[idx_t])
+                    if idx_t + 1 < len(tokens) and not tokens[idx_t + 1].isalpha():
+                        idx_t += 1
+                        ac_phase = parse_value(tokens[idx_t])
+                else:
+                    dc_val = parse_value(tokens[idx_t])
+                idx_t += 1
+            return CurrentSource(name.upper(), np.lower(), nn.lower(), dc_val, ac_mag=ac_mag, ac_phase=ac_phase)
 
         elif prefix == "E":
             # E<name>  n+  n-  nc+  nc-  gain
@@ -118,6 +167,20 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
                 name.upper(), np.lower(), nn.lower(),
                 cp.lower(), cn.lower(), parse_value(gm_str)
             )
+
+        elif prefix == "F":
+            # F<name>  n+  n-  Vctrl  gain
+            name, np, nn, vctrl, gain_str = (
+                tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]
+            )
+            return CCCS(name.upper(), np.lower(), nn.lower(), vctrl.upper(), parse_value(gain_str))
+
+        elif prefix == "H":
+            # H<name>  n+  n-  Vctrl  transresistance
+            name, np, nn, vctrl, rm_str = (
+                tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]
+            )
+            return CCVS(name.upper(), np.lower(), nn.lower(), vctrl.upper(), parse_value(rm_str))
 
         elif prefix in ("A", "U"):
             # A<name>  in+  in-  out  [gnd]

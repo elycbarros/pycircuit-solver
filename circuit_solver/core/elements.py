@@ -71,7 +71,7 @@ class Resistor(_Element):
 
 @dataclass
 class VoltageSource(_Element):
-    """Independent DC voltage source.
+    """Independent DC / AC voltage source.
 
     Parameters
     ----------
@@ -82,17 +82,23 @@ class VoltageSource(_Element):
     node_n : str
         Negative terminal node.
     voltage : float
-        Source EMF in Volts (can be negative).
+        DC source EMF in Volts (can be negative).
+    ac_mag : float, optional
+        AC peak/rms magnitude in Volts (defaults to 0.0).
+    ac_phase : float, optional
+        AC phase angle in degrees (defaults to 0.0).
     """
 
     node_p: str
     node_n: str
     voltage: float
+    ac_mag: float = 0.0
+    ac_phase: float = 0.0
 
 
 @dataclass
 class CurrentSource(_Element):
-    """Independent DC current source.
+    """Independent DC / AC current source.
 
     Conventional current direction: *from* ``node_n`` *into* ``node_p``
     (i.e. current enters the positive terminal of the source).
@@ -106,12 +112,18 @@ class CurrentSource(_Element):
     node_n : str
         Node where current *enters* the source.
     current : float
-        Source current in Amperes (positive → current exits ``node_p``).
+        DC source current in Amperes (positive → current exits ``node_p``).
+    ac_mag : float, optional
+        AC magnitude in Amperes (defaults to 0.0).
+    ac_phase : float, optional
+        AC phase angle in degrees (defaults to 0.0).
     """
 
     node_p: str
     node_n: str
     current: float
+    ac_mag: float = 0.0
+    ac_phase: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -210,3 +222,120 @@ class OpAmp(_Element):
     in_n: str
     out: str
     gnd: str = "0"
+
+
+# ---------------------------------------------------------------------------
+# Reactive elements (AC Analysis / Alexander & Sadiku Cap. 6, 9 & 10)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Capacitor(_Element):
+    """Linear ideal capacitor.
+
+    Parameters
+    ----------
+    name : str
+        Designator (must start with 'C').
+    node_p : str
+        Positive terminal node.
+    node_n : str
+        Negative terminal node.
+    capacitance : float
+        Capacitance in Farads. Must be strictly positive.
+    """
+
+    node_p: str
+    node_n: str
+    capacitance: float
+
+    def __post_init__(self) -> None:
+        if self.capacitance <= 0:
+            raise ValueError(
+                f"Capacitor '{self.name}': capacitance must be > 0, got {self.capacitance}"
+            )
+
+
+@dataclass
+class Inductor(_Element):
+    """Linear ideal inductor.
+
+    Parameters
+    ----------
+    name : str
+        Designator (must start with 'L').
+    node_p : str
+        Positive terminal node.
+    node_n : str
+        Negative terminal node.
+    inductance : float
+        Inductance in Henries. Must be strictly positive.
+    """
+
+    node_p: str
+    node_n: str
+    inductance: float
+
+    def __post_init__(self) -> None:
+        if self.inductance <= 0:
+            raise ValueError(
+                f"Inductor '{self.name}': inductance must be > 0, got {self.inductance}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Current-Controlled Dependent Sources (Alexander & Sadiku Cap. 3 & 4)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CCCS(_Element):
+    """Current-Controlled Current Source (F element in SPICE).
+
+    ``I_out = gain * I(vctrl_name)``
+
+    Current flows from ``node_p`` to ``node_n`` through the external circuit.
+
+    Parameters
+    ----------
+    name : str
+        Designator (must start with 'F').
+    node_p : str
+        Node where controlled current exits.
+    node_n : str
+        Node where controlled current enters.
+    vctrl_name : str
+        Name of the independent voltage source whose branch current controls this source.
+    gain : float
+        Dimensionless current gain.
+    """
+
+    node_p: str
+    node_n: str
+    vctrl_name: str
+    gain: float
+
+
+@dataclass
+class CCVS(_Element):
+    """Current-Controlled Voltage Source (H element in SPICE).
+
+    ``V_out = transresistance * I(vctrl_name)``
+
+    Parameters
+    ----------
+    name : str
+        Designator (must start with 'H').
+    node_p : str
+        Positive output terminal.
+    node_n : str
+        Negative output terminal.
+    vctrl_name : str
+        Name of the independent voltage source whose branch current controls this source.
+    transresistance : float
+        Transresistance in Ohms (V/A).
+    """
+
+    node_p: str
+    node_n: str
+    vctrl_name: str
+    transresistance: float
+

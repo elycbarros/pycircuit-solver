@@ -29,6 +29,10 @@ from circuit_solver.core.elements import (
     VCVS,
     VCCS,
     OpAmp,
+    Capacitor,
+    Inductor,
+    CCCS,
+    CCVS,
     _Element,
 )
 from circuit_solver.core.validator import CircuitValidator, parse_value
@@ -104,7 +108,7 @@ class Circuit:
         # Pass 2: auxiliary variables for voltage-enforcing elements
         aux_idx = 0
         for el in self.elements:
-            if isinstance(el, (VoltageSource, VCVS, OpAmp)):
+            if isinstance(el, (VoltageSource, VCVS, CCVS, OpAmp)):
                 self.auxiliary_map[el.name] = aux_idx
                 aux_idx += 1
 
@@ -114,7 +118,7 @@ class Circuit:
 
     @staticmethod
     def _nodes_of(el: _Element) -> list[str]:
-        if isinstance(el, (Resistor, VoltageSource, CurrentSource)):
+        if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS)):
             return [el.node_p, el.node_n]
         if isinstance(el, (VCVS, VCCS)):
             return [el.node_p, el.node_n, el.ctrl_p, el.ctrl_n]

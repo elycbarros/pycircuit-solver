@@ -25,6 +25,10 @@ from circuit_solver.core.elements import (
     CurrentSource,
     VCVS,
     VCCS,
+    CCCS,
+    CCVS,
+    Capacitor,
+    Inductor,
     OpAmp,
 )
 
@@ -163,6 +167,15 @@ class Solution:
                 v_ctrl = self.V_diff(el.ctrl_p, el.ctrl_n)
                 i_out = el.transconductance * v_ctrl
                 powers[el.name] = v * i_out
+            elif isinstance(el, CCVS):
+                v = self.V_diff(el.node_p, el.node_n)
+                j = self.I_vsource(el.name)
+                powers[el.name] = v * (-j)
+            elif isinstance(el, CCCS):
+                v = self.V_diff(el.node_p, el.node_n)
+                i_ctrl = -self.I_vsource(el.vctrl_name)
+                i_out = el.gain * i_ctrl
+                powers[el.name] = v * i_out
             elif isinstance(el, OpAmp):
                 # Op-amp output supplies current; input draws ~0 (infinite Rin)
                 v_out = self.V(el.out)
@@ -195,10 +208,10 @@ class Solution:
         for label, v in sorted(self.voltages.items()):
             lines.append(f"  V({label:>6}) = {v:>12.6f} V")
 
-        lines.append("\n  Branch Currents (Voltage Sources / VCVS / Op-Amps)")
+        lines.append("\n  Branch Currents (Voltage Sources / VCVS / CCVS / Op-Amps)")
         lines.append("  " + "-" * 30)
         for el in self._circuit.elements:
-            if isinstance(el, (VoltageSource, VCVS, OpAmp)):
+            if isinstance(el, (VoltageSource, VCVS, CCVS, OpAmp)):
                 j = self.I_vsource(el.name)
                 lines.append(f"  I({el.name:>6}) = {j:>12.6f} A")
 
