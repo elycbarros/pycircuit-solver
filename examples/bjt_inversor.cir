@@ -1,0 +1,8 @@
+* Inversor BJT com Diretiva de Varredura DC
+VCC cc 0 5.0
+VIN in 0 0.0
+RC cc c 1k
+RB in b 10k
+Q1 c b 0 NPN BETA=100
+.DC VIN 0 5 0.1
+.end

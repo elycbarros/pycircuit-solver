@@ -337,7 +337,40 @@ print(f"BJT Saturado: V_CE = {sol_q.V('c'):.4f} V, I_C = {sol_q.I_bjt('Q1')['C']
 
 ---
 
-## 📋 12. Tabela de Cola dos Elementos Suportados
+## 📈 12. Lição: Varredura Paramétrica DC (.dc sweep)
+
+Em vez de calcular o circuito para apenas um valor estático de fonte ou resistência, você pode **varrer uma faixa contínua de valores** para traçar curvas de transferência ($V_{out} \times V_{in}$), curvas de carga ou famílias de curvas características:
+
+### No terminal (CLI):
+```bash
+# Varre a fonte V1 de 0V a 10V com passo de 0.1V e plota a tensão no nó 'out'
+pycircuit dc circuito.cir --sweep V1 0 10 0.1 --node out --plot
+```
+
+### No script Python:
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, dc_sweep, plot_dc_sweep
+
+# Divisor resistivo
+circuito = Circuit([
+    VoltageSource("VIN", "in", "0", 0.0),
+    Resistor("R1", "in", "out", 1000.0),
+    Resistor("R2", "out", "0", 1000.0),
+])
+
+# Varre VIN de 0V a 10V em passos de 0.5V
+res = dc_sweep(circuito, param_name="VIN", start=0.0, stop=10.0, step=0.5)
+
+print(res.summary())
+print("Tensões de saída V(out):", res.V("out"))
+
+# Plot interativo
+plot_dc_sweep(res, node_to_plot="out", title="Curva de Transferência V_out x V_in", show=True)
+```
+
+---
+
+## 📋 13. Tabela de Cola dos Elementos Suportados
 
 | Elemento | Letra SPICE | Como Instanciar em Python | O que faz |
 | :--- | :---: | :--- | :--- |
@@ -358,7 +391,7 @@ print(f"BJT Saturado: V_CE = {sol_q.V('c'):.4f} V, I_C = {sol_q.I_bjt('Q1')['C']
 
 ---
 
-## ⚠️ 13. Erros Comuns e Como Evitá-los
+## ⚠️ 14. Erros Comuns e Como Evitá-los
 
 1. **"Missing ground node '0'":**
    * *Motivo:* Nenhum nó do circuito se chama `"0"`.

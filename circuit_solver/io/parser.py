@@ -69,7 +69,7 @@ from circuit_solver.core.elements import (
 )
 from circuit_solver.core.validator import parse_value
 
-__all__ = ["parse_netlist", "parse_netlist_string"]
+__all__ = ["parse_netlist", "parse_netlist_string", "parse_dc_directive"]
 
 
 def _strip_comment(line: str) -> str:
@@ -396,3 +396,43 @@ def parse_netlist(path: str | Path) -> list[_Element]:
     if not p.exists():
         raise FileNotFoundError(f"Netlist file not found: '{path}'")
     return parse_netlist_string(p.read_text(encoding="utf-8"))
+
+
+def parse_dc_directive(text_or_path: str | Path) -> dict[str, object] | None:
+    """Extract .DC sweep directive from a netlist file or text string.
+
+    Supports single sweep:
+        .DC <srcnam> <vstart> <vstop> <vincr>
+    And 2D nested sweep:
+        .DC <src1> <start1> <stop1> <step1> <src2> <start2> <stop2> <step2>
+
+    Returns
+    -------
+    dict or None
+        Parsed sweep parameters dictionary, or None if no .DC line was found.
+    """
+    text = str(text_or_path)
+    p = Path(text)
+    if p.exists() and p.is_file():
+        text = p.read_text(encoding="utf-8")
+
+    for line in text.splitlines():
+        line = _strip_comment(line)
+        if line.upper().startswith(".DC"):
+            tokens = line.split()
+            if len(tokens) >= 5:
+                res: dict[str, object] = {
+                    "param_name": tokens[1].upper(),
+                    "start": parse_value(tokens[2]),
+                    "stop": parse_value(tokens[3]),
+                    "step": parse_value(tokens[4]),
+                }
+                if len(tokens) >= 9:
+                    res.update({
+                        "param2_name": tokens[5].upper(),
+                        "start2": parse_value(tokens[6]),
+                        "stop2": parse_value(tokens[7]),
+                        "step2": parse_value(tokens[8]),
+                    })
+                return res
+    return None

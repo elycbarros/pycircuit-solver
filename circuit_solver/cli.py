@@ -22,11 +22,15 @@ from circuit_solver.engine.mna import solve
 from circuit_solver.engine.thevenin import thevenin_norton
 from circuit_solver.engine.monte_carlo import monte_carlo
 from circuit_solver.engine.ac import solve_ac, ac_sweep
-from circuit_solver.io.parser import parse_netlist
+from circuit_solver.engine.transient import solve_transient
+from circuit_solver.engine.dc_sweep import dc_sweep
+from circuit_solver.io.parser import parse_netlist, parse_dc_directive
 from circuit_solver.visualization.plots import (
     plot_power_transfer,
     plot_monte_carlo_all,
     plot_bode,
+    plot_transient,
+    plot_dc_sweep,
 )
 
 
@@ -147,6 +151,73 @@ def _cmd_tran(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_dc(args: argparse.Namespace) -> int:
+    elements = parse_netlist(args.netlist)
+    circuit = Circuit(elements)
+
+    param_name = None
+    start = stop = step = None
+    param2_name = None
+    start2 = stop2 = step2 = None
+
+    if args.sweep:
+        param_name = args.sweep[0]
+        start = float(args.sweep[1])
+        stop = float(args.sweep[2])
+        step = float(args.sweep[3])
+    else:
+        # Check netlist for .DC directive
+        dc_info = parse_dc_directive(args.netlist)
+        if dc_info:
+            param_name = str(dc_info["param_name"])
+            start = float(dc_info["start"])
+            stop = float(dc_info["stop"])
+            step = float(dc_info["step"])
+            if "param2_name" in dc_info:
+                param2_name = str(dc_info["param2_name"])
+                start2 = float(dc_info["start2"])
+                stop2 = float(dc_info["stop2"])
+                step2 = float(dc_info["step2"])
+
+    if args.sweep2:
+        param2_name = args.sweep2[0]
+        start2 = float(args.sweep2[1])
+        stop2 = float(args.sweep2[2])
+        step2 = float(args.sweep2[3])
+
+    if param_name is None or start is None or stop is None or step is None:
+        raise ValueError(
+            "Parâmetros de varredura não informados. Especifique via "
+            "--sweep <PARAM> <START> <STOP> <STEP> ou inclua a diretiva .DC no arquivo netlist."
+        )
+
+    res = dc_sweep(
+        circuit,
+        param_name=param_name,
+        start=start,
+        stop=stop,
+        step=step,
+        param2_name=param2_name,
+        start2=start2,
+        stop2=stop2,
+        step2=step2,
+    )
+    print(res.summary())
+
+    if args.plot or args.save:
+        plot_dc_sweep(
+            res,
+            node_to_plot=args.node,
+            branch_to_plot=args.branch,
+            show=args.plot,
+            save_path=args.save,
+        )
+        if args.save:
+            print(f"Gráfico de varredura DC salvo em: {args.save}")
+
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pycircuit",
@@ -198,6 +269,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_tran.add_argument("--plot", action="store_true", help="Exibir gráfico das formas de onda")
     p_tran.add_argument("--save", type=str, default=None, help="Salvar gráfico das formas de onda em arquivo")
 
+    # dc
+    p_dc = subparsers.add_parser("dc", help="Varredura paramétrica DC (.dc sweep)")
+    p_dc.add_argument("netlist", type=str, help="Caminho do arquivo netlist SPICE (.cir)")
+    p_dc.add_argument("--sweep", nargs=4, metavar=("PARAM", "START", "STOP", "STEP"),
+                      help="Parâmetros de varredura: PARAM START STOP STEP (ex: V1 0 10 0.1)")
+    p_dc.add_argument("--sweep2", nargs=4, metavar=("PARAM2", "START2", "STOP2", "STEP2"),
+                      help="Varredura secundária aninhada: PARAM2 START2 STOP2 STEP2")
+    p_dc.add_argument("--node", type=str, default=None, help="Nó específico para medição / plot")
+    p_dc.add_argument("--branch", type=str, default=None, help="Elemento / ramo para medição de corrente / plot")
+    p_dc.add_argument("--plot", action="store_true", help="Exibir gráfico da curva característica")
+    p_dc.add_argument("--save", type=str, default=None, help="Salvar gráfico da curva em arquivo")
+
     return parser
 
 
@@ -220,6 +303,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_ac(args)
         elif args.command == "tran":
             return _cmd_tran(args)
+        elif args.command == "dc":
+            return _cmd_dc(args)
         else:
             parser.print_help()
             return 1

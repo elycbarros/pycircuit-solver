@@ -27,6 +27,7 @@ O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contr
 ### 2. Funcionalidades Nativas
 * **Arquitetura Híbrida de Alto Desempenho (Python + Rust):** Núcleo numérico em Rust (`rust_core/`) integrado via PyO3 e `maturin`. Acelera simulações de Monte Carlo com paralelismo multi-thread nativo (`rayon`) sem as travas do GIL do Python, com fallback transparente para NumPy.
 * **Motor MNA Dual (DC & CA):** Resolução matricial em números reais (DC) e complexos `complex128` (CA).
+* **Varredura Paramétrica DC (.dc sweep):** Varredura de fontes de tensão, corrente e resistências com suporte a curvas de transferência ($V_{out} \times V_{in}$), curvas de carga e varreduras aninhadas 2D para famílias de curvas características de transistores ($I_C \times V_{CE}$ para diferentes $I_B$).
 * **Semicondutores & Solver de Newton-Raphson:** Resolução iterativa de circuitos não-lineares ($Q$-point) com Diodos de Junção (Equação de Shockley), Diodos Zener (regulação de tensão reversa), Transistores BJT (Ebers-Moll ativo e saturado) e MOSFETs (modelo quadrático de corte, triodo e saturação), amortecimento numérico SPICE (`pnjlim`, `fetlim`) e convergência estrita de resíduos ($\epsilon < 10^{-6}$).
 * **Análise Transitória no Domínio do Tempo (`.tran`):** Simulação dinâmica de carga e descarga em capacitores e indutores (circuitos RC, RL e RLC de 2ª ordem) via modelos companheiros de integração implícita (**Trapezoidal Rule** e **Backward Euler**) com formas de onda `PULSE`, `SIN` e `STEP`.
 * **Fontes Dependentes Completas:** Suporte integral aos elementos SPICE $E$ (VCVS), $G$ (VCCS), $F$ (CCCS) e $H$ (CCVS).
@@ -231,6 +232,29 @@ print(f"Ponto Q de Operação:")
 print(f"  V_D = {sol.V('2'):.4f} V  (queda de tensão típica no joelho)")
 print(f"  I_D = {sol.I_diode('D1') * 1e3:.3f} mA")
 print(f"  Convergência obtida em {sol.iterations} iterações (tol < 1e-6)")
+```
+
+### Varredura Paramétrica DC (.dc sweep)
+
+Via CLI no terminal:
+```bash
+# Varre a fonte V1 de 0 a 10V com passo de 0.1V e exibe o gráfico da tensão no nó 'out'
+pycircuit dc circuito.cir --sweep V1 0 10 0.1 --node out --plot
+```
+
+Via script Python:
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, dc_sweep, plot_dc_sweep
+
+circuit = Circuit([
+    VoltageSource("VIN", "in", "0", 0.0),
+    Resistor("R1", "in", "out", 1000.0),
+    Resistor("R2", "out", "0", 1000.0),
+])
+
+# Varia VIN de 0V a 10V com passo de 0.5V
+res = dc_sweep(circuit, "VIN", 0.0, 10.0, 0.5)
+print(f"V(out) final = {res.V('out')[-1]:.2f} V")
 ```
 
 ---

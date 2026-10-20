@@ -187,6 +187,21 @@ $$\|\mathbf{x}^{(k+1)} - \mathbf{x}^{(k)}\|_\infty < \epsilon \quad (\text{com }
 
 ---
 
+### 1.8 Varredura Paramétrica DC (.dc sweep — `engine/dc_sweep.py`)
+
+A análise de ponto de operação estático (.op) calcula as grandezas elétricas para um único conjunto de valores constantes. A **Varredura Paramétrica DC (.dc sweep)** estende essa capacidade, permitindo analisar o comportamento do circuito sob variação contínua de um parâmetro (tensão, corrente ou resistência):
+
+1. **Curvas de Transferência ($V_{out} \times V_{in}$):**
+   Mapeia o ganho de amplificadores, limiares de comutação de comparadores e inversores lógicos.
+2. **Curvas de Carga ($V_L \times I_L$ ou $P_L \times R_L$):**
+   Avalia a regulação de fontes e máxima transferência de potência sobre resistores de carga variáveis.
+3. **Varredura Aninhada 2D (Família de Curvas Características):**
+   Permite variar um parâmetro primário (ex: $V_{CE}$ de 0 a 5V) para múltiplos patamares discretos de um parâmetro secundário (ex: $I_B \in [10, 20, 30, 40, 50]\ \mu\text{A}$), gerando matrizes de resultados $\mathbf{V} \in \mathbb{R}^{N_2 \times N_1}$ e $\mathbf{I} \in \mathbb{R}^{N_2 \times N_1}$ e traçando diretamente as curvas características de dispositivos semicondutores ($I_C \times V_{CE}$, $I_D \times V_{DS}$).
+4. **Continuação de Solução Homotópica:**
+   Em circuitos não-lineares, a solução $\mathbf{x}^{(k)}$ do passo anterior é utilizada como aproximação inicial (*initial guess*) para o passo subsequente $\mathbf{x}^{(k+1)}$, garantindo convergência ultrarrápida do Newton-Raphson (tipicamente 2 a 4 iterações por ponto).
+
+---
+
 ## 2. 🛡️ Validação Topológica e Teoria dos Grafos (`validator.py`)
 
 A maior causa de falha em simuladores de circuitos (inclusive no SPICE original) são circuitos fisicamente incoerentes que resultam em matrizes singulares (`LinAlgError`). O `pycircuit-solver` intercepta esses problemas **antes** de montar as matrizes através de algoritmos de Teoria dos Grafos:

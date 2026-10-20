@@ -42,6 +42,8 @@ __all__ = [
     "plot_monte_carlo",
     "plot_monte_carlo_all",
     "plot_bode",
+    "plot_transient",
+    "plot_dc_sweep",
 ]
 
 # ---------------------------------------------------------------------------
@@ -442,4 +444,112 @@ def plot_transient(
             plt.show()
 
     return fig
+
+
+def plot_dc_sweep(
+    result: object,
+    *,
+    node_to_plot: str | None = None,
+    branch_to_plot: str | None = None,
+    title: str | None = None,
+    show: bool = False,
+    save_path: str | None = None,
+) -> matplotlib.figure.Figure:
+    """Plot DC parametric sweep curves (transfer, load, or component characteristics).
+
+    Parameters
+    ----------
+    result : DCSweepResult
+        Results container returned by ``dc_sweep()``.
+    node_to_plot : str | None, optional
+        Specific node voltage to plot.
+    branch_to_plot : str | None, optional
+        Specific branch current to plot.
+    title : str | None, optional
+        Custom title for the figure.
+    show : bool, optional
+        Display interactive window if True.
+    save_path : str | None, optional
+        Save plot image to file if specified.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    colors = ["#38bdf8", "#34d399", "#f59e0b", "#a78bfa", "#f43f5e", "#10b981", "#60a5fa"]
+    has_secondary = getattr(result, "param2_name", None) is not None and getattr(result, "sweep2_values", None) is not None
+    x_vals = result.sweep_values
+    x_label = result.param_name
+
+    has_v = bool(node_to_plot or not branch_to_plot)
+    has_i = bool(branch_to_plot)
+
+    n_plots = 2 if (has_v and has_i) else 1
+
+    with plt.rc_context(_STYLE):
+        fig, axes = plt.subplots(n_plots, 1, figsize=(9, 4.5 * n_plots), sharex=True)
+        if n_plots == 1:
+            ax_v = axes if has_v else None
+            ax_i = axes if has_i and not has_v else None
+        else:
+            ax_v, ax_i = axes
+
+        fig.patch.set_facecolor(_STYLE["figure.facecolor"])
+        fig_title = title or f"DC Parametric Sweep: {result.param_name}"
+        fig.suptitle(fig_title, fontsize=13, color="#ffffff", fontweight="bold")
+
+        # Voltage plot
+        if ax_v is not None:
+            _apply_style(ax_v)
+            if has_secondary:
+                # 2D curve family
+                node = node_to_plot or list(result.node_voltages.keys())[0]
+                v_data = result.V(node)
+                for idx, v2 in enumerate(result.sweep2_values):
+                    c = colors[idx % len(colors)]
+                    label = f"{result.param2_name} = {v2:.3g}"
+                    ax_v.plot(x_vals, v_data[idx, :], color=c, linewidth=2.0, label=label)
+                ax_v.set_ylabel(f"Voltage V({node}) [V]", fontsize=10, color="#e0e0e0")
+            else:
+                target_nodes = [node_to_plot] if node_to_plot else list(result.node_voltages.keys())
+                for idx, node in enumerate(target_nodes):
+                    if node != "0":
+                        c = colors[idx % len(colors)]
+                        ax_v.plot(x_vals, result.V(node), color=c, linewidth=2.0, label=f"V({node})")
+                ax_v.set_ylabel("Voltage (V)", fontsize=10, color="#e0e0e0")
+
+            ax_v.legend(framealpha=0.15, edgecolor="#555", fontsize=9)
+
+        # Current plot
+        if ax_i is not None:
+            _apply_style(ax_i)
+            if has_secondary:
+                b_name = branch_to_plot or list(result.branch_currents.keys())[0]
+                i_data = result.I(b_name)
+                for idx, v2 in enumerate(result.sweep2_values):
+                    c = colors[idx % len(colors)]
+                    label = f"{result.param2_name} = {v2:.3g}"
+                    ax_i.plot(x_vals, i_data[idx, :] * 1e3, color=c, linewidth=2.0, label=label)
+                ax_i.set_ylabel(f"Current I({b_name}) [mA]", fontsize=10, color="#e0e0e0")
+            else:
+                target_branches = [branch_to_plot] if branch_to_plot else list(result.branch_currents.keys())
+                for idx, b_name in enumerate(target_branches):
+                    c = colors[(idx + 2) % len(colors)]
+                    ax_i.plot(x_vals, result.I(b_name) * 1e3, color=c, linewidth=2.0, label=f"I({b_name})")
+                ax_i.set_ylabel("Current (mA)", fontsize=10, color="#e0e0e0")
+
+            ax_i.legend(framealpha=0.15, edgecolor="#555", fontsize=9)
+
+        target_ax = ax_i if ax_i is not None else ax_v
+        target_ax.set_xlabel(f"Sweep Parameter: {x_label}", fontsize=10, color="#e0e0e0")
+
+        plt.tight_layout()
+
+        if save_path:
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        if show:
+            plt.show()
+
+    return fig
+
 
