@@ -13,12 +13,12 @@ O projeto foi arquitetado para atender rigorosamente ao escopo acadêmico dos **
 
 ## 🎯 Escopo e Capacidades do Sistema
 
-### 1. Cobertura Acadêmica (Referência: Alexander & Sadiku)
-* **Capítulos 1 & 2:** Leis básicas, Lei de Ohm, LKC, LKT, associações série/paralelo, transformações $\Delta - Y$ e balanço de potência.
-* **Capítulo 3:** Análise Nodal e de Malhas com todas as 4 fontes dependentes ($VCVS$, $VCCS$, $CCCS$, $CCVS$).
-* **Capítulo 4:** Teoremas de Circuitos (Superposição, Thévenin, Norton e Máxima Transferência de Potência).
-* **Capítulo 5:** Amplificadores Operacionais Ideais (circuitos inversores, não-inversores, somadores e diferenciais).
-* **Capítulos 9 & 10:** Análise Fasorial Senoidal em Regime Permanente (CA), impedâncias/admitâncias complexas ($R, L, C$), potência complexa ($P, Q, S$, fator de potência) e resposta em frequência (Bode).
+### 1. Cobertura Acadêmica e Benchmarks Canônicos
+O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contra soluções analíticas exatas de 4 das obras de referência mundial em Engenharia Elétrica:
+* **Alexander & Sadiku** — *Fundamentos de Circuitos Elétricos* (Capítulos 1 a 5, 9 & 10)
+* **Nilsson & Riedel** — *Circuitos Elétricos* (Thévenin com fontes controladas, somadores e RLC paralelo CA)
+* **Boylestad** — *Introdução à Análise de Circuitos* (Teorema de Millman, Escada R-2R de 4 bits, Ponte de Wheatstone em equilíbrio)
+* **Dorf & Svoboda** — *Introdução aos Circuitos Elétricos* (Rede em T para alto ganho em Op-Amps, isolamento de impedância)
 
 ### 2. Funcionalidades Nativas
 * **Motor MNA Dual (DC & CA):** Resolução matricial em números reais (DC) e complexos `complex128` (CA).
@@ -42,7 +42,7 @@ pycircuit-solver/
 │
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                       # Pipeline de testes automatizados com pytest
+│       └── ci.yml                       # Pipeline de testes automatizados com pytest (Python 3.10, 3.11, 3.12)
 │
 ├── .gitignore
 ├── LICENSE                              # Licença MIT
@@ -81,7 +81,8 @@ pycircuit-solver/
 │   ├── cap05_opamp_inversor.py          # Amplificador Operacional Inversor com terra virtual
 │   └── cap09_filtro_rc_fasores.py       # Filtro passa-baixas RC, fasores e Diagrama de Bode
 │
-└── tests/                               # Suíte de validação analítica (pytest)
+└── tests/                               # Suíte de validação analítica (46 testes pytest)
+    ├── test_textbook_benchmarks.py      # Validação multi-livros (Sadiku, Nilsson, Boylestad, Dorf)
     ├── test_validator.py                # Testes de validação topológica e sufixos
     ├── test_mna_engine.py               # Testes analíticos do motor MNA e 4 fontes dependentes
     ├── test_thevenin.py                 # Testes de Thévenin/Norton e máxima transferência
@@ -191,6 +192,35 @@ Com relatório de cobertura de código:
 ```bash
 pytest --cov=circuit_solver --cov-report=term-missing
 ```
+
+---
+
+## 📚 Matriz de Validação Analítica Multi-Livros
+
+O motor computacional do **`pycircuit-solver`** é continuamente validado por uma suíte de testes de precisão analítica (`tests/test_textbook_benchmarks.py`) contendo 20 problemas clássicos retirados das 4 principais referências bibliográficas do ensino de engenharia:
+
+| Livro / Manual | Capítulo / Exemplo | Tópico de Análise | Resultado Analítico de Referência | Status do Solver |
+| :--- | :--- | :--- | :--- | :---: |
+| **Alexander & Sadiku** | Cap. 2 (Ex. 2.8) | Associação Série-Paralelo e Divisor | $V_2 = 6\text{ V}, I_1 = 2\text{ A}, I_2 = 1\text{ A}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 2 (Ex. 2.15) | Transformação $\Delta - Y$ em Ponte | $R_{eq} = 50/3\ \Omega, I_{tot} = 7.200\text{ A}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 3 (Ex. 3.1) | Análise Nodal (2 fontes de corrente) | $V_1 = 18.333\text{ V}, V_2 = 35.000\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 3 (Ex. 3.2) | Análise Nodal com VCCS dependente | $V_1 = 4.8\text{ V}, V_2 = 2.4\text{ V}, V_3 = -2.4\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 3 (Ex. 3.3) | Supernó flutuante com fonte de tensão | $V_1 = -6.0\text{ V}, V_2 = -8.0\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 4 (Ex. 4.8) | Thévenin, Norton e Máxima Transferência | $V_{th} = 30\text{ V}, R_{th} = 4\ \Omega, P_{max} = 56.25\text{ W}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 4 (Ex. 4.9) | Thévenin com fonte controlada VCVS | $V_{th} = 60\text{ V}, R_{th} = 14\ \Omega, I_N = 4.286\text{ A}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 5 (Ex. 5.2) | Amplificador Inversor (Op-Amp) | $V_o = -1.25\text{ V}, I_{in} = 50\ \mu\text{A}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 5 (Ex. 5.5) | Amplificador Não-Inversor | $V_o = 16.0\text{ V}, V_n = 4.0\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 5 (Ex. 5.6) | Somador Inversor de 3 Entradas | $V_o = -17.0\text{ V}, V_n = 0.0\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 5 (Ex. 5.7) | Amplificador Diferencial (Subtrator) | $V_o = 4.0\text{ V}, V_p = V_n = 3.333\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 9 (Ex. 9.9) | Circuito RLC Série CA (Fasores) | $I = 0.3322\angle -10.24^\circ\text{ A}$ | ✅ Aprovado |
+| **Nilsson & Riedel** | Cap. 4 (Ex. 4.10) | Thévenin com Fonte Controlada | $V_{th} = 40\text{ V}, R_{th} = 10\ \Omega, P_{max} = 40\text{ W}$ | ✅ Aprovado |
+| **Nilsson & Riedel** | Cap. 5 (Ex. 5.3) | Somador Inversor com Pesos Arbitrários | $V_o = -23.0\text{ V}, I_L = -0.92\text{ mA}$ | ✅ Aprovado |
+| **Nilsson & Riedel** | Cap. 9 (Ex. 9.6) | RLC Paralelo CA em Alta Frequência | $V = 200\sqrt{2}\angle 45^\circ\text{ V}, I_L = 8\sqrt{2}\angle -45^\circ\text{ A}$ | ✅ Aprovado |
+| **Boylestad** | Cap. 9 | Teorema de Millman (3 Baterias) | $V_L = 6.0\text{ V}, I_1 = 6\text{ A}, I_2 = -3\text{ A}, P = 18\text{ W}$ | ✅ Aprovado |
+| **Boylestad** | Cap. 8 | Rede Escada R-2R D/A (4 Bits) | Escalonamento binário exato ($V_o = 8, 4, 2, 1, 15\text{ V}$) | ✅ Aprovado |
+| **Boylestad** | Cap. 6 | Ponte de Wheatstone Balanceada | $V_{ab} = 0.000\text{ V}, I_g = 0.000\text{ A}, P_g = 0\text{ W}$ | ✅ Aprovado |
+| **Dorf & Svoboda** | Cap. 6 | Op-Amp com Rede T de Realimentação | $A_v = -12.0, V_o = -1.200\text{ V}, V_t = -0.1\text{ V}$ | ✅ Aprovado |
+| **Dorf & Svoboda** | Cap. 6 | Buffer Seguidor & Isolamento de Carga | $V_o = 5.000\text{ V}, I_{RL} = 100\text{ mA}, I_{Rs} = 0\text{ A}$ | ✅ Aprovado |
 
 ---
 

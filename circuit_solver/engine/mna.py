@@ -176,9 +176,10 @@ def build_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
         elif isinstance(el, CCCS):
             k_vctrl = aux(el.vctrl_name)
             p, n_node = idx(el.node_p), idx(el.node_n)
-            # SPICE convention: I(vctrl) flows from + to - through vctrl, so I(vctrl) = -j_vctrl.
+            # Generator convention for controlling source:
+            # I(vctrl) exits node_p of vctrl, so I(vctrl) = -j_vctrl.
             # I_out = gain * I(vctrl) = -gain * j_vctrl injected into node_p.
-            # KCL row p: - I_out = + gain * j_vctrl.
+            # KCL row p (currents leaving): - I_out = + gain * j_vctrl => A[p, k_vctrl] += gain.
             if p is not None:
                 A[p, k_vctrl] += el.gain
             if n_node is not None:
