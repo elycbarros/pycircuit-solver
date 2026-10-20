@@ -298,7 +298,46 @@ print(resultado.summary())
 
 ---
 
-## 📋 11. Tabela de Cola dos Elementos Suportados
+## ⚡ 11. Lição: Semicondutores & Solver Não-Linear (Diodos, Zener, BJT e MOSFET)
+
+Circuitos com semicondutores não obedecem à Lei de Ohm linear ($I = V/R$). O `pycircuit-solver` resolve esses circuitos automaticamente usando o método iterativo de **Newton-Raphson**:
+
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, Diode, ZenerDiode, BJT, MOSFET, solve
+
+# 1. Diodo Retificador PN (Equação de Shockley)
+circ_diodo = Circuit([
+    VoltageSource("V1", "1", "0", 5.0),
+    Resistor("R1", "1", "2", 1000.0),
+    Diode("D1", "2", "0"),  # Ânodo no nó 2, Cátodo no nó 0
+])
+sol_d = solve(circ_diodo)
+print(f"Diodo: V_D = {sol_d.V('2'):.4f} V, I_D = {sol_d.I_diode('D1')*1e3:.2f} mA")
+
+# 2. Regulador de Tensão com Diodo Zener (5.1V)
+circ_zener = Circuit([
+    VoltageSource("VIN", "1", "0", 12.0),
+    Resistor("RS", "1", "2", 1000.0),
+    ZenerDiode("Z1", "0", "2", Vz=5.1, Rz=10.0),  # Ânodo no terra, Cátodo no nó 2
+])
+sol_z = solve(circ_zener)
+print(f"Zener Regulado: V_out = {sol_z.V('2'):.4f} V")
+
+# 3. Chave com Transistor BJT NPN saturado
+circ_bjt = Circuit([
+    VoltageSource("VCC", "cc", "0", 5.0),
+    VoltageSource("VIN", "in", "0", 5.0),
+    Resistor("RC", "cc", "c", 1000.0),
+    Resistor("RB", "in", "b", 10000.0),
+    BJT("Q1", node_c="c", node_b="b", node_e="0", polarity="NPN", beta=100.0),
+])
+sol_q = solve(circ_bjt)
+print(f"BJT Saturado: V_CE = {sol_q.V('c'):.4f} V, I_C = {sol_q.I_bjt('Q1')['C']*1e3:.2f} mA")
+```
+
+---
+
+## 📋 12. Tabela de Cola dos Elementos Suportados
 
 | Elemento | Letra SPICE | Como Instanciar em Python | O que faz |
 | :--- | :---: | :--- | :--- |
@@ -307,6 +346,10 @@ print(resultado.summary())
 | **Indutor** | `L` | `Inductor("L1", "p", "n", 1e-3, ic=0.0)` | Indutor ideal em Henries |
 | **Fonte de Tensão** | `V` | `VoltageSource("V1", "p", "n", 12.0, ac_mag=1.0)` | Fonte DC, CA ou Transitória |
 | **Fonte de Corrente** | `I` | `CurrentSource("I1", "p", "n", 2.0)` | Fonte DC, CA ou Transitória |
+| **Diodo PN** | `D` | `Diode("D1", node_p="2", node_n="0", Is=1e-14, n=1.0)` | Diodo Shockley não-linear |
+| **Diodo Zener** | `Z` | `ZenerDiode("Z1", node_p="0", node_n="2", Vz=5.1, Rz=10.0)` | Diodo com regulação por breakdown |
+| **Transistor BJT** | `Q` | `BJT("Q1", "c", "b", "e", polarity="NPN", beta=100.0)` | Transistor Bipolar (Ebers-Moll) |
+| **Transistor MOSFET**| `M` | `MOSFET("M1", "d", "g", "s", polarity="NMOS", Vth=1.0, Kp=1e-3)` | MOSFET canal N ou P |
 | **VCVS** | `E` | `VCVS("E1", "p", "n", "cp", "cn", gain=2.0)` | Tensão controlada por tensão |
 | **VCCS** | `G` | `VCCS("G1", "p", "n", "cp", "cn", transconductance=0.01)` | Corrente controlada por tensão |
 | **CCCS** | `F` | `CCCS("F1", "p", "n", vctrl_name="V1", gain=5.0)` | Corrente controlada por corrente |
@@ -315,7 +358,7 @@ print(resultado.summary())
 
 ---
 
-## ⚠️ 12. Erros Comuns e Como Evitá-los
+## ⚠️ 13. Erros Comuns e Como Evitá-los
 
 1. **"Missing ground node '0'":**
    * *Motivo:* Nenhum nó do circuito se chama `"0"`.

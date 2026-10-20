@@ -140,6 +140,53 @@ O solver realiza a **decomposição LU de $\mathbf{A}$ apenas uma vez antes do l
 
 ---
 
+### 1.7 Semicondutores & Solver de Newton-Raphson (`engine/nonlinear.py`)
+
+Circuitos reais contêm dispositivos semicondutores com características corrente-tensão estritamente não-lineares. O `pycircuit-solver` implementa um motor de **Newton-Raphson** para linearizar iterativamente cada componente não-linear em torno do seu ponto de operação ($Q$-point) a cada iteração:
+
+$$\mathbf{f}(\mathbf{x}) = \mathbf{A}_{lin} \mathbf{x} + \mathbf{i}_{nl}(\mathbf{x}) - \mathbf{z}_{lin} = \mathbf{0}$$
+
+A linearização de primeira ordem via série de Taylor produz os modelos companheiros Norton:
+
+$$\mathbf{i}_{nl}(\mathbf{x}) \approx \mathbf{i}_{nl}(\mathbf{x}^{(k)}) + \mathbf{J}^{(k)} (\mathbf{x} - \mathbf{x}^{(k)}) = \mathbf{J}^{(k)} \mathbf{x} - \mathbf{I}_{eq}^{(k)}$$
+
+Onde a matriz Jacobiana $\mathbf{J}^{(k)} = \left.\frac{\partial \mathbf{i}_{nl}}{\partial \mathbf{x}}\right|_{\mathbf{x}^{(k)}}$ contém as condutâncias dinâmicas e transcondutâncias, e $\mathbf{I}_{eq}^{(k)} = \mathbf{J}^{(k)} \mathbf{x}^{(k)} - \mathbf{i}_{nl}(\mathbf{x}^{(k)})$ é o vetor de correntes equivalentes independentes estampadas no vetor $\mathbf{z}$.
+
+A cada iteração $k$, o sistema linear resultante é resolvido:
+
+$$(\mathbf{A}_{lin} + \mathbf{J}^{(k)}) \mathbf{x}^{(k+1)} = \mathbf{z}_{lin} + \mathbf{I}_{eq}^{(k)}$$
+
+O algoritmo itera até que a norma do resíduo satisfaça o critério estrito de parada:
+
+$$\|\mathbf{x}^{(k+1)} - \mathbf{x}^{(k)}\|_\infty < \epsilon \quad (\text{com } \epsilon = 10^{-6}\text{ V})$$
+
+#### Modelos de Dispositivos Implementados:
+
+1. **Diodo de Junção PN (Equação de Shockley):**
+   $$I_D = I_S \left(e^{V_D / (n V_T)} - 1\right), \quad g_d = \frac{\partial I_D}{\partial V_D} = \frac{I_S}{n V_T} e^{V_D / (n V_T)}$$
+   * Amortecimento exponencial SPICE (`pnjlim`): previne *overflow* numérico em ponto flutuante ($e^{80} \approx 5.5 \times 10^{34}$) limitando o avanço de tensão por passo em junções fortemente polarizadas.
+
+2. **Diodo Zener:**
+   * Polarização direta: modelo padrão de diodo de junção PN.
+   * Regulação reversa (efeito Zener / avalanche): conduz bruscamente quando $V_D \le -V_Z$ com condutância dinâmica $g_Z = 1 / R_Z$:
+     $$I_D = -I_S - \frac{(-V_Z) - V_D}{R_Z}$$
+
+3. **Transistor Bipolar de Junção (BJT — NPN e PNP):**
+   * Modelo acoplado de Ebers-Moll com diodos de base-emissor ($I_F$) e base-coletor ($I_R$):
+     $$I_B = \frac{I_F}{\beta} + I_R, \quad I_C = I_F - 2 I_R, \quad I_E = -(I_B + I_C)$$
+   * Modela naturalmente a região ativa ($V_{CE} > 0.2\text{ V}, I_C = \beta I_B$) e a saturação profunda ($V_{CE} \approx V_{CE,sat} \approx 0.05\text{ a }0.1\text{ V}$).
+
+4. **Transistor de Efeito de Campo (MOSFET — NMOS e PMOS):**
+   * Modelo quadrático clássico para as 3 regiões de operação:
+     * **Corte ($V_{GS} \le V_{th}$):** $I_D = 0, g_m = 0, g_{ds} = g_{min} = 10^{-12}\ \Omega^{-1}$.
+     * **Triodo / Linear ($V_{DS} < V_{GS} - V_{th}$):** Canal resistivo bidirecional:
+       $$I_D = K_p \left[ (V_{GS} - V_{th}) V_{DS} - \frac{1}{2} V_{DS}^2 \right] (1 + \lambda V_{DS})$$
+     * **Saturação ($V_{DS} \ge V_{GS} - V_{th}$):**
+       $$I_D = \frac{1}{2} K_p (V_{GS} - V_{th})^2 (1 + \lambda V_{DS})$$
+   * Amortecimento de canal FET (`fetlim`): impede oscilações estáticas de tensão entre corte e saturação.
+
+---
+
 ## 2. 🛡️ Validação Topológica e Teoria dos Grafos (`validator.py`)
 
 A maior causa de falha em simuladores de circuitos (inclusive no SPICE original) são circuitos fisicamente incoerentes que resultam em matrizes singulares (`LinAlgError`). O `pycircuit-solver` intercepta esses problemas **antes** de montar as matrizes através de algoritmos de Teoria dos Grafos:

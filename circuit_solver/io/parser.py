@@ -59,6 +59,10 @@ from circuit_solver.core.elements import (
     Capacitor,
     Inductor,
     OpAmp,
+    Diode,
+    ZenerDiode,
+    BJT,
+    MOSFET,
     PulseWaveform,
     SineWaveform,
     _Element,
@@ -245,6 +249,65 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
             name, inp, inn, out = tokens[0], tokens[1], tokens[2], tokens[3]
             gnd = tokens[4].lower() if len(tokens) > 4 else "0"
             return OpAmp(name.upper(), inp.lower(), inn.lower(), out.lower(), gnd)
+
+        elif prefix == "D":
+            # D<name> n+ n- [model] [IS=val] [N=val] [VT=val]
+            name, np, nn = tokens[0], tokens[1], tokens[2]
+            is_val = 1e-14
+            n_factor = 1.0
+            vt = 0.02585
+            for extra in tokens[3:]:
+                u_tok = extra.upper()
+                if u_tok.startswith("IS="):
+                    is_val = parse_value(extra.split("=")[1])
+                elif u_tok.startswith("N="):
+                    n_factor = parse_value(extra.split("=")[1])
+                elif u_tok.startswith("VT="):
+                    vt = parse_value(extra.split("=")[1])
+            return Diode(name.upper(), np.lower(), nn.lower(), Is=is_val, n=n_factor, Vt=vt)
+
+        elif prefix == "Z":
+            # Z<name> n+ n- Vz [Rz=val]
+            name, np, nn, vz_str = tokens[0], tokens[1], tokens[2], tokens[3]
+            vz = parse_value(vz_str)
+            rz = 10.0
+            for extra in tokens[4:]:
+                u_tok = extra.upper()
+                if u_tok.startswith("RZ="):
+                    rz = parse_value(extra.split("=")[1])
+            return ZenerDiode(name.upper(), np.lower(), nn.lower(), Vz=vz, Rz=rz)
+
+        elif prefix == "Q":
+            # Q<name> nc nb ne [model] [NPN|PNP] [BETA=val]
+            name, nc, nb, ne = tokens[0], tokens[1], tokens[2], tokens[3]
+            polarity = "NPN"
+            beta = 100.0
+            for extra in tokens[4:]:
+                u_tok = extra.upper()
+                if u_tok in ("NPN", "PNP"):
+                    polarity = u_tok
+                elif u_tok.startswith("BETA=") or u_tok.startswith("BF="):
+                    beta = parse_value(extra.split("=")[1])
+            return BJT(name.upper(), nc.lower(), nb.lower(), ne.lower(), polarity=polarity, beta=beta)
+
+        elif prefix == "M":
+            # M<name> nd ng ns [model] [NMOS|PMOS] [VTH=val] [KP=val] [LAMBDA=val]
+            name, nd, ng, ns = tokens[0], tokens[1], tokens[2], tokens[3]
+            polarity = "NMOS"
+            vth = 1.0
+            kp = 1e-3
+            lam = 0.0
+            for extra in tokens[4:]:
+                u_tok = extra.upper()
+                if u_tok in ("NMOS", "PMOS"):
+                    polarity = u_tok
+                elif u_tok.startswith("VTH=") or u_tok.startswith("VT="):
+                    vth = parse_value(extra.split("=")[1])
+                elif u_tok.startswith("KP="):
+                    kp = parse_value(extra.split("=")[1])
+                elif u_tok.startswith("LAMBDA="):
+                    lam = parse_value(extra.split("=")[1])
+            return MOSFET(name.upper(), nd.lower(), ng.lower(), ns.lower(), polarity=polarity, Vth=vth, Kp=kp, lambda_param=lam)
 
         else:
             # Unknown / unsupported element — warn and skip

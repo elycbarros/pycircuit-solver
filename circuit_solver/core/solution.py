@@ -30,6 +30,10 @@ from circuit_solver.core.elements import (
     Capacitor,
     Inductor,
     OpAmp,
+    Diode,
+    ZenerDiode,
+    BJT,
+    MOSFET,
 )
 
 if TYPE_CHECKING:
@@ -47,11 +51,14 @@ class Solution:
         The circuit description used to build the MNA system.
     x : np.ndarray
         Raw solution vector of length ``circuit.size``.
+    iterations : int, optional
+        Number of solver iterations performed (default 1).
     """
 
-    def __init__(self, circuit: "Circuit", x: np.ndarray) -> None:
+    def __init__(self, circuit: "Circuit", x: np.ndarray, *, iterations: int = 1) -> None:
         self._circuit = circuit
         self._x = x
+        self.iterations: int = iterations
 
     # ------------------------------------------------------------------
     # Node voltages
@@ -114,6 +121,33 @@ class Solution:
         the set-point; actual KCL is enforced by the solver)."""
         el = self._element_by_name(name, CurrentSource)
         return el.current
+
+    def I_diode(self, name: str) -> float:
+        """Current through a Diode or ZenerDiode (from node_p to node_n)."""
+        for el in self._circuit.elements:
+            if el.name == name and isinstance(el, (Diode, ZenerDiode)):
+                vd = self.V_diff(el.node_p, el.node_n)
+                i_d, _ = el.evaluate(vd)
+                return float(i_d)
+        raise KeyError(f"No Diode or ZenerDiode named '{name}' in circuit.")
+
+    def I_bjt(self, name: str) -> dict[str, float]:
+        """Terminal currents (C, B, E) for a BJT."""
+        el = self._element_by_name(name, BJT)
+        vc = self.V(el.node_c)
+        vb = self.V(el.node_b)
+        ve = self.V(el.node_e)
+        currents, _ = el.evaluate(vc, vb, ve)
+        return currents
+
+    def I_mosfet(self, name: str) -> dict[str, float]:
+        """Terminal currents (D, G, S) for a MOSFET."""
+        el = self._element_by_name(name, MOSFET)
+        vd = self.V(el.node_d)
+        vg = self.V(el.node_g)
+        vs = self.V(el.node_s)
+        currents, _ = el.evaluate(vd, vg, vs)
+        return currents
 
     # ------------------------------------------------------------------
     # Power

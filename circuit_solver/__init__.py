@@ -16,6 +16,10 @@ from circuit_solver.core.elements import (
     CCCS,
     CCVS,
     OpAmp,
+    Diode,
+    ZenerDiode,
+    BJT,
+    MOSFET,
     StepWaveform,
     PulseWaveform,
     SineWaveform,
@@ -23,6 +27,7 @@ from circuit_solver.core.elements import (
 from circuit_solver.core.solution import Solution
 from circuit_solver.core.transient_solution import TransientSolution
 from circuit_solver.engine.mna import solve
+from circuit_solver.engine.nonlinear import solve_nonlinear
 from circuit_solver.engine.ac import solve_ac, ACSolution, ac_sweep
 from circuit_solver.engine.transient import solve_transient
 from circuit_solver.engine.thevenin import thevenin_norton
@@ -46,6 +51,10 @@ __all__ = [
     "CCCS",
     "CCVS",
     "OpAmp",
+    "Diode",
+    "ZenerDiode",
+    "BJT",
+    "MOSFET",
     "StepWaveform",
     "PulseWaveform",
     "SineWaveform",
@@ -53,6 +62,7 @@ __all__ = [
     "ACSolution",
     "TransientSolution",
     "solve",
+    "solve_nonlinear",
     "solve_ac",
     "ac_sweep",
     "solve_transient",

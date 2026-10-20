@@ -27,6 +27,7 @@ O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contr
 ### 2. Funcionalidades Nativas
 * **Arquitetura Híbrida de Alto Desempenho (Python + Rust):** Núcleo numérico em Rust (`rust_core/`) integrado via PyO3 e `maturin`. Acelera simulações de Monte Carlo com paralelismo multi-thread nativo (`rayon`) sem as travas do GIL do Python, com fallback transparente para NumPy.
 * **Motor MNA Dual (DC & CA):** Resolução matricial em números reais (DC) e complexos `complex128` (CA).
+* **Semicondutores & Solver de Newton-Raphson:** Resolução iterativa de circuitos não-lineares ($Q$-point) com Diodos de Junção (Equação de Shockley), Diodos Zener (regulação de tensão reversa), Transistores BJT (Ebers-Moll ativo e saturado) e MOSFETs (modelo quadrático de corte, triodo e saturação), amortecimento numérico SPICE (`pnjlim`, `fetlim`) e convergência estrita de resíduos ($\epsilon < 10^{-6}$).
 * **Análise Transitória no Domínio do Tempo (`.tran`):** Simulação dinâmica de carga e descarga em capacitores e indutores (circuitos RC, RL e RLC de 2ª ordem) via modelos companheiros de integração implícita (**Trapezoidal Rule** e **Backward Euler**) com formas de onda `PULSE`, `SIN` e `STEP`.
 * **Fontes Dependentes Completas:** Suporte integral aos elementos SPICE $E$ (VCVS), $G$ (VCCS), $F$ (CCCS) e $H$ (CCVS).
 * **Elementos Reativos (L e C):** Modelagem de capacitores e indutores em regime permanente senoidal e curto-circuito indutivo em CC.
@@ -209,6 +210,27 @@ R2 2 0 10k
 circuit = Circuit(parse_netlist_string(netlist))
 sol = solve(circuit)
 print(f"V(2) = {sol.V('2'):.4f} V")
+```
+
+### Circuito Não-Linear com Semicondutores (Diodo & Newton-Raphson)
+
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, Diode, solve
+
+# Fonte de 5V, resistor limitador de 1k e Diodo 1N4148 (Shockley)
+circuit = Circuit([
+    VoltageSource("V1", "1", "0", 5.0),
+    Resistor("R1", "1", "2", 1000.0),
+    Diode("D1", "2", "0", Is=1e-14, n=1.0),
+])
+
+# O solver detecta automaticamente componentes não-lineares e despacha o Newton-Raphson
+sol = solve(circuit)
+
+print(f"Ponto Q de Operação:")
+print(f"  V_D = {sol.V('2'):.4f} V  (queda de tensão típica no joelho)")
+print(f"  I_D = {sol.I_diode('D1') * 1e3:.3f} mA")
+print(f"  Convergência obtida em {sol.iterations} iterações (tol < 1e-6)")
 ```
 
 ---

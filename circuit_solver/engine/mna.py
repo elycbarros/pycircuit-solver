@@ -250,9 +250,14 @@ def solve(
     circuit: Circuit,
     *,
     rtol: float = 1e-9,
+    tol: float = 1e-6,
     check_singular: bool = True,
+    max_iter: int = 100,
 ) -> Solution:
     """Solve the MNA system and return a :class:`~circuit_solver.core.solution.Solution`.
+
+    If the circuit contains non-linear semiconductor elements (Diodes, Zener diodes,
+    BJTs, MOSFETs), the solver automatically delegates to the Newton-Raphson iterative solver.
 
     Parameters
     ----------
@@ -260,8 +265,12 @@ def solve(
         Fully described circuit (pre-validated).
     rtol : float
         Relative tolerance for singular matrix detection (condition number check).
+    tol : float
+        Tolerance for non-linear Newton-Raphson convergence (default 1e-6 V).
     check_singular : bool
         Raise a descriptive error if the matrix is numerically singular.
+    max_iter : int
+        Maximum iterations for non-linear Newton-Raphson solver (default 100).
 
     Returns
     -------
@@ -274,21 +283,13 @@ def solve(
         If the circuit has no unknown nodes (trivial / disconnected).
     numpy.linalg.LinAlgError
         If the MNA matrix is singular (open circuit, missing ground, etc.).
-
-    Examples
-    --------
-    >>> from circuit_solver.core.elements import Resistor, VoltageSource
-    >>> from circuit_solver.core.circuit import Circuit
-    >>> from circuit_solver.engine.mna import solve
-    >>> els = [VoltageSource("V1", "1", "0", 10.0), Resistor("R1", "1", "0", 5.0)]
-    >>> sol = solve(Circuit(els))
-    >>> sol.V("1")
-    10.0
-    >>> sol.I_vsource("V1")
-    -2.0
     """
     if circuit.size == 0:
         raise ValueError("Circuit has no unknown variables to solve.")
+
+    if circuit.has_nonlinear:
+        from circuit_solver.engine.nonlinear import solve_nonlinear
+        return solve_nonlinear(circuit, max_iter=max_iter, tol=tol)
 
     A, z = build_mna(circuit)
 

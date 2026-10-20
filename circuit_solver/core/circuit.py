@@ -33,6 +33,10 @@ from circuit_solver.core.elements import (
     Inductor,
     CCCS,
     CCVS,
+    Diode,
+    ZenerDiode,
+    BJT,
+    MOSFET,
     _Element,
 )
 from circuit_solver.core.validator import CircuitValidator, parse_value
@@ -116,14 +120,23 @@ class Circuit:
         self.n_aux: int = len(self.auxiliary_map)
         self.size: int = self.n_nodes + self.n_aux
 
+    @property
+    def has_nonlinear(self) -> bool:
+        """True if the circuit contains any non-linear semiconductor elements."""
+        return any(isinstance(el, (Diode, ZenerDiode, BJT, MOSFET)) for el in self.elements)
+
     @staticmethod
     def _nodes_of(el: _Element) -> list[str]:
-        if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS)):
+        if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS, Diode, ZenerDiode)):
             return [el.node_p, el.node_n]
         if isinstance(el, (VCVS, VCCS)):
             return [el.node_p, el.node_n, el.ctrl_p, el.ctrl_n]
         if isinstance(el, OpAmp):
             return [el.in_p, el.in_n, el.out, el.gnd]
+        if isinstance(el, BJT):
+            return [el.node_c, el.node_b, el.node_e]
+        if isinstance(el, MOSFET):
+            return [el.node_d, el.node_g, el.node_s]
         return []
 
     # ------------------------------------------------------------------

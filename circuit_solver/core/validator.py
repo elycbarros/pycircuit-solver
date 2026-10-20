@@ -40,6 +40,10 @@ from circuit_solver.core.elements import (
     Inductor,
     CCCS,
     CCVS,
+    Diode,
+    ZenerDiode,
+    BJT,
+    MOSFET,
     _Element,
 )
 
@@ -228,12 +232,16 @@ class CircuitValidator:
     @staticmethod
     def _nodes_of(el: _Element) -> list[str]:
         """Extract node labels from any element type."""
-        if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS)):
+        if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS, Diode, ZenerDiode)):
             return [el.node_p, el.node_n]
         if isinstance(el, (VCVS, VCCS)):
             return [el.node_p, el.node_n, el.ctrl_p, el.ctrl_n]
         if isinstance(el, OpAmp):
             return [el.in_p, el.in_n, el.out, el.gnd]
+        if isinstance(el, BJT):
+            return [el.node_c, el.node_b, el.node_e]
+        if isinstance(el, MOSFET):
+            return [el.node_d, el.node_g, el.node_s]
         return []
 
     def _check_ground(self) -> None:
@@ -245,12 +253,22 @@ class CircuitValidator:
 
     def _check_self_shorts(self) -> None:
         for el in self._elements:
-            if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS)):
+            if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS, Diode, ZenerDiode)):
                 if el.node_p == el.node_n:
                     raise CircuitValidationError(
                         f"Element '{el.name}' has node_p == node_n == '{el.node_p}'. "
                         "Both terminals are the same node — this is a short-circuit or "
                         "no-op element."
+                    )
+            elif isinstance(el, BJT):
+                if el.node_c == el.node_b == el.node_e:
+                    raise CircuitValidationError(
+                        f"BJT '{el.name}' has all terminals connected to the same node '{el.node_c}'."
+                    )
+            elif isinstance(el, MOSFET):
+                if el.node_d == el.node_g == el.node_s:
+                    raise CircuitValidationError(
+                        f"MOSFET '{el.name}' has all terminals connected to the same node '{el.node_d}'."
                     )
 
     def _check_resistances(self) -> None:
