@@ -121,38 +121,44 @@ def parse_value(raw: str | float | int) -> float:
         return float(raw)
 
     s = str(raw).strip()
+    if not s:
+        raise ValueError("Cannot parse empty value.")
 
-    # --- Try embedded suffix first: "4k7" ---
-    m = _EMBEDDED_PATTERN.match(s)
+    # 1. Embedded suffix check: e.g. "4k7", "4R7", "1M2", "2u2"
+    m_emb = re.match(r"^([+-]?\d+)([rR]|[tTgGkKmMuUnNpPfF]|MEG|meg)(\d+)$", s)
+    if m_emb:
+        pre, suff, post = m_emb.groups()
+        suff_upper = suff.upper()
+        if suff_upper == "R":
+            mult = 1.0
+        elif suff_upper == "MEG":
+            mult = 1e6
+        else:
+            mult = _SUFFIX_MAP.get(suff_upper, 1.0)
+        return float(f"{pre}.{post}") * mult
+
+    # 2. Standard number + optional engineering prefix + optional unit (e.g. "10mA", "4.7k", "220uF")
+    pattern = re.compile(
+        r"^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)\s*(MEG|[tTgGkKmMuUnNpPfF])?.*$",
+        re.IGNORECASE,
+    )
+    m = pattern.match(s)
     if m:
-        pre, suffix, post = m.group(1), m.group(2), m.group(3)
-        suffix_key = suffix.upper() if suffix.upper() in ("MEG",) else suffix
-        multiplier = _SUFFIX_MAP.get(suffix_key, _SUFFIX_MAP.get(suffix.upper(), 1.0))
-        left = float(pre) if pre else 0.0
-        right = float(f"0.{post}") if post else 0.0
-        return (left + right) * multiplier
-
-    # --- Strip trailing non-numeric unit character(s) like "A" in "10mA" ---
-    # Remove a final alpha char that is NOT a known suffix (e.g. 'A', 'V', 'H')
-    cleaned = re.sub(r"[A-Za-z]+$", lambda mo: mo.group() if mo.group().upper() in _SUFFIX_MAP or mo.group().upper() == "MEG" else "", s)
-    # Re-attach suffix if it was eaten
-    m2 = _TRAILING_PATTERN.match(cleaned if cleaned else s)
-    if not m2:
-        # Last attempt: strip all trailing alpha
-        s_stripped = re.sub(r"[A-Za-z]+$", "", s)
+        num_str, suff = m.groups()
         try:
-            return float(s_stripped)
+            val = float(num_str)
+            if suff:
+                suff_upper = suff.upper()
+                mult = 1e6 if suff_upper == "MEG" else _SUFFIX_MAP.get(suff_upper, 1.0)
+                val *= mult
+            return val
         except ValueError:
-            raise ValueError(f"Cannot parse engineering value: '{raw}'")
+            pass
 
-    num_part = m2.group(1)
-    suffix = m2.group(2)
-    value = float(num_part)
-    if suffix:
-        suffix_key = suffix.upper() if suffix.upper() in ("MEG",) else suffix
-        multiplier = _SUFFIX_MAP.get(suffix_key, _SUFFIX_MAP.get(suffix.upper(), 1.0))
-        value *= multiplier
-    return value
+    try:
+        return float(s)
+    except ValueError:
+        raise ValueError(f"Cannot parse engineering value: '{raw}'")
 
 
 # ---------------------------------------------------------------------------
@@ -176,8 +182,16 @@ class CircuitValidator:
     >>> validator.validate()  # raises CircuitValidationError on failure
     """
 
-    def __init__(self, elements: Sequence[_Element]) -> None:
+    def __init__(
+        self,
+        elements: Sequence[_Element],
+        *,
+        allow_floating: bool = False,
+        allowed_open_nodes: Sequence[str] | None = None,
+    ) -> None:
         self._elements = list(elements)
+        self.allow_floating = allow_floating
+        self.allowed_open_nodes = set(allowed_open_nodes or ())
 
     # ------------------------------------------------------------------
     # Public API
@@ -242,10 +256,15 @@ class CircuitValidator:
 
     def _check_floating_nodes(self) -> None:
         """Every non-ground node must appear in ≥ 2 element connections."""
+        if self.allow_floating:
+            return
         count: dict[str, int] = defaultdict(int)
         for node in self._all_nodes():
             count[node] += 1
-        floating = [n for n, c in count.items() if c < 2 and n != "0"]
+        floating = [
+            n for n, c in count.items()
+            if c < 2 and n != "0" and n not in self.allowed_open_nodes
+        ]
         if floating:
             raise CircuitValidationError(
                 f"Floating (dangling) node(s) detected: {sorted(floating)}. "

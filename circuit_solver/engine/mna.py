@@ -160,13 +160,13 @@ def build_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
             cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
             # Controlled current into node_p from ctrl voltage
             if p is not None and cp is not None:
-                A[p, cp] += gm
+                A[p, cp] -= gm
             if p is not None and cn is not None:
-                A[p, cn] -= gm
+                A[p, cn] += gm
             if n_node is not None and cp is not None:
-                A[n_node, cp] -= gm
+                A[n_node, cp] += gm
             if n_node is not None and cn is not None:
-                A[n_node, cn] += gm
+                A[n_node, cn] -= gm
 
         # ------------------------------------------------------------------
         # Ideal Op-Amp

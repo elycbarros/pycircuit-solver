@@ -163,10 +163,10 @@ def thevenin_norton(
     # Build and solve the killed circuit (skip validation for internal use)
     circ_test = Circuit(killed, validate=False)
     sol_test = solve(circ_test)
-    I_test = sol_test.I_vsource(test_name)  # current entering A through test source
+    # The auxiliary variable j is current into '+'. Current delivered into terminal A is -j.
+    I_test = -sol_test.I_vsource(test_name)
 
-    # R_th = V_test / I_test  (I_test is current out of '+' → into circuit → back to '-')
-    # The MNA auxiliary variable j is the current flowing from + terminal into circuit.
+    # R_th = V_test / I_test
     if abs(I_test) < 1e-15:
         R_th = float("inf")
     else:

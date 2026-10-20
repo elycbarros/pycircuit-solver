@@ -69,11 +69,18 @@ class Circuit:
         self,
         elements: Sequence[_Element],
         validate: bool = True,
+        *,
+        allow_floating: bool = False,
+        allowed_open_nodes: Sequence[str] | None = None,
     ) -> None:
         self.elements: list[_Element] = list(elements)
 
         if validate:
-            CircuitValidator(self.elements).validate()
+            CircuitValidator(
+                self.elements,
+                allow_floating=allow_floating,
+                allowed_open_nodes=allowed_open_nodes,
+            ).validate()
 
         self.node_map: dict[str, int] = {}
         self.auxiliary_map: dict[str, int] = {}
