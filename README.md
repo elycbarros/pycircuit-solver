@@ -9,6 +9,10 @@
 
 O projeto foi arquitetado para atender rigorosamente ao escopo acadêmico dos **Capítulos 1 a 5** de *Fundamentos de Circuitos Elétricos* (Alexander & Sadiku), unindo precisão matemática estática, validação topológica robusta contra erros humanos e suporte a engenharia de software de nível de portfólio.
 
+> 📖 **Documentação e Guias Rápidos:**
+> * 🎓 **[Me Ensine a Usar! (Tutorial Passo a Passo)](ME_ENSINE_A_USAR.md)** — Do primeiro divisor de tensão aos filtros CA e simulação Monte Carlo.
+> * 📘 **[Documentação Técnica Completa](DOCUMENTACAO_TECNICA.md)** — Formulação matemática do MNA, teoria dos grafos, CA fasorial e arquitetura em Rust.
+
 ---
 
 ## 🎯 Escopo e Capacidades do Sistema

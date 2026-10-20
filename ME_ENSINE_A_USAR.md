@@ -1,0 +1,296 @@
+# 🎓 Me Ensine a Usar o `pycircuit-solver`!
+*O Guia Prático, Visual e Passo a Passo para Analisar Circuitos com Python e Rust*
+
+---
+
+## 🚀 1. O Que é Este Projeto em 1 Minuto?
+
+O **`pycircuit-solver`** é como uma "calculadora inteligente de circuitos elétricos" para o seu terminal e seus scripts Python. 
+
+Você informa como os componentes estão conectados entre si através de **nós** (pontos de conexão), e o motor calcula automaticamente:
+* A **tensão** em cada ponto do circuito.
+* A **corrente** e a **potência** que passa em cada componente.
+* O circuito equivalente de **Thévenin e Norton**.
+* A resposta em **frequência (CA/Bode)** para indutores e capacitores.
+* O comportamento real com **tolerância de fábrica (Monte Carlo acelerado em Rust)**.
+
+> 💡 **A Única Regra de Ouro da Topologia:**  
+> Todo circuito elétrico precisa de uma referência de zero volts. No `pycircuit-solver`, o nó de referência (o **Terra / GND**) **sempre deve se chamar `"0"`**.
+
+---
+
+## 🛠️ 2. Instalação Expressa
+
+No seu terminal (com Python 3.10+):
+
+```bash
+# 1. Clone o repositório
+git clone https://github.com/elycbarros/pycircuit-solver.git
+cd pycircuit-solver
+
+# 2. Instale o pacote em modo de desenvolvimento
+pip install -e .
+
+# 3. (Opcional) Instale as dependências para gráficos e testes
+pip install -e .[dev]
+```
+
+Pronto! Agora você tem tanto a biblioteca Python quanto o comando `pycircuit` disponível no seu terminal.
+
+---
+
+## 🧪 3. Lição 1: Seu Primeiro Circuito em Python
+
+Vamos resolver um divisor de tensão clássico: uma fonte de $12\text{ V}$ ligada a dois resistores ($R_1 = 4\,\Omega$ e $R_2 = 6\,\Omega$).
+
+```text
+       Nó 1               Nó 2
+ ( + )───────[ R1: 4Ω ]─────────┬─────── ( - )
+   │                            │
+[ V1: 12V ]                 [ R2: 6Ω ]
+   │                            │
+ ( - )──────────────────────────┴─────── Terra: "0"
+```
+
+Crie um arquivo `meu_circuito.py` ou abra o terminal Python (`python3`):
+
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, solve
+
+# 1. Descreva os componentes e como eles se ligam nos nós
+elementos = [
+    VoltageSource("V1", node_p="1", node_n="0", voltage=12.0),
+    Resistor("R1", node_p="1", node_n="2", resistance=4.0),
+    Resistor("R2", node_p="2", node_n="0", resistance=6.0),
+]
+
+# 2. Crie o circuito
+circuito = Circuit(elementos)
+
+# 3. Resolva o circuito!
+solucao = solve(circuito)
+
+# 4. Imprima os resultados
+print(solucao.summary())
+```
+
+### O que o terminal vai imprimir:
+```text
+========================================================================
+  MNA Solution Summary
+========================================================================
+  Node Voltages:
+    V(1) = 12.000000 V
+    V(2) =  7.200000 V
+------------------------------------------------------------------------
+  Branch Currents:
+    I(R1) =  1.200000 A
+    I(R2) =  1.200000 A
+    I(V1) = -1.200000 A
+========================================================================
+```
+
+Você também pode acessar qualquer valor diretamente no seu código:
+```python
+v2 = solucao.V("2")         # 7.2 Volts
+i_r1 = solucao.I("R1")      # 1.2 Amperes
+p_r1 = solucao.P("R1")      # 5.76 Watts
+```
+
+---
+
+## 🏷️ 4. Lição 2: Use Notações de Bancada (`"10k"`, `"4k7"`, `"100u"`)
+
+Na vida real, ninguém escreve `4700` ou `0.000010`. O `pycircuit-solver` entende sufixos de engenharia nativamente:
+
+```python
+from circuit_solver import parse_value
+
+r_base = parse_value("4k7")    # 4700.0 Ohms
+c_filtro = parse_value("100u") # 0.0001 Farads
+v_fonte = parse_value("12V")   # 12.0 Volts
+r_mega = parse_value("1MEG")   # 1_000_000.0 Ohms
+```
+
+---
+
+## ⚡ 5. Lição 3: Usando Arquivos de Netlist SPICE e a CLI
+
+Não quer escrever código Python? Você pode descrever o circuito em um arquivo de texto comum (estilo SPICE `.cir`):
+
+Crie o arquivo `divisor.cir`:
+```spice
+* Divisor de Tensão Simples
+V1 1 0 12V
+R1 1 2 4.7k
+R2 2 0 10k
+.end
+```
+
+Agora, basta rodar direto no terminal:
+```bash
+pycircuit solve divisor.cir
+```
+
+E o terminal exibirá a solução completa instantaneamente!
+
+---
+
+## 🔍 6. Lição 4: Equivalente de Thévenin e Norton
+
+Quer simplificar uma rede elétrica inteira conectada entre dois terminais e descobrir onde ocorre a **máxima transferência de potência**?
+
+```bash
+# Extrai Thévenin entre o nó 2 e o terra "0", abrindo o gráfico da curva P_max
+pycircuit thevenin divisor.cir -a 2 -b 0 --plot
+```
+
+Em Python:
+```python
+from circuit_solver.engine.thevenin import thevenin_norton
+
+th = thevenin_norton(circuito, node_a="2", node_b="0")
+
+print(f"Vth:  {th.v_th:.3f} V")
+print(f"Rth:  {th.r_th:.3f} Ω")
+print(f"In:   {th.i_norton:.3f} A")
+print(f"Pmax: {th.p_max:.3f} W (quando R_load = {th.r_th:.3f} Ω)")
+```
+
+---
+
+## 🎛️ 7. Lição 5: Circuitos com Amplificador Operacional (Op-Amp)
+
+Vamos montar um **Amplificador Inversor** com ganho $A_v = -R_f / R_1 = -5$:
+
+```text
+               Rf: 50k
+        ┌──────[===]──────┐
+        │                 │
+Vin ──[===]───┬───────────┴── Vout
+     R1: 10k  │   |\
+              └───|- \
+                  |   >────── Vout
+              ┌───|+ /
+             _│_  |/
+             /// (GND)
+```
+
+No Python:
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, OpAmp, solve
+
+circuito_opamp = Circuit([
+    VoltageSource("Vin", "in", "0", 2.0),
+    Resistor("R1", "in", "vn", 10_000.0),
+    Resistor("Rf", "vn", "vout", 50_000.0),
+    Resistor("Rload", "vout", "0", 10_000.0),
+    # in_p = "+", in_n = "-", out = "saída", gnd = "0"
+    OpAmp("U1", in_p="0", in_n="vn", out="vout", gnd="0")
+])
+
+sol = solve(circuito_opamp)
+
+print(f"Tensão de Entrada: {sol.V('in'):.2f} V")
+print(f"Terra Virtual:     {sol.V('vn'):.6f} V  (idealmente 0V)")
+print(f"Tensão de Saída:   {sol.V('vout'):.2f} V (Ganho exato de -5x)")
+```
+
+---
+
+## 🌊 8. Lição 6: Análise em Corrente Alternada (CA Fasorial) e Filtros
+
+Para circuitos com capacitores e indutores em regime permanente senoidal:
+
+Crie o arquivo `filtro_passa_baixas.cir`:
+```spice
+* Filtro Passa-Baixas RC (fc ≈ 159 Hz)
+Vin in 0 AC 1.0 0.0
+R1 in out 1k
+C1 out 0 1u
+.end
+```
+
+### Análise em uma frequência específica (ex: 60 Hz):
+```bash
+pycircuit ac filtro_passa_baixas.cir -f 60.0
+```
+
+### Varredura de Frequência e Diagrama de Bode Automático:
+```bash
+# Varrer de 1 Hz a 100 kHz com 100 pontos logarítmicos e plotar Bode
+pycircuit ac filtro_passa_baixas.cir --sweep 1 100000 100 --node out --plot
+```
+
+---
+
+## 🎲 9. Lição 7: Análise Estatística de Monte Carlo (Acelerada em Rust)
+
+Resistores comerciais nunca têm o valor exato: eles têm tolerâncias de $1\%$, $5\%$ ou $10\%$.  
+O que acontece com a tensão da sua placa quando $10.000$ circuitos forem fabricados?
+
+No terminal:
+```bash
+# Roda 10.000 simulações com 5% de tolerância e plota o histograma com P5 e P95
+pycircuit monte-carlo divisor.cir -n 10000 -t 0.05 --plot
+```
+
+No Python (usando o acelerador em Rust multi-thread):
+```python
+from circuit_solver.engine.monte_carlo_rust import monte_carlo
+
+# Roda 50.000 simulações em poucos milissegundos
+resultado = monte_carlo(circuito, n_samples=50_000, seed=42)
+
+print(resultado.summary())
+```
+
+### O que você verá:
+```text
+========================================================================
+  Monte Carlo Analysis  (50000 samples, 0 failed)
+========================================================================
+    Node      Mean (V)     Std (V)    Min (V)    Max (V)    P5 (V)    P95 (V)
+  ----------------------------------------------------------------------
+       1     12.000000    0.000000  12.000000  12.000000  12.000000  12.000000
+       2      7.199412    0.165241   6.521840   7.842105   6.928190   7.471830
+========================================================================
+```
+* **P5 e P95:** Em $90\%$ dos circuitos fabricados, a tensão no nó 2 ficará garantidamente entre $6.92\text{ V}$ e $7.47\text{ V}$.
+
+---
+
+## 📋 10. Tabela de Cola dos Elementos Suportados
+
+| Elemento | Letra SPICE | Como Instanciar em Python | O que faz |
+| :--- | :---: | :--- | :--- |
+| **Resistor** | `R` | `Resistor("R1", "p", "n", 100.0, tolerance=0.05)` | Resistor linear em Ohms |
+| **Capacitor** | `C` | `Capacitor("C1", "p", "n", 10e-6)` | Capacitor ideal em Farads |
+| **Indutor** | `L` | `Inductor("L1", "p", "n", 1e-3)` | Indutor ideal em Henries |
+| **Fonte de Tensão** | `V` | `VoltageSource("V1", "p", "n", 12.0, ac_mag=1.0)` | Fonte DC ou CA |
+| **Fonte de Corrente** | `I` | `CurrentSource("I1", "p", "n", 2.0)` | Fonte DC ou CA (sai de n, entra em p) |
+| **VCVS** | `E` | `VCVS("E1", "p", "n", "cp", "cn", gain=2.0)` | Tensão controlada por tensão |
+| **VCCS** | `G` | `VCCS("G1", "p", "n", "cp", "cn", transconductance=0.01)` | Corrente controlada por tensão |
+| **CCCS** | `F` | `CCCS("F1", "p", "n", vctrl_name="V1", gain=5.0)` | Corrente controlada por corrente |
+| **CCVS** | `H` | `CCVS("H1", "p", "n", vctrl_name="V1", transresistance=100.0)` | Tensão controlada por corrente |
+| **Op-Amp** | `U` ou `A` | `OpAmp("U1", in_p="0", in_n="vn", out="vout", gnd="0")` | Amplificador Operacional ideal |
+
+---
+
+## ⚠️ 11. Erros Comuns e Como Evitá-los
+
+1. **"Missing ground node '0'":**
+   * *Motivo:* Nenhum nó do circuito se chama `"0"`.
+   * *Solução:* Renomeie o nó negativo da fonte ou o terra para `"0"`.
+
+2. **"Circuit has floating sub-circuit":**
+   * *Motivo:* Um grupo de componentes não tem nenhum caminho condutivo até o terra `"0"`.
+   * *Solução:* Conecte uma referência ao terra nesse bloco de circuito.
+
+3. **"Loop of ideal voltage sources":**
+   * *Motivo:* Duas fontes de tensão ideais foram ligadas em paralelo direto, ou em um anel fechado violando a Lei das Malhas de Kirchhoff.
+   * *Solução:* Adicione a resistência interna das fontes (ex: $0.1\,\Omega$) em série.
+
+---
+
+Agora você está pronto para simular qualquer circuito com precisão acadêmica e performance profissional! 🚀
