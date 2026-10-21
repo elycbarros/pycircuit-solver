@@ -48,6 +48,39 @@ fn stamp_conductance(a: &mut DMatrix<f64>, p: Option<usize>, n: Option<usize>, g
     }
 }
 
+/// Capacitores cujos terminais já estão ligados por fontes de tensão ideais.
+/// Espelha `_capacitors_forced_by_voltage_sources` em transient.py. O terra é o índice `n_nodes`.
+fn forced_capacitors(circuit: &RustTransientCircuit) -> Vec<bool> {
+    let nn = circuit.n_nodes;
+    let mut parent: Vec<usize> = (0..=nn).collect();
+
+    fn find(parent: &mut Vec<usize>, mut x: usize) -> usize {
+        while parent[x] != x {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        x
+    }
+
+    let node_or_ground = |o: Option<usize>| o.unwrap_or(nn);
+
+    for vs in &circuit.vsources {
+        let ra = find(&mut parent, node_or_ground(vs.node_p_idx));
+        let rb = find(&mut parent, node_or_ground(vs.node_n_idx));
+        if ra != rb {
+            parent[ra] = rb;
+        }
+    }
+
+    let mut forced = Vec::with_capacity(circuit.capacitors.len());
+    for c in &circuit.capacitors {
+        let ra = find(&mut parent, node_or_ground(c.node_p_idx));
+        let rb = find(&mut parent, node_or_ground(c.node_n_idx));
+        forced.push(ra == rb);
+    }
+    forced
+}
+
 pub fn run_transient(
     circuit: &RustTransientCircuit,
     t_stop: f64,
@@ -235,21 +268,104 @@ pub fn run_transient(
         if let Some(p) = is.node_p_idx { z0[p] += val; }
         if let Some(ni) = is.node_n_idx { z0[ni] -= val; }
     }    let x0 = if uic {
-        // With UIC: inject companion currents from ICs
+        // t = 0+ com condições iniciais (espelha transient.rs/Python).
+        // Capacitor sem fonte forçada vira fonte de tensão de valor ic (uma incógnita extra);
+        // indutor vira fonte de corrente de valor ic; fontes independentes entram em t = 0.
+        let forced = forced_capacitors(circuit);
+        let sub_caps: Vec<usize> = (0..circuit.capacitors.len()).filter(|&i| !forced[i]).collect();
+        let ns = n + sub_caps.len();
+        let mut a0 = DMatrix::<f64>::zeros(ns, ns);
+        let mut z_aug = DVector::<f64>::zeros(ns);
+
+        for r in &circuit.resistors {
+            stamp_conductance(&mut a0, r.node_p_idx, r.node_n_idx, 1.0 / r.resistance);
+        }
+        for vs in &circuit.vsources {
+            let k = vs.aux_idx;
+            if let Some(p) = vs.node_p_idx { a0[(p, k)] += 1.0; a0[(k, p)] += 1.0; }
+            if let Some(ni) = vs.node_n_idx { a0[(ni, k)] -= 1.0; a0[(k, ni)] -= 1.0; }
+            z_aug[k] = vs.waveform.eval(0.0);
+        }
+        for is in &circuit.isources {
+            let val = is.waveform.eval(0.0);
+            if let Some(p) = is.node_p_idx { z_aug[p] += val; }
+            if let Some(ni) = is.node_n_idx { z_aug[ni] -= val; }
+        }
+        for vcvs in &circuit.vcvs {
+            let k = vcvs.aux_idx;
+            if let Some(p) = vcvs.node_p_idx { a0[(p, k)] += 1.0; a0[(k, p)] += 1.0; }
+            if let Some(ni) = vcvs.node_n_idx { a0[(ni, k)] -= 1.0; a0[(k, ni)] -= 1.0; }
+            if let Some(cp) = vcvs.ctrl_p_idx { a0[(k, cp)] -= vcvs.gain; }
+            if let Some(cn) = vcvs.ctrl_n_idx { a0[(k, cn)] += vcvs.gain; }
+        }
+        for vccs in &circuit.vccs {
+            let gm = vccs.gm;
+            if let (Some(p), Some(cp)) = (vccs.node_p_idx, vccs.ctrl_p_idx) { a0[(p, cp)] -= gm; }
+            if let (Some(p), Some(cn)) = (vccs.node_p_idx, vccs.ctrl_n_idx) { a0[(p, cn)] += gm; }
+            if let (Some(ni), Some(cp)) = (vccs.node_n_idx, vccs.ctrl_p_idx) { a0[(ni, cp)] += gm; }
+            if let (Some(ni), Some(cn)) = (vccs.node_n_idx, vccs.ctrl_n_idx) { a0[(ni, cn)] -= gm; }
+        }
+        for cccs in &circuit.cccs {
+            let k_vctrl = cccs.vctrl_aux_idx;
+            if let Some(p) = cccs.node_p_idx { a0[(p, k_vctrl)] += cccs.gain; }
+            if let Some(ni) = cccs.node_n_idx { a0[(ni, k_vctrl)] -= cccs.gain; }
+        }
+        for ccvs in &circuit.ccvs {
+            let k = ccvs.aux_idx;
+            let k_vctrl = ccvs.vctrl_aux_idx;
+            if let Some(p) = ccvs.node_p_idx { a0[(p, k)] += 1.0; a0[(k, p)] += 1.0; }
+            if let Some(ni) = ccvs.node_n_idx { a0[(ni, k)] -= 1.0; a0[(k, ni)] -= 1.0; }
+            a0[(k, k_vctrl)] += ccvs.transresistance;
+        }
+        for op in &circuit.opamps {
+            let k = op.aux_idx;
+            if let Some(out) = op.out_idx { a0[(out, k)] += 1.0; }
+            if let Some(gnd) = op.gnd_idx { a0[(gnd, k)] -= 1.0; }
+            if let Some(inp) = op.in_p_idx { a0[(k, inp)] += 1.0; }
+            if let Some(inn) = op.in_n_idx { a0[(k, inn)] -= 1.0; }
+        }
+        // Indutor com corrente ic de node_p para node_n: injeta em node_n, drena de node_p
+        for ind in &circuit.inductors {
+            if let Some(ni) = ind.node_n_idx { z_aug[ni] += ind.ic; }
+            if let Some(p) = ind.node_p_idx { z_aug[p] -= ind.ic; }
+        }
+        // Capacitor sem fonte forçada: fonte de tensão ic na incógnita extra n + j
+        for (j, &ci) in sub_caps.iter().enumerate() {
+            let c = &circuit.capacitors[ci];
+            let k = n + j;
+            if let Some(p) = c.node_p_idx { a0[(p, k)] += 1.0; a0[(k, p)] += 1.0; }
+            if let Some(ni) = c.node_n_idx { a0[(ni, k)] -= 1.0; a0[(k, ni)] -= 1.0; }
+            z_aug[k] = c.ic;
+        }
+
+        let x_aug = match a0.lu().solve(&z_aug) {
+            Some(x) => x,
+            None => return Err("Failed to solve transient system at t=0 (singular matrix).".to_string()),
+        };
+
+        let node_v = |o: Option<usize>| o.map(|i| x_aug[i]).unwrap_or(0.0);
+
+        for (j, &ci) in sub_caps.iter().enumerate() {
+            i_c_state[ci] = x_aug[n + j];
+        }
         for (i, c) in circuit.capacitors.iter().enumerate() {
-            let ieq = g_c[i] * v_c_state[i];
-            if let Some(p) = c.node_p_idx { z0[p] += ieq; }
-            if let Some(ni) = c.node_n_idx { z0[ni] -= ieq; }
+            if forced[i] {
+                // tensão forçada pela fonte; corrente em t = 0 não recuperada (zero)
+                v_c_state[i] = node_v(c.node_p_idx) - node_v(c.node_n_idx);
+                i_c_state[i] = 0.0;
+            }
         }
         for (i, ind) in circuit.inductors.iter().enumerate() {
-            let ieq = i_l_state[i];
-            if let Some(p) = ind.node_p_idx { z0[p] -= ieq; }
-            if let Some(ni) = ind.node_n_idx { z0[ni] += ieq; }
+            v_l_state[i] = node_v(ind.node_p_idx) - node_v(ind.node_n_idx);
         }
-        match lu.solve(&z0) {
-            Some(sol) => sol,
-            None => return Err("Failed to solve transient system at t=0 (singular matrix).".to_string()),
+        for (i, cp) in circuit.coupled.iter().enumerate() {
+            v_coupled_state[i] = [
+                node_v(cp.p1_idx) - node_v(cp.n1_idx),
+                node_v(cp.p2_idx) - node_v(cp.n2_idx),
+            ];
         }
+
+        x_aug.rows(0, n).into_owned()
     } else {
         // Without UIC: solve DC operating point at t=0
         let mut a_dc = DMatrix::<f64>::zeros(n, n);
