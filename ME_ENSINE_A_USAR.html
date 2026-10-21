@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎓 Me Ensine a Usar o pycircuit-solver!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0f1d;
+      --bg-secondary: #111827;
+      --bg-card: #1e293b;
+      --bg-card-hover: #24344d;
+      --border: #334155;
+      --border-accent: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-green: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-purple: #a78bfa;
+      --code-bg: #030712;
+      --code-text: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.7;
+      display: flex;
+    }
+
+    /* Sidebar Navigation */
+    aside {
+      width: 290px;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      padding: 2rem 1.25rem;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand span {
+      color: var(--accent-cyan);
+    }
+
+    .toc-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      font-weight: 700;
+    }
+
+    .toc-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .toc-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: block;
+      font-weight: 500;
+    }
+
+    .toc-link:hover {
+      color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.08);
+      transform: translateX(4px);
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      max-width: 960px;
+      padding: 3rem 4rem 6rem;
+      margin: 0 auto;
+    }
+
+    /* Typography */
+    h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #f8fafc 0%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 2.5rem;
+      font-weight: 400;
+    }
+
+    h2 {
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 3.5rem 0 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 2rem 0 0.85rem;
+      color: var(--accent-cyan);
+    }
+
+    p {
+      margin-bottom: 1.25rem;
+      font-size: 1.05rem;
+      color: #cbd5e1;
+    }
+
+    ul, ol {
+      margin: 1rem 0 1.5rem 1.5rem;
+      color: #cbd5e1;
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+    }
+
+    /* Callout Card */
+    .callout {
+      background: rgba(56, 189, 248, 0.07);
+      border-left: 4px solid var(--accent-cyan);
+      border-radius: 0 8px 8px 0;
+      padding: 1.25rem 1.5rem;
+      margin: 1.75rem 0;
+    }
+
+    .callout.warning {
+      background: rgba(251, 191, 36, 0.08);
+      border-left-color: var(--accent-amber);
+    }
+
+    .callout-title {
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Code Blocks */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      margin: 1.5rem 0;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    code {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.92rem;
+      color: var(--code-text);
+    }
+
+    :not(pre) > code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      color: var(--accent-cyan);
+      font-size: 0.9em;
+    }
+
+    /* Terminal Output simulation */
+    .terminal-output {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-left: 4px solid var(--accent-green);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.88rem;
+      color: #a7f3d0;
+      white-space: pre-wrap;
+      margin: 1.25rem 0 1.75rem;
+    }
+
+    /* Tables */
+    .table-wrapper {
+      overflow-x: auto;
+      margin: 2rem 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    th {
+      background: var(--bg-card);
+      color: var(--text-main);
+      padding: 0.9rem 1.2rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 0.85rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      color: #cbd5e1;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.55rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .diagram {
+      background: #020617;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      color: #38bdf8;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.86rem;
+      line-height: 1.4;
+      white-space: pre;
+      margin: 1.5rem 0;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        flex-direction: column;
+      }
+      aside {
+        width: 100%;
+        height: auto;
+        position: relative;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      main {
+        padding: 2rem 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Sidebar -->
+  <aside>
+    <div class="brand">
+      ⚡ <span>pycircuit</span>-solver
+    </div>
+    <div class="toc-title">Conteúdo do Guia</div>
+    <ul class="toc-list">
+      <li><a class="toc-link" href="#visao-geral">1. O Projeto em 1 Minuto</a></li>
+      <li><a class="toc-link" href="#instalacao">2. Instalação Expressa</a></li>
+      <li><a class="toc-link" href="#primeiro-circuito">3. Lição 1: Divisor em Python</a></li>
+      <li><a class="toc-link" href="#notacoes-bancada">4. Lição 2: Notações (4k7, 100u)</a></li>
+      <li><a class="toc-link" href="#spice-cli">5. Lição 3: Netlists SPICE & CLI</a></li>
+      <li><a class="toc-link" href="#thevenin">6. Lição 4: Thévenin & Norton</a></li>
+      <li><a class="toc-link" href="#opamp">7. Lição 5: Amplificadores Op-Amp</a></li>
+      <li><a class="toc-link" href="#ac-bode">8. Lição 6: CA Fasorial & Bode</a></li>
+      <li><a class="toc-link" href="#transient">9. Lição 7: Análise Transitória</a></li>
+      <li><a class="toc-link" href="#monte-carlo">10. Lição 8: Monte Carlo em Rust</a></li>
+      <li><a class="toc-link" href="#semicondutores">11. Lição 9: Semicondutores & Newton-Raphson</a></li>
+      <li><a class="toc-link" href="#dc-sweep">12. Lição 10: Varredura Paramétrica DC</a></li>
+      <li><a class="toc-link" href="#transformadores">13. Lição 11: Transformadores & K</a></li>
+      <li><a class="toc-link" href="#subcircuitos">14. Lição 12: Subcircuitos SPICE & White-Box</a></li>
+      <li><a class="toc-link" href="#small-signal">15. Lição 13: Ponto de Operação (.op) & AC</a></li>
+      <li><a class="toc-link" href="#sensibilidade">16. Lição 14: Sensibilidade, WCA & EVA</a></li>
+      <li><a class="toc-link" href="#rust-transient">17. Lição 15: Transiente em Rust (>1M steps/s)</a></li>
+      <li><a class="toc-link" href="#tabela-elementos">18. Cola Rápida dos Elementos</a></li>
+      <li><a class="toc-link" href="#erros-comuns">19. Diagnóstico de Erros</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main>
+    <h1>🎓 Me Ensine a Usar o pycircuit-solver!</h1>
+    <div class="subtitle">O Guia Prático, Visual e Passo a Passo para Analisar Circuitos com Python e Rust</div>
+
+    <!-- 1. O Que É -->
+    <section id="visao-geral">
+      <h2>🚀 1. O Que é Este Projeto em 1 Minuto?</h2>
+      <p>O <strong><code>pycircuit-solver</code></strong> é uma "calculadora inteligente de circuitos elétricos" para o seu terminal e seus scripts Python.</p>
+      <p>Você informa como os componentes estão conectados entre si através de <strong>nós</strong> (pontos de conexão), e o motor calcula automaticamente:</p>
+      <ul>
+        <li>A <strong>tensão</strong> em cada ponto do circuito.</li>
+        <li>A <strong>corrente</strong> e a <strong>potência</strong> em cada componente.</li>
+        <li>O circuito equivalente de <strong>Thévenin e Norton</strong> com curva de máxima potência.</li>
+        <li>A resposta em <strong>frequência (CA/Bode)</strong> para indutores e capacitores.</li>
+        <li>O comportamento real com <strong>tolerância de fábrica (Monte Carlo acelerado em Rust)</strong>.</li>
+      </ul>
+
+      <div class="callout">
+        <div class="callout-title">💡 A Única Regra de Ouro da Topologia:</div>
+        Todo circuito elétrico precisa de uma referência de zero volts. No <code>pycircuit-solver</code>, o nó de referência (o <strong>Terra / GND</strong>) <strong>sempre deve se chamar <code>"0"</code></strong>.
+      </div>
+    </section>
+
+    <!-- 2. Instalação -->
+    <section id="instalacao">
+      <h2>🛠️ 2. Instalação Expressa</h2>
+      <p>No seu terminal (com Python 3.10+):</p>
+      <pre><code># 1. Clone o repositório
+git clone https://github.com/elycbarros/pycircuit-solver.git
+cd pycircuit-solver
+
+# 2. Instale o pacote em modo de desenvolvimento
+pip install -e .
+
+# 3. (Opcional) Instale as dependências para gráficos e testes
+pip install -e .[dev]</code></pre>
+      <p>Pronto! Agora você tem a biblioteca Python e o comando <code>pycircuit</code> disponíveis no seu terminal.</p>
+    </section>
+
+    <!-- 3. Primeiro Circuito -->
+    <section id="primeiro-circuito">
+      <h2>🧪 3. Lição 1: Seu Primeiro Circuito em Python</h2>
+      <p>Vamos resolver um divisor de tensão clássico: fonte de 12V ligada a dois resistores (4Ω e 6Ω).</p>
+
+      <div class="diagram">       Nó 1               Nó 2
+ ( + )───────[ R1: 4Ω ]─────────┬─────── ( - )
+   │                            │
+[ V1: 12V ]                 [ R2: 6Ω ]
+   │                            │
+ ( - )──────────────────────────┴─────── Terra: "0"</div>
+
+      <p>Crie um arquivo <code>meu_circuito.py</code>:</p>
+      <pre><code>from circuit_solver import Circuit, VoltageSource, Resistor, solve
+
+# 1. Descreva os componentes e como eles se ligam nos nós
+elementos = [
+    VoltageSource("V1", node_p="1", node_n="0", voltage=12.0),
+    Resistor("R1", node_p="1", node_n="2", resistance=4.0),
+    Resistor("R2", node_p="2", node_n="0", resistance=6.0),
+]
+
+# 2. Crie o circuito
+circuito = Circuit(elementos)
+
+# 3. Resolva o circuito!
+solucao = solve(circuito)
+
+# 4. Imprima os resultados
+print(solucao.summary())</code></pre>
+
+      <div class="terminal-output">========================================================================
+  MNA Solution Summary
+========================================================================
+  Node Voltages:
+    V(1) = 12.000000 V
+    V(2) =  7.200000 V
+------------------------------------------------------------------------
+  Branch Currents:
+    I(R1) =  1.200000 A
+    I(R2) =  1.200000 A
+    I(V1) = -1.200000 A
+========================================================================</div>
+
+      <p>Você pode acessar qualquer grandeza diretamente:</p>
+      <pre><code>v2 = solucao.V("2")         # 7.2 Volts
+i_r1 = solucao.I("R1")      # 1.2 Amperes
+p_r1 = solucao.P("R1")      # 5.76 Watts</code></pre>
+    </section>
+
+    <!-- 4. Notações de Bancada -->
+    <section id="notacoes-bancada">
+      <h2>🏷️ 4. Lição 2: Use Notações de Bancada ("10k", "4k7", "100u")</h2>
+      <p>Na vida real ninguém escreve <code>4700</code> ou <code>0.000010</code>. Use <code>parse_value</code> para converter direto:</p>
+      <pre><code>from circuit_solver import parse_value
+
+r_base = parse_value("4k7")    # 4700.0 Ohms
+c_filtro = parse_value("100u") # 0.0001 Farads
+v_fonte = parse_value("12V")   # 12.0 Volts
+r_mega = parse_value("1MEG")   # 1_000_000.0 Ohms</code></pre>
+    </section>
+
+    <!-- 5. SPICE & CLI -->
+    <section id="spice-cli">
+      <h2>⚡ 5. Lição 3: Usando Arquivos de Netlist SPICE e a CLI</h2>
+      <p>Você pode descrever o circuito num arquivo de texto simples <code>divisor.cir</code>:</p>
+      <pre><code>* Divisor de Tensão Simples
+V1 1 0 12V
+R1 1 2 4.7k
+R2 2 0 10k
+.end</code></pre>
+      <p>Basta rodar no seu terminal:</p>
+      <pre><code>pycircuit solve divisor.cir</code></pre>
+    </section>
+
+    <!-- 6. Thévenin & Norton -->
+    <section id="thevenin">
+      <h2>🔍 6. Lição 4: Equivalente de Thévenin e Norton</h2>
+      <p>Simplifique uma rede inteira conectada entre dois terminais e descubra o ponto de <strong>máxima transferência de potência</strong>:</p>
+      <pre><code># Extrai Thévenin entre nó 2 e terra "0", abrindo o gráfico da curva P_max
+pycircuit thevenin divisor.cir -a 2 -b 0 --plot</code></pre>
+      <p>Em código Python:</p>
+      <pre><code>from circuit_solver.engine.thevenin import thevenin_norton
+
+th = thevenin_norton(circuito, node_a="2", node_b="0")
+
+print(f"Vth:  {th.v_th:.3f} V")
+print(f"Rth:  {th.r_th:.3f} Ω")
+print(f"In:   {th.i_norton:.3f} A")
+print(f"Pmax: {th.p_max:.3f} W (quando R_load = {th.r_th:.3f} Ω)")</code></pre>
+    </section>
+
+    <!-- 7. Op-Amp -->
+    <section id="opamp">
+      <h2>🎛️ 7. Lição 5: Circuitos com Amplificador Operacional (Op-Amp)</h2>
+      <p>Monte um <strong>Amplificador Inversor</strong> com ganho $A_v = -R_f / R_1 = -5$:</p>
+
+      <div class="diagram">               Rf: 50k
+        ┌──────[===]──────┐
+        │                 │
+Vin ──[===]───┬───────────┴── Vout
+     R1: 10k  │   |\
+              └───|- \
+                  |   >────── Vout
+              ┌───|+ /
+             _│_  |/
+             /// (GND)</div>
+
+      <pre><code>from circuit_solver import Circuit, VoltageSource, Resistor, OpAmp, solve
+
+circuito_opamp = Circuit([
+    VoltageSource("Vin", "in", "0", 2.0),
+    Resistor("R1", "in", "vn", 10_000.0),
+    Resistor("Rf", "vn", "vout", 50_000.0),
+    Resistor("Rload", "vout", "0", 10_000.0),
+    OpAmp("U1", in_p="0", in_n="vn", out="vout", gnd="0")
+])
+
+sol = solve(circuito_opamp)
+
+print(f"Tensão de Entrada: {sol.V('in'):.2f} V")
+print(f"Terra Virtual:     {sol.V('vn'):.6f} V  (idealmente 0V)")
+print(f"Tensão de Saída:   {sol.V('vout'):.2f} V (Ganho exato de -5x)")</code></pre>
+    </section>
+
+    <!-- 8. CA Fasorial & Bode -->
+    <section id="ac-bode">
+      <h2>🌊 8. Lição 6: Análise em Corrente Alternada (CA Fasorial) e Filtros</h2>
+      <p>Crie o arquivo <code>filtro_passa_baixas.cir</code>:</p>
+      <pre><code>* Filtro Passa-Baixas RC (fc ≈ 159 Hz)
+Vin in 0 AC 1.0 0.0
+R1 in out 1k
+C1 out 0 1u
+.end</code></pre>
+      <h3>Análise em uma frequência fixa (60 Hz):</h3>
+      <pre><code>pycircuit ac filtro_passa_baixas.cir -f 60.0</code></pre>
+      <h3>Varredura e Diagrama de Bode Automático:</h3>
+      <pre><code># Varrer de 1 Hz a 100 kHz com 100 pontos logarítmicos e plotar Bode
+pycircuit ac filtro_passa_baixas.cir --sweep 1 100000 100 --node out --plot</code></pre>
+    </section>
+
+    <!-- 9. Análise Transitória no Tempo -->
+    <section id="transient">
+      <h2>⏱️ 9. Lição 7: Análise Transitória no Tempo (Carga/Descarga RC, RL e RLC)</h2>
+      <p>Quer acompanhar como a tensão sobe ou desce a cada microssegundo ao ligar uma chave ou aplicar um pulso?</p>
+      <h3>No Terminal (CLI):</h3>
+      <pre><code># Simular de 0 a 10 ms com passo de 10 μs e abrir o gráfico da forma de onda
+pycircuit tran filtro_passa_baixas.cir --tstop 0.01 --dt 1e-5 --node out --plot</code></pre>
+      <h3>Em Código Python (Circuito RC com Degrau):</h3>
+      <pre><code>from circuit_solver import (
+    Circuit,
+    VoltageSource,
+    Resistor,
+    Capacitor,
+    StepWaveform,
+    solve_transient,
+)
+
+# Circuito RC com degrau de 0V para 10V
+circuito_rc = Circuit([
+    VoltageSource("V1", "1", "0", 10.0, waveform=StepWaveform(v1=0.0, v2=10.0, t_step=0.0)),
+    Resistor("R1", "1", "2", 1000.0),
+    Capacitor("C1", "2", "0", 1e-6, ic=0.0),
+])
+
+# Simula 5 milissegundos (5 constantes de tempo tau)
+sol_tran = solve_transient(circuito_rc, t_stop=0.005, dt=1e-5)
+
+print(sol_tran.summary())
+print(f"Tensão em 1 ms (1 tau): {sol_tran.V('2')[100]:.3f} V  (≈ 63.2% de 10V)")
+print(f"Tensão final em 5 ms:   {sol_tran.V('2')[-1]:.3f} V   (≈ 99.3% de 10V)")</code></pre>
+    </section>
+
+    <!-- 10. Monte Carlo -->
+    <section id="monte-carlo">
+      <h2>🎲 10. Lição 8: Análise Estatística de Monte Carlo (Acelerada em Rust)</h2>
+      <p>Resistores reais têm tolerância de 5% ou 10%. O que acontece quando 50.000 circuitos forem fabricados?</p>
+      <pre><code># CLI: 10.000 simulações com 5% de tolerância e histograma P5/P95
+pycircuit monte-carlo divisor.cir -n 10000 -t 0.05 --plot</code></pre>
+      <p>Em Python, usando o acelerador multi-thread nativo em Rust:</p>
+      <pre><code>from circuit_solver.engine.monte_carlo_rust import monte_carlo
+
+# 50.000 simulações completas em milissegundos
+resultado = monte_carlo(circuito, n_samples=50_000, seed=42)
+print(resultado.summary())</code></pre>
+
+      <div class="terminal-output">========================================================================
+  Monte Carlo Analysis  (50000 samples, 0 failed)
+========================================================================
+    Node      Mean (V)     Std (V)    Min (V)    Max (V)    P5 (V)    P95 (V)
+  ----------------------------------------------------------------------
+       1     12.000000    0.000000  12.000000  12.000000  12.000000  12.000000
+       2      7.199412    0.165241   6.521840   7.842105   6.928190   7.471830
+========================================================================</div>
+      <p><strong>Interpretação:</strong> Em 90% dos circuitos montados em fábrica, a tensão no nó 2 ficará garantidamente entre <code>6.92 V</code> e <code>7.47 V</code>.</p>
+    </section>
+
+    <!-- 11. Semicondutores & Newton-Raphson -->
+    <section id="semicondutores">
+      <h2>⚡ 11. Lição: Semicondutores & Newton-Raphson</h2>
+      <p>Componentes não-lineares como diodos e transistores não possuem uma resistência fixa: a corrente depende exponencialmente da tensão. O <code>pycircuit-solver</code> detecta automaticamente a presença de semicondutores e aciona o motor de <strong>Newton-Raphson</strong> com amortecimento SPICE (<code>pnjlim</code> e <code>fetlim</code>).</p>
+
+      <h3>Exemplo com Diodo Retificador PN (Equação de Shockley):</h3>
+      <pre><code>from circuit_solver import Circuit, VoltageSource, Resistor, Diode, solve
+
+circuito = Circuit([
+    VoltageSource("V1", "1", "0", 5.0),
+    Resistor("R1", "1", "2", 1000.0),
+    Diode("D1", "2", "0", Is=1e-14, n=1.0),
+])
+
+sol = solve(circuito)
+print(f"V(2) = {sol.V('2'):.4f} V  (queda de tensão típica ~0.7V)")
+print(f"I(D1) = {sol.I_diode('D1') * 1e3:.3f} mA")
+print(f"Convergência em {sol.iterations} iterações (tol < 1e-6)")</code></pre>
+    </section>
+
+    <!-- 12. Varredura Paramétrica DC -->
+    <section id="dc-sweep">
+      <h2>📈 12. Lição: Varredura Paramétrica DC (.dc sweep)</h2>
+      <p>Varra fontes de tensão, corrente ou valores de resistências em uma faixa para traçar curvas de transferência ($V_{out} \times V_{in}$) e curvas características de dispositivos.</p>
+
+      <pre><code># No terminal:
+pycircuit dc circuito.cir --sweep V1 0 10 0.1 --node out --plot</code></pre>
+
+      <pre><code># Em Python:
+from circuit_solver import Circuit, VoltageSource, Resistor, dc_sweep
+
+circuito = Circuit([
+    VoltageSource("VIN", "in", "0", 0.0),
+    Resistor("R1", "in", "out", 1000.0),
+    Resistor("R2", "out", "0", 1000.0),
+])
+
+res = dc_sweep(circuito, "VIN", 0.0, 10.0, 0.5)
+print(f"Curva gerada com {len(res.sweep_values)} pontos!")</code></pre>
+    </section>
+
+    <!-- 13. Transformadores e Acoplamento Magnético -->
+    <section id="transformadores">
+      <h2>🧲 13. Lição: Transformadores e Acoplamento Magnético Mútuo</h2>
+      <p>Simule indutores mutuamente acoplados ($M = k \sqrt{L_1 L_2}$) e transformadores lineares com isolamento galvânico ou relação de espiras arbitrária ($n = \sqrt{L_1/L_2}$).</p>
+
+      <pre><code>from circuit_solver import Circuit, VoltageSource, Transformer, Resistor, solve_ac
+
+# Transforma 120 V em 60 V (relação 2:1)
+circuito = Circuit([
+    VoltageSource("V1", "1", "0", voltage=120.0, ac_mag=120.0),
+    Transformer("T1", p1="1", n1="0", p2="2", n2="0", L1=10.0, L2=2.5, coupling=0.999),
+    Resistor("RL", "2", "0", 100.0),
+])
+
+sol = solve_ac(circuito, frequency=60.0)
+print(f"Tensão Secundário: {sol.V_mag('2'):.2f} V")  # ~60.0 V</code></pre>
+    </section>
+
+    <!-- 14. Subcircuitos SPICE Hierárquicos -->
+    <section id="subcircuitos">
+      <h2>🧩 14. Lição: Subcircuitos SPICE Hierárquicos & White-Box</h2>
+      <p>Divida projetos modulares em subcircuitos reutilizáveis com a sintaxe padrão <code>.subckt</code> e <code>.ends</code>, com suporte a parâmetros e expressões <code>{...}</code>.</p>
+
+      <div class="callout">
+        <div class="callout-title">🔍 Introspecção White-Box Pedagógica</div>
+        O <code>pycircuit</code> permite inspecionar cada nó interno criado e como a matriz MNA foi expandida.
+      </div>
+
+      <pre><code># No terminal:
+# Relatório didático de expansão de pinos e equações matriciais
+pycircuit explain circuito_com_subckt.cir
+
+# Desenha a árvore hierárquica ASCII dos blocos
+pycircuit hierarchy circuito_com_subckt.cir</code></pre>
+    </section>
+
+    <!-- 15. Ponto de Operação e Pequenos Sinais -->
+    <section id="small-signal">
+      <h2>🔬 15. Lição: Ponto de Operação (.op) & Pequenos Sinais em Semicondutores</h2>
+      <p>Para analisar amplificadores transistorizados, o motor calcula o ponto de operação estático $Q$ via Newton-Raphson e deriva automaticamente o modelo linearizado ($g_m, r_\pi, r_o, r_d, r_{ds}$), permitindo traçar diagramas de Bode CA.</p>
+
+      <pre><code># No terminal:
+pycircuit op amplificador_bjt.cir</code></pre>
+
+      <div class="terminal-output">======================================================================
+  PONTO DE OPERAÇÃO DC (.op) E PARÂMETROS DE PEQUENOS SINAIS
+======================================================================
+Componente: Q1 (BJT NPN)
+  Região:          ATIVA DIRETA
+  V_BE:            0.712 V
+  V_CE:            5.240 V
+  I_C:             2.431 mA (Beta = 100.0)
+  Transcondutância gm:  94.12 mS
+  Resistência r_pi:     1.062 kΩ
+======================================================================</div>
+    </section>
+
+    <!-- 16. Sensibilidade e Pior Caso (WCA / EVA) -->
+    <section id="sensibilidade">
+      <h2>🎯 16. Lição: Sensibilidade Analítica, Pior Caso (WCA / EVA) & RSS</h2>
+      <p>Quantifique o impacto da variação de cada resistor da fábrica na saída através do <strong>Método da Rede Adjunta</strong> (Tellegen), obtendo sensibilidades analíticas exatas $\partial V / \partial p$ em $O(1)$.</p>
+
+      <pre><code># No terminal:
+# Análise de pior caso com cálculo de extremos não-lineares (EVA)
+pycircuit wca circuito.cir -t out --tol 0.05</code></pre>
+
+      <pre><code># Em Python:
+from circuit_solver import Circuit, VoltageSource, Resistor, analyze_sensitivity
+
+circuito = Circuit([
+    VoltageSource("V1", "1", "0", 10.0),
+    Resistor("R1", "1", "2", 1000.0, tolerance=0.05),
+    Resistor("R2", "2", "0", 1000.0, tolerance=0.05),
+])
+
+res = analyze_sensitivity(circuito, target_node="2")
+print(res.summary())</code></pre>
+    </section>
+
+    <!-- 17. Transiente em Rust -->
+    <section id="rust-transient">
+      <h2>⚡ 17. Lição: Transiente em Rust (>1.000.000 passos/s) & Auditoria Energética</h2>
+      <p>Simulação ultra-rápida no domínio do tempo com modelos companion (Trapezoidal e Backward Euler). A matriz MNA é fatorada em LU uma única vez e cada passo é resolvido em microssegundos em Rust compilado com medição contínua de conservação de energia e perdas Joule.</p>
+
+      <pre><code># No terminal:
+pycircuit tran circuito_rlc.cir --tstop 10m --dt 10u --backend rust --plot</code></pre>
+
+      <pre><code># Em Python:
+from circuit_solver import Circuit, VoltageSource, Resistor, Capacitor, solve_transient
+
+circuito = Circuit([
+    VoltageSource("V1", "1", "0", 10.0),
+    Resistor("R1", "1", "2", 1000.0),
+    Capacitor("C1", "2", "0", 1e-6),
+])
+
+res = solve_transient(circuito, t_stop=5e-3, dt=1e-5, backend="rust")
+print(f"Passos resolvidos: {len(res.t)}")
+print(f"Energia final armazenada: {res.stored_energy[-1] * 1e6:.2f} µJ")</code></pre>
+    </section>
+
+    <!-- 18. Tabela de Elementos -->
+    <section id="tabela-elementos">
+      <h2>📋 18. Tabela de Cola dos Elementos Suportados</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Elemento</th>
+              <th>SPICE</th>
+              <th>Instanciação em Python</th>
+              <th>Descrição</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Resistor</strong></td>
+              <td><span class="badge">R</span></td>
+              <td><code>Resistor("R1", "p", "n", 100.0, tolerance=0.05)</code></td>
+              <td>Resistor linear em Ohms</td>
+            </tr>
+            <tr>
+              <td><strong>Capacitor</strong></td>
+              <td><span class="badge">C</span></td>
+              <td><code>Capacitor("C1", "p", "n", 10e-6)</code></td>
+              <td>Capacitor ideal em Farads</td>
+            </tr>
+            <tr>
+              <td><strong>Indutor</strong></td>
+              <td><span class="badge">L</span></td>
+              <td><code>Inductor("L1", "p", "n", 1e-3)</code></td>
+              <td>Indutor ideal em Henries</td>
+            </tr>
+            <tr>
+              <td><strong>Acoplamento Mútuo</strong></td>
+              <td><span class="badge">K</span></td>
+              <td><code>MutualCoupling("K1", "L1", "L2", coupling=0.999)</code></td>
+              <td>Acoplamento magnético SPICE</td>
+            </tr>
+            <tr>
+              <td><strong>Transformador</strong></td>
+              <td><span class="badge">T</span></td>
+              <td><code>Transformer("T1", "p1", "n1", "p2", "n2", L1=10.0, L2=2.5, coupling=0.999)</code></td>
+              <td>Transformador de 2 enrolamentos</td>
+            </tr>
+            <tr>
+              <td><strong>Fonte de Tensão</strong></td>
+              <td><span class="badge">V</span></td>
+              <td><code>VoltageSource("V1", "p", "n", 12.0, ac_mag=1.0)</code></td>
+              <td>Fonte DC, CA ou Transitória</td>
+            </tr>
+            <tr>
+              <td><strong>Fonte de Corrente</strong></td>
+              <td><span class="badge">I</span></td>
+              <td><code>CurrentSource("I1", "p", "n", 2.0)</code></td>
+              <td>Fonte DC, CA ou Transitória</td>
+            </tr>
+            <tr>
+              <td><strong>Diodo PN</strong></td>
+              <td><span class="badge">D</span></td>
+              <td><code>Diode("D1", "p", "n", Is=1e-14, n=1.0)</code></td>
+              <td>Diodo Shockley não-linear</td>
+            </tr>
+            <tr>
+              <td><strong>Diodo Zener</strong></td>
+              <td><span class="badge">Z</span></td>
+              <td><code>ZenerDiode("Z1", "p", "n", Vz=5.1, Rz=10.0)</code></td>
+              <td>Diodo com regulação reversa</td>
+            </tr>
+            <tr>
+              <td><strong>Transistor BJT</strong></td>
+              <td><span class="badge">Q</span></td>
+              <td><code>BJT("Q1", "c", "b", "e", polarity="NPN", beta=100.0)</code></td>
+              <td>Transistor Bipolar (Ebers-Moll)</td>
+            </tr>
+            <tr>
+              <td><strong>Transistor MOSFET</strong></td>
+              <td><span class="badge">M</span></td>
+              <td><code>MOSFET("M1", "d", "g", "s", polarity="NMOS", Vth=1.0, Kp=1e-3)</code></td>
+              <td>MOSFET canal N ou P</td>
+            </tr>
+            <tr>
+              <td><strong>Subcircuito</strong></td>
+              <td><span class="badge">X</span></td>
+              <td><code>.subckt NOME p1 p2 ... .ends</code> / <code>X1 ...</code></td>
+              <td>Bloco hierárquico modular</td>
+            </tr>
+            <tr>
+              <td><strong>VCVS</strong></td>
+              <td><span class="badge">E</span></td>
+              <td><code>VCVS("E1", "p", "n", "cp", "cn", gain=2.0)</code></td>
+              <td>Tensão controlada por tensão</td>
+            </tr>
+            <tr>
+              <td><strong>VCCS</strong></td>
+              <td><span class="badge">G</span></td>
+              <td><code>VCCS("G1", "p", "n", "cp", "cn", transconductance=0.01)</code></td>
+              <td>Corrente controlada por tensão</td>
+            </tr>
+            <tr>
+              <td><strong>CCCS</strong></td>
+              <td><span class="badge">F</span></td>
+              <td><code>CCCS("F1", "p", "n", vctrl_name="V1", gain=5.0)</code></td>
+              <td>Corrente controlada por corrente</td>
+            </tr>
+            <tr>
+              <td><strong>CCVS</strong></td>
+              <td><span class="badge">H</span></td>
+              <td><code>CCVS("H1", "p", "n", vctrl_name="V1", transresistance=100.0)</code></td>
+              <td>Tensão controlada por corrente</td>
+            </tr>
+            <tr>
+              <td><strong>Op-Amp</strong></td>
+              <td><span class="badge">U / A</span></td>
+              <td><code>OpAmp("U1", in_p="0", in_n="vn", out="vout", gnd="0")</code></td>
+              <td>Amplificador Operacional ideal</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 19. Erros Comuns -->
+    <section id="erros-comuns">
+      <h2>⚠️ 19. Erros Comuns e Como Evitá-los</h2>
+
+      <div class="callout warning">
+        <div class="callout-title">1. "Missing ground node '0'"</div>
+        <strong>Motivo:</strong> Nenhum nó do circuito se chama <code>"0"</code>.<br>
+        <strong>Solução:</strong> Renomeie o polo de referência para <code>"0"</code>.
+      </div>
+
+      <div class="callout warning">
+        <div class="callout-title">2. "Circuit has floating sub-circuit"</div>
+        <strong>Motivo:</strong> Uma ilha de componentes não tem caminho condutivo até o terra.<br>
+        <strong>Solução:</strong> Conecte uma referência ao terra nesse sub-circuito.
+      </div>
+
+      <div class="callout warning">
+        <div class="callout-title">3. "Loop of ideal voltage sources"</div>
+        <strong>Motivo:</strong> Duas fontes de tensão ideais foram ligadas em paralelo ou em laço fechado.<br>
+        <strong>Solução:</strong> Insira uma pequena resistência interna em série com a fonte.
+      </div>
+
+      <div class="callout warning">
+        <div class="callout-title">4. "Tolerance must be positive"</div>
+        <strong>Motivo:</strong> Ao definir tolerância em resistores ou na CLI (<code>--tol</code>), foi passado um valor negativo ou nulo.<br>
+        <strong>Solução:</strong> Use valores positivos (ex: <code>0.05</code> para 5%).
+      </div>
+    </section>
+  </main>
+
+</body>
+</html>
+

@@ -407,7 +407,166 @@ K1 L1 L2 0.1118
 
 ---
 
-## 📋 14. Tabela de Cola dos Elementos Suportados
+---
+
+## 🧩 14. Lição: Subcircuitos SPICE Hierárquicos (`.subckt` / `.ends`) e Introspecção White-Box
+
+Em projetos modulares e no SPICE industrial, não escrevemos circuitos gigantes em um arquivo plano: dividimos o sistema em **subcircuitos reutilizáveis** (blocos como amplificadores, filtros, portas lógicas e pontes H).
+
+### Exemplo em Netlist SPICE:
+```spice
+* Circuito principal com bloco divisor modular
+.subckt DIVISOR in out gnd PARAMS: R1=10k R2=10k
+R1 in out {R1}
+R2 out gnd {R2}
+.ends
+
+V1 vin 0 DC 12
+X1 vin vmid 0 DIVISOR PARAMS: R1=4k7 R2=10k
+.end
+```
+
+### Usando no Terminal (CLI) com Visão Didática White-Box:
+O `pycircuit` não é uma caixa preta! Ele explica detalhadamente como o subcircuito foi expandido:
+
+```bash
+# Relatório White-Box: mostra o mapeamento de pinos e o impacto na matriz MNA
+pycircuit explain circuito_com_subckt.cir
+
+# Desenha a árvore hierárquica ASCII dos blocos
+pycircuit hierarchy circuito_com_subckt.cir
+```
+
+### Macromodelos Prontos de Livros-Texto:
+O `pycircuit` já traz uma biblioteca embutida (`circuit_solver.core.builtin_library`):
+* `OPAMP_741`: Macromodelo com ganho finito $A_{OL}=200.000$, $R_{in}=2\text{ M}\Omega$ e $R_{out}=75\ \Omega$.
+* `CMOS_INVERTER`: Inversor digital CMOS complementar.
+* `SALLEN_KEY_LP`: Filtro ativo passa-baixas de 2ª ordem.
+
+---
+
+## 🔬 15. Lição: Ponto de Operação DC (`.op`) e Pequenos Sinais em Semicondutores
+
+Ao simular amplificadores com transistores e diodos, você precisa saber:
+1. **Onde o componente está polarizado?** (Ponto de Operação Quiescente $Q$: $I_D, I_C, V_{BE}, V_{CE}, V_{GS}$).
+2. **Qual é o modelo linear incremental?** ($r_d$ para diodo; $g_m, r_\pi, r_o$ para BJT; $g_m, r_{ds}$ para MOSFET).
+3. **Qual é a resposta em frequência CA do amplificador?** (Diagrama de Bode com capacitor de acoplamento e ganho).
+
+### No Terminal (CLI):
+```bash
+# Executa o cálculo .op e exibe a tabela didática completa do ponto Q
+pycircuit op amplificador_ce.cir
+```
+
+### O que o terminal imprime:
+```text
+======================================================================
+  PONTO DE OPERAÇÃO DC (.op) E PARÂMETROS DE PEQUENOS SINAIS
+======================================================================
+Componente: Q1 (BJT NPN)
+  Região:          ATIVA DIRETA
+  V_BE:            0.712 V
+  V_CE:            5.240 V
+  I_B:             24.31 uA
+  I_C:             2.431 mA (Beta = 100.0)
+  Transcondutância gm:  94.12 mS
+  Resistência r_pi:     1.062 kΩ
+  Resistência r_o:      43.28 kΩ (VA = 100V)
+----------------------------------------------------------------------
+```
+
+---
+
+## 🎯 16. Lição: Análise de Sensibilidade Analítica (Rede Adjunta), Pior Caso (Worst-Case / EVA) e RSS
+
+Na bancada real, nenhum resistor de $10\text{ k}\Omega$ tem exatamente $10.000\ \Omega$; ele varia dentro da tolerância ($\pm 1\%, \pm 5\%, \pm 10\%$).
+
+Como saber:
+* **Qual componente tem maior impacto na tensão de saída?** (Sensibilidade Relativa Normalizada $S_p^{V}$ em %/%).
+* **Qual é a tensão mínima e máxima absoluta possível?** (Worst-Case / EVA — *Extreme Value Analysis*).
+* **Qual é a dispersão estatística realista a $3\sigma$?** (Fórmula RSS — *Root-Sum-Square*).
+
+### No Terminal (CLI):
+```bash
+# Análise completa de pior caso no nó 'out'
+pycircuit sensitivity circuito.cir --target out
+
+# Ou com o alias rápido 'wca' com 5% de tolerância
+pycircuit wca circuito.cir -t out --tol 0.05
+```
+
+### No Python:
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, analyze_sensitivity
+
+circuito = Circuit([
+    VoltageSource("V1", "1", "0", 10.0),
+    Resistor("R1", "1", "2", 1000.0, tolerance=0.05),
+    Resistor("R2", "2", "0", 1000.0, tolerance=0.05),
+])
+
+res = analyze_sensitivity(circuito, target_node="2")
+print(res.summary())
+```
+
+### O que você verá no relatório de Pareto:
+```text
+======================================================================
+  ANÁLISE DE SENSIBILIDADE E PIOR CASO (WCA / EVA) - Nó '2'
+  Tensão Nominal: 5.0000 V
+======================================================================
+1. RANKING DE PARETO DE SENSIBILIDADE:
+  Componente   dV/dp         Sensibilidade Normalizada (%/%)   Tolerância
+  -----------------------------------------------------------------------
+  R2           +0.00250 V/Ω  +0.5000 %/%                       ±5.0 %
+  R1           -0.00250 V/Ω  -0.5000 %/%                       ±5.0 %
+  V1           +0.50000 V/V  +1.0000 %/%                       ±0.0 %
+
+2. EXCURSÃO DE PIOR CASO (WORST-CASE):
+  * EVA Exato (Extreme Value):  4.7619 V a 5.2381 V (Δ = ±0.2381 V)
+  * Taylor Linear (1ª Ordem):   4.7500 V a 5.2500 V (Δ = ±0.2500 V)
+  * Dispersão Estatística RSS:  4.8232 V a 5.1768 V (Δ = ±0.1768 V)
+======================================================================
+```
+
+---
+
+## ⚡ 17. Lição: Motor Transiente em Rust de Ultra Alta Performance (>1.000.000 passos/s) com Auditoria Energética
+
+Para simular milhares de passos temporais (ex: 50.000 pontos em circuitos osciladores ou pulsados), rodar o loop em Python puro pode levar alguns segundos.
+
+O `pycircuit` inclui um **motor transiente nativo em Rust** (`rust_core`), integrado via PyO3:
+1. **Fatoração LU Única:** Fatora a matriz MNA invariante uma única vez em $O(N^3)$.
+2. **Resolução Ultra-Rápida:** Cada passo temporal é resolvido em $O(N^2)$ por substituição em código Rust compilado.
+3. **Auditoria de Conservação de Energia:** Mede em tempo real:
+   * Energia armazenada em capacitores e indutores: $E(t) = \frac{1}{2} C v^2 + \frac{1}{2} L i^2$.
+   * Potência dissipada em calor por efeito Joule nos resistores: $P_{\text{diss}}(t) = v_R^2 / R$.
+
+### No Terminal (CLI):
+```bash
+# Executa o transiente usando o backend em Rust com gráfico
+pycircuit tran circuito_rlc.cir --tstop 10m --dt 10u --backend rust --plot
+```
+
+### No Python:
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, Capacitor, solve_transient
+
+circuito = Circuit([
+    VoltageSource("V1", "1", "0", 10.0),
+    Resistor("R1", "1", "2", 1000.0),
+    Capacitor("C1", "2", "0", 1e-6),
+])
+
+# Simula com backend 'rust' (ou 'auto' para detecção transparente)
+res = solve_transient(circuito, t_stop=5e-3, dt=1e-5, backend="rust")
+print(f"Passos resolvidos: {len(res.t)}")
+print(f"Energia final armazenada no capacitor: {res.stored_energy[-1] * 1e6:.2f} µJ")
+```
+
+---
+
+## 📋 18. Tabela de Cola dos Elementos Suportados
 
 | Elemento | Letra SPICE | Como Instanciar em Python | O que faz |
 | :--- | :---: | :--- | :--- |
@@ -422,6 +581,7 @@ K1 L1 L2 0.1118
 | **Diodo Zener** | `Z` | `ZenerDiode("Z1", node_p="0", node_n="2", Vz=5.1, Rz=10.0)` | Diodo com regulação por breakdown |
 | **Transistor BJT** | `Q` | `BJT("Q1", "c", "b", "e", polarity="NPN", beta=100.0)` | Transistor Bipolar (Ebers-Moll) |
 | **Transistor MOSFET**| `M` | `MOSFET("M1", "d", "g", "s", polarity="NMOS", Vth=1.0, Kp=1e-3)` | MOSFET canal N ou P |
+| **Subcircuito SPICE**| `X` | `.subckt NOME p1 p2 ... .ends` / instanciado via `X1 ...` | Bloco hierárquico modular reutilizável |
 | **VCVS** | `E` | `VCVS("E1", "p", "n", "cp", "cn", gain=2.0)` | Tensão controlada por tensão |
 | **VCCS** | `G` | `VCCS("G1", "p", "n", "cp", "cn", transconductance=0.01)` | Corrente controlada por tensão |
 | **CCCS** | `F` | `CCCS("F1", "p", "n", vctrl_name="V1", gain=5.0)` | Corrente controlada por corrente |
@@ -430,7 +590,7 @@ K1 L1 L2 0.1118
 
 ---
 
-## ⚠️ 15. Erros Comuns e Como Evitá-los
+## ⚠️ 19. Erros Comuns e Como Evitá-los
 
 1. **"Missing ground node '0'":**
    * *Motivo:* Nenhum nó do circuito se chama `"0"`.
@@ -444,7 +604,12 @@ K1 L1 L2 0.1118
    * *Motivo:* Duas fontes de tensão ideais foram ligadas em paralelo direto, ou em um anel fechado violando a Lei das Malhas de Kirchhoff.
    * *Solução:* Adicione a resistência interna das fontes (ex: $0.1\,\Omega$) em série.
 
+4. **"Tolerance must be positive":**
+   * *Motivo:* Ao definir tolerância em resistores ou na CLI (`--tol`), foi passado um valor negativo ou nulo.
+   * *Solução:* Use valores positivos (ex: `0.05` para 5%).
+
 ---
 
 Agora você está pronto para simular qualquer circuito com precisão acadêmica e performance profissional! 🚀
+
 

@@ -1,54 +1,82 @@
 """
 test_textbook_benchmarks.py — Validação Analítica Rigorosa Multi-Livros
 
-Validação comparativa contra soluções analíticas e problemas canônicos dos principais
-manuais mundiais de Engenharia Elétrica:
-1. Alexander & Sadiku — Fundamentos de Circuitos Elétricos (5ª Edição)
+Validação comparativa contra soluções analíticas e problemas canônicos dos 7 principais
+manuais mundiais de Engenharia Elétrica e Eletrônica:
+1. Alexander & Sadiku — Fundamentos de Circuitos Elétricos (5ª/6ª Edição)
 2. Nilsson & Riedel — Circuitos Elétricos (8ª/10ª Edição)
 3. Boylestad — Introdução à Análise de Circuitos (12ª/13ª Edição)
 4. Dorf & Svoboda — Introdução aos Circuitos Elétricos (8ª/9ª Edição)
+5. Sedra & Smith — Microelectronic Circuits / Microeletrônica (7ª/8ª Edição)
+6. Hayt, Kemmerly & Durbin — Engineering Circuit Analysis / Análise de Circuitos em Engenharia (8ª/9ª Edição)
+7. Irwin & Nelms — Basic Engineering Circuit Analysis / Análise Básica de Circuitos (11ª/12ª Edição)
 
 Problemas Cobertos:
 -------------------
 [Alexander & Sadiku]
-1. Cap. 2 (Ex. 2.8)  — Divisor de Tensão e Corrente com Associação Série-Paralelo
-2. Cap. 2 (Ex. 2.15) — Transformação Delta-Estrela (Δ-Y) em Circuito em Ponte
-3. Cap. 3 (Ex. 3.1)  — Análise Nodal com Múltiplas Fontes de Corrente
-4. Cap. 3 (Ex. 3.2)  — Análise Nodal com Fonte Dependente (VCCS)
-5. Cap. 3 (Ex. 3.3)  — Análise Nodal com Supernó (Fonte de Tensão entre nós não-terra)
-6. Cap. 4 (Ex. 4.8)  — Teorema de Thévenin, Norton e Máxima Transferência de Potência
-7. Cap. 4 (Ex. 4.9)  — Equivalente de Thévenin com Fonte Controlada (VCVS)
-8. Cap. 5 (Ex. 5.2)  — Amplificador Operacional Inversor
-9. Cap. 5 (Ex. 5.5)  — Amplificador Operacional Não-Inversor
-10. Cap. 5 (Ex. 5.6) — Amplificador Somador Inversor
-11. Cap. 5 (Ex. 5.7) — Amplificador Diferencial (Subtrator)
-12. Cap. 9 (Ex. 9.9) — Circuito RLC Série em Regime Permanente CA
+1. Cap. 2 (Ex. 2.8)   — Divisor de Tensão e Corrente com Associação Série-Paralelo
+2. Cap. 2 (Ex. 2.15)  — Transformação Delta-Estrela (Δ-Y) em Circuito em Ponte
+3. Cap. 3 (Ex. 3.1)   — Análise Nodal com Múltiplas Fontes de Corrente
+4. Cap. 3 (Ex. 3.2)   — Análise Nodal com Fonte Dependente (VCCS)
+5. Cap. 3 (Ex. 3.3)   — Análise Nodal com Supernó (Fonte de Tensão entre nós não-terra)
+6. Cap. 4 (Ex. 4.8)   — Teorema de Thévenin, Norton e Máxima Transferência de Potência
+7. Cap. 4 (Ex. 4.9)   — Equivalente de Thévenin com Fonte Controlada (VCVS)
+8. Cap. 5 (Ex. 5.2)   — Amplificador Operacional Inversor
+9. Cap. 5 (Ex. 5.5)   — Amplificador Operacional Não-Inversor
+10. Cap. 5 (Ex. 5.6)  — Amplificador Somador Inversor
+11. Cap. 5 (Ex. 5.7)  — Amplificador Diferencial (Subtrator)
+12. Cap. 9 (Ex. 9.9)  — Circuito RLC Série em Regime Permanente CA
+13. Cap. 6 (Ex. 6.13) — Amplificador Integrador Ideal com Op-Amp e Resposta Transitória
+14. Cap. 13 (Ex. 13.1)— Acoplamento Magnético Mútuo e Transformador Linear
 
 [Nilsson & Riedel]
-13. Cap. 4 (Ex. 4.10) — Equivalente de Thévenin com Fonte Controlada
-14. Cap. 5 (Ex. 5.3)  — Amplificador Somador Inversor com Pesos Arbitrários
-15. Cap. 9 (Ex. 9.6)  — Análise Fasorial de Circuito RLC Paralelo em Alta Frequência
+15. Cap. 4 (Ex. 4.10) — Equivalente de Thévenin com Fonte Controlada
+16. Cap. 5 (Ex. 5.3)  — Amplificador Somador Inversor com Pesos Arbitrários
+17. Cap. 9 (Ex. 9.6)  — Análise Fasorial de Circuito RLC Paralelo em Alta Frequência
 
 [Boylestad]
-16. Cap. 9 — Teorema de Millman para Múltiplas Baterias com Resistência Interna
-17. Cap. 8 — Rede Escada R-2R de 4 Bits para Conversor Digital-Analógico (D/A)
-18. Cap. 6 — Ponte de Wheatstone em Equilíbrio (Condição de Nulidade do Detector)
+18. Cap. 9 — Teorema de Millman para Múltiplas Baterias com Resistência Interna
+19. Cap. 8 — Rede Escada R-2R de 4 Bits para Conversor Digital-Analógico (D/A)
+20. Cap. 6 — Ponte de Wheatstone em Equilíbrio (Condição de Nulidade do Detector)
 
 [Dorf & Svoboda]
-19. Cap. 6 — Amplificador Inversor com Rede em T na Realimentação (Alto Ganho)
-20. Cap. 6 — Buffer Seguidor de Tensão e Isolamento de Carga com Alta Impedância
+21. Cap. 6 — Amplificador Inversor com Rede em T na Realimentação (Alto Ganho)
+22. Cap. 6 — Buffer Seguidor de Tensão e Isolamento de Carga com Alta Impedância
+
+[Sedra & Smith]
+23. Cap. 4 — Diodo Retificador PN e Ponto de Operação Quiescente Q com Reta de Carga
+24. Cap. 6 — Polarização de BJT NPN por Divisor de Tensão com 4 Resistores na Região Ativa
+25. Cap. 5 — Transistor MOSFET NMOS Operando em Saturação com Carga de Dreno
+
+[Hayt, Kemmerly & Durbin]
+26. Cap. 5 — Princípio e Teorema da Superposição com Três Fontes Independentes
+27. Cap. 7 — Resposta Transitória ao Degrau de Circuito RC de Primeira Ordem
+28. Cap. 9 — Circuito RLC Série em Ressonância e Fator de Qualidade Q
+
+[Irwin & Nelms]
+29. Cap. 4 — Amplificador de Instrumentação (INA) Clássico de 3 Op-Amps
+30. Cap. 5 — Ponte de Wheatstone Desbalanceada e Equivalente de Thévenin Exato
+31. Cap. 3 — Fonte Controlada por Corrente CCCS (F) em Análise Nodal Modificada
 """
 
+import math
 import numpy as np
 import pytest
 
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (
+    BJT,
+    CCCS,
+    CCVS,
+    MOSFET,
     Capacitor,
     CurrentSource,
+    Diode,
     Inductor,
+    MutualCoupling,
     OpAmp,
     Resistor,
+    Transformer,
     VCCS,
     VCVS,
     VoltageSource,
@@ -56,6 +84,7 @@ from circuit_solver.core.elements import (
 from circuit_solver.engine.ac import solve_ac
 from circuit_solver.engine.mna import solve
 from circuit_solver.engine.thevenin import thevenin_norton
+from circuit_solver.engine.transient import solve_transient
 
 
 # ===========================================================================
@@ -712,3 +741,414 @@ def test_dorf_svoboda_cap06_voltage_follower_impedance_isolation():
     assert sol.V("out") == pytest.approx(5.0)  # Reprodução integral 1:1
     assert sol.I_resistor("RL") == pytest.approx(100e-3)  # 100 mA
     assert sol.I_resistor("Rs") == pytest.approx(0.0, abs=1e-12)
+
+
+# ===========================================================================
+# 5. SEDRA & SMITH — Microelectronic Circuits (7ª/8ª Edição)
+# ===========================================================================
+
+def test_sedra_smith_cap04_diode_operating_point():
+    """Sedra & Smith, Microelectronic Circuits, Capítulo 4 (Diodes):
+    Ponto de Operação Quiescente (Q-point) de Diodo com Reta de Carga.
+    Circuito com fonte DC Vs = 5.0 V, resistor limitador R = 1.0 kΩ
+    e diodo de junção PN com parâmetros de modelo de Shockley:
+      Is = 1e-14 A, n = 1.0, Vt = 25.85 mV (T = 300 K).
+
+    Equação transcendental não-linear resolvida por Newton-Raphson:
+      Vs - R * ID - VD = 0, com ID = Is * (exp(VD / (n*Vt)) - 1).
+
+    Solução analítica e de simulação:
+      VD ≈ 0.6925 V (tensão direta típica de junção de silício)
+      ID = (5.0 - 0.6925) / 1000 ≈ 4.3075 mA
+      PD = VD * ID ≈ 2.983 mW
+    """
+    elements = [
+        VoltageSource("Vs", "1", "0", 5.0),
+        Resistor("R1", "1", "2", 1000.0),
+        Diode("D1", "2", "0", Is=1e-14, n=1.0, Vt=0.02585),
+    ]
+    circuit = Circuit(elements)
+    sol = solve(circuit)
+
+    assert sol.V("1") == pytest.approx(5.0)
+    assert 0.68 < sol.V("2") < 0.71
+    vd = sol.V("2")
+    id_expected = (5.0 - vd) / 1000.0
+    assert sol.I_diode("D1") == pytest.approx(id_expected, rel=1e-5)
+    assert sol.iterations <= 15
+
+
+def test_sedra_smith_cap06_bjt_four_resistor_bias_network():
+    """Sedra & Smith, Capítulo 6 (BJT):
+    Rede clássica de polarização de transistor BJT NPN por divisor de tensão (4 resistores).
+    Esta é a topologia canônica universal para estabilização térmica do ponto Q:
+      Vcc = 12.0 V
+      R1 = 47 kΩ (vcc para base 'b')
+      R2 = 10 kΩ (base 'b' para terra '0')
+      Rc = 3.3 kΩ (vcc para coletor 'c')
+      Re = 1.0 kΩ (emissor 'e' para terra '0')
+      Transistor NPN com ganho de corrente beta = 100.
+
+    Análise analítica de Thévenin na base:
+      Vth_base = 12 * (10 / (47 + 10)) = 120 / 57 ≈ 2.105 V
+      Rth_base = 47k // 10k ≈ 8.246 kΩ
+      Considerando V_BE ≈ 0.70 V:
+      IB = (Vth - V_BE) / [Rth + (beta + 1) * Re]
+         = (2.105 - 0.70) / [8246 + 101 * 1000] ≈ 1.405 / 109246 ≈ 12.86 μA
+      IC = beta * IB ≈ 1.286 mA
+      IE = (beta + 1) * IB ≈ 1.299 mA
+      VE = IE * Re ≈ 1.30 V
+      VC = Vcc - IC * Rc = 12 - 1.286m * 3.3k ≈ 7.75 V
+      VCE = VC - VE ≈ 6.45 V > 0.2 V  -->  Região Ativa Direta (Forward Active)
+    """
+    elements = [
+        VoltageSource("VCC", "vcc", "0", 12.0),
+        Resistor("R1", "vcc", "b", 47_000.0),
+        Resistor("R2", "b", "0", 10_000.0),
+        Resistor("RC", "vcc", "c", 3_300.0),
+        Resistor("RE", "e", "0", 1_000.0),
+        BJT("Q1", "c", "b", "e", polarity="NPN", beta=100.0),
+    ]
+    circuit = Circuit(elements)
+    sol = solve(circuit)
+
+    assert 7.4 < sol.V("c") < 7.8
+    assert 1.9 < sol.V("b") < 2.1
+    assert 1.2 < sol.V("e") < 1.4
+    # Garantia de operação na região ativa direta:
+    v_ce = sol.V("c") - sol.V("e")
+    assert v_ce > 5.0
+
+
+def test_sedra_smith_cap05_nmos_common_source_saturation():
+    """Sedra & Smith, Capítulo 5 (MOSFET):
+    Amplificador Fonte Comum NMOS polarizado rigorosamente na Região de Saturação.
+    Equação quadrática canônica:
+      ID = 0.5 * Kp * (VGS - Vth)^2 * (1 + lambda * VDS)
+
+    Circuito:
+      VDD = 10.0 V, VG = 3.5 V, VS = 0 V (terra) -> VGS = 3.5 V
+      Parâmetros do NMOS: Vth = 1.5 V, Kp = 5e-4 A/V^2, lambda = 0
+      Tensão de overdrive: Vov = VGS - Vth = 3.5 - 1.5 = 2.0 V
+      Corrente teórica de dreno:
+        ID = 0.5 * 5e-4 * (2.0)^2 = 0.5 * 5e-4 * 4.0 = 1.0 mA
+      Resistor de carga de dreno: RD = 2.5 kΩ
+      Tensão esperada no dreno:
+        VD = VDD - ID * RD = 10.0 - 1.0m * 2.5k = 7.500 V
+      Condição de saturação:
+        VDS = 7.5 V >= Vov = 2.0 V  (Saturação confirmada com ampla margem!)
+    """
+    elements = [
+        VoltageSource("VDD", "vdd", "0", 10.0),
+        VoltageSource("VG", "g", "0", 3.5),
+        Resistor("RD", "vdd", "d", 2_500.0),
+        MOSFET("M1", "d", "g", "0", polarity="NMOS", Vth=1.5, Kp=5e-4, lambda_param=0.0),
+    ]
+    circuit = Circuit(elements)
+    sol = solve(circuit)
+
+    assert sol.V("vdd") == pytest.approx(10.0)
+    assert sol.V("g") == pytest.approx(3.5)
+    assert sol.V("d") == pytest.approx(7.5, abs=1e-4)
+
+
+# ===========================================================================
+# 6. HAYT, KEMMERLY & DURBIN — Engineering Circuit Analysis (8ª/9ª Edição)
+# ===========================================================================
+
+def test_hayt_cap05_superposition_theorem():
+    """Hayt, Kemmerly & Durbin, Engineering Circuit Analysis, Capítulo 5:
+    Teorema e Princípio da Superposição Linear em rede com 3 fontes independentes.
+    Topologia da rede conectada ao nó central 2:
+      - Ramo 1: Fonte V1 = 24 V em série com R1 = 8 Ω
+      - Ramo 2: Fonte V2 = 12 V em série com R2 = 4 Ω
+      - Ramo 3: Fonte de corrente I1 = 3 A injetada diretamente no nó 2
+      - Ramo 4: Resistor de terminação R3 = 8 Ω ligado ao terra 0
+
+    Equação Nodal exata no nó 2:
+      (V2 - 24)/8 + (V2 - 12)/4 + V2/8 - 3 = 0
+      Multiplicando por 8:
+      (V2 - 24) + 2*(V2 - 12) + V2 - 24 = 0
+      4*V2 - 72 = 0  ==>  V2 = 18.000 V
+
+    Decomposição analítica termo a termo por Superposição:
+      1. Apenas V1 ativa (V2=0, I1=0): V2_V1 = 24 * (8//4 / (8 + 8//4)) = 24 * (8/32) = 6.0 V
+      2. Apenas V2 ativa (V1=0, I1=0): V2_V2 = 12 * (8//8 / (4 + 8//8)) = 12 * (4/8)  = 6.0 V
+      3. Apenas I1 ativa (V1=0, V2=0): V2_I1 = 3 A * (8 // 4 // 8) = 3 A * 2.0 Ω      = 6.0 V
+      Soma total: V2 = 6.0 + 6.0 + 6.0 = 18.000 V.
+    """
+    elements = [
+        VoltageSource("V1", "1", "0", 24.0),
+        Resistor("R1", "1", "2", 8.0),
+        VoltageSource("V2", "3", "0", 12.0),
+        Resistor("R2", "3", "2", 4.0),
+        CurrentSource("I1", "2", "0", 3.0),
+        Resistor("R3", "2", "0", 8.0),
+    ]
+    circuit = Circuit(elements)
+    sol = solve(circuit)
+
+    assert sol.V("2") == pytest.approx(18.0)
+    assert sol.I_resistor("R1") == pytest.approx((24.0 - 18.0) / 8.0)  # 0.75 A
+    assert sol.I_resistor("R2") == pytest.approx((12.0 - 18.0) / 4.0)  # -1.5 A
+    assert sol.I_resistor("R3") == pytest.approx(18.0 / 8.0)           # 2.25 A
+
+
+def test_hayt_cap07_first_order_rc_transient_step_response():
+    """Hayt, Kemmerly & Durbin, Capítulo 7:
+    Resposta Transitória ao Degrau de Circuito RC de Primeira Ordem.
+    Fonte de degrau Vs = 10.0 V aplicada em t = 0 a R = 1.0 kΩ e C = 1.0 μF.
+    Constante de tempo: tau = R * C = 1000 * 1e-6 = 1.0 ms.
+
+    Solução analítica fechada da equação diferencial:
+      v_C(t) = Vs * (1 - exp(-t / tau))
+
+    Marcos canônicos temporais da curva de carga:
+      - Em t = 1*tau (1.0 ms): v_C = 10 * (1 - e^-1) ≈ 6.3212 V (63.2% da carga)
+      - Em t = 2*tau (2.0 ms): v_C = 10 * (1 - e^-2) ≈ 8.6466 V (86.5% da carga)
+      - Em t = 5*tau (5.0 ms): v_C = 10 * (1 - e^-5) ≈ 9.9326 V (>99.3%, regime permanente)
+    """
+    elements = [
+        VoltageSource("Vs", "1", "0", 10.0),
+        Resistor("R1", "1", "2", 1000.0),
+        Capacitor("C1", "2", "0", 1.0e-6, ic=0.0),
+    ]
+    circuit = Circuit(elements)
+    # Simulação transitória com uic=True (condição inicial nula)
+    dt = 1e-5
+    res = solve_transient(circuit, t_stop=5.0e-3, dt=dt, uic=True)
+
+    idx_1ms = int(round(1.0e-3 / dt))
+    idx_2ms = int(round(2.0e-3 / dt))
+    idx_5ms = int(round(5.0e-3 / dt))
+
+    v_1ms_analytical = 10.0 * (1.0 - math.exp(-1.0))
+    v_2ms_analytical = 10.0 * (1.0 - math.exp(-2.0))
+    v_5ms_analytical = 10.0 * (1.0 - math.exp(-5.0))
+
+    assert res.V("2")[idx_1ms] == pytest.approx(v_1ms_analytical, rel=0.005)
+    assert res.V("2")[idx_2ms] == pytest.approx(v_2ms_analytical, rel=0.005)
+    assert res.V("2")[idx_5ms] == pytest.approx(v_5ms_analytical, rel=0.005)
+
+
+def test_hayt_cap09_series_rlc_resonance_and_quality_factor():
+    """Hayt, Kemmerly & Durbin, Capítulo 9:
+    Circuito RLC Série em Frequência de Ressonância e Fator de Qualidade Q.
+    Valores:
+      R = 10.0 Ω, L = 0.1 H, C = 10.0 μF
+      Fonte CA: Vs = 10.0 ∠ 0° V
+
+    Parâmetros analíticos de ressonância:
+      omega_0 = 1 / sqrt(L * C) = 1 / sqrt(0.1 * 10e-6) = 1000 rad/s
+      f_0 = omega_0 / (2 * pi) ≈ 159.155 Hz
+      Impedância indutiva: XL = omega_0 * L = 1000 * 0.1 = 100.0 Ω
+      Impedância capacitiva: XC = 1 / (omega_0 * C) = 1 / (1000 * 10e-6) = 100.0 Ω
+      Impedância total série na ressonância:
+        Z = R + j(XL - XC) = 10.0 + j(100 - 100) = 10.0 Ω (puramente resistiva!)
+      Fator de qualidade: Q = omega_0 * L / R = 100 / 10 = 10.0
+
+    Consequências analíticas:
+      - Corrente máxima de pico: I = Vs / R = 10 V / 10 Ω = 1.000 ∠ 0° A
+      - Tensão no capacitor: V_C = I * (-j XC) = 1.0 * (-j100) = 100.0 ∠ -90° V
+        (Amplificação de tensão reativa de Q vezes: V_C = Q * Vs = 10 * 10 = 100 V!)
+    """
+    f0 = 1000.0 / (2.0 * math.pi)
+    elements = [
+        VoltageSource("Vs", "1", "0", voltage=10.0, ac_mag=10.0, ac_phase=0.0),
+        Resistor("R", "1", "2", 10.0),
+        Inductor("L", "2", "3", 0.1),
+        Capacitor("C", "3", "0", 10.0e-6),
+    ]
+    circuit = Circuit(elements)
+    sol = solve_ac(circuit, frequency=f0)
+
+    # Corrente de pico em ressonância = 1.0 A
+    assert abs(sol.I_resistor("R")) == pytest.approx(1.0, rel=1e-4)
+    # Tensão amplificada sobre o capacitor = 100.0 V
+    assert sol.V_mag("3") == pytest.approx(100.0, rel=1e-3)
+
+
+# ===========================================================================
+# 7. IRWIN & NELMS — Basic Engineering Circuit Analysis (11ª/12ª Edição)
+# ===========================================================================
+
+def test_irwin_cap04_three_opamp_instrumentation_amplifier():
+    """Irwin & Nelms, Basic Engineering Circuit Analysis, Capítulo 4:
+    Amplificador de Instrumentação (INA) Clássico de Três Op-Amps.
+    Topologia de padrão industrial para aquisição de sinais médicos e industriais:
+      - Dois amplificadores não-inversores de entrada desacoplados com resistor de ganho RG.
+      - Um estágio subtrator diferencial na saída com resistores casados.
+
+    Parâmetros:
+      R1a = R1b = 20.0 kΩ, RG = 1.0 kΩ
+      R2a = R2b = 10.0 kΩ, R3a = R3b = 10.0 kΩ
+      Entradas diferenciais com modo comum:
+        V1 = 1.05 V (entrada não-inversora)
+        V2 = 1.00 V (entrada inversora)
+        Tensão diferencial: Vd = V1 - V2 = +50.0 mV
+        Tensão de modo comum: Vcm = 1.025 V
+
+    Fórmula Analítica do Ganho Diferencial (Irwin & Nelms):
+      Ad = (1 + 2*R1 / RG) * (R3 / R2)
+         = (1 + 2*20k / 1k) * (10k / 10k) = (1 + 40) * 1.0 = 41.0
+      Tensão esperada na saída:
+        Vout = Ad * (V1 - V2) = 41.0 * 0.050 V = 2.050 V
+      A componente de modo comum Vcm é idealmente rejeitada (CMRR = infinito).
+    """
+    elements = [
+        VoltageSource("V1", "in1", "0", 1.05),
+        VoltageSource("V2", "in2", "0", 1.00),
+        # Estágio de entrada com buffers cruzados
+        OpAmp("U1", in_p="in1", in_n="vn1", out="vo1", gnd="0"),
+        Resistor("R1a", "vo1", "vn1", 20_000.0),
+        Resistor("RG", "vn1", "vn2", 1_000.0),
+        Resistor("R1b", "vn2", "vo2", 20_000.0),
+        OpAmp("U2", in_p="in2", in_n="vn2", out="vo2", gnd="0"),
+        # Estágio de saída subtrator diferencial
+        Resistor("R2a", "vo2", "vn3", 10_000.0),
+        Resistor("R3a", "vn3", "out", 10_000.0),
+        Resistor("R2b", "vo1", "vp3", 10_000.0),
+        Resistor("R3b", "vp3", "0", 10_000.0),
+        OpAmp("U3", in_p="vp3", in_n="vn3", out="out", gnd="0"),
+    ]
+    circuit = Circuit(elements)
+    sol = solve(circuit)
+
+    assert sol.V("in1") == pytest.approx(1.05)
+    assert sol.V("in2") == pytest.approx(1.00)
+    assert sol.V("out") == pytest.approx(2.050)
+
+
+def test_irwin_cap05_unbalanced_bridge_thevenin_equivalent():
+    """Irwin & Nelms, Capítulo 5:
+    Ponte de Wheatstone Desbalanceada e Extração Exata do Equivalente de Thévenin.
+    Circuito alimentado por Vs = 12.0 V:
+      Ramo esquerdo: R1 = 100 Ω (Vs para 'a'), R2 = 200 Ω ('a' para terra 0)
+      Ramo direito:  R3 = 300 Ω (Vs para 'b'), R4 = 400 Ω ('b' para terra 0)
+
+    Cálculo analítico entre os nós a e b:
+      Va = 12 * (200 / (100 + 200)) = 12 * (2/3) = 8.000 V
+      Vb = 12 * (400 / (300 + 400)) = 12 * (4/7) = 48/7 ≈ 6.857143 V
+      Vth = Va - Vb = 8 - 48/7 = 8/7 ≈ 1.142857 V
+
+    Resistência de Thévenin vista de 'a' e 'b' (fonte desativada em curto):
+      Rth = (R1 // R2) + (R3 // R4)
+          = (100*200 / 300) + (300*400 / 700)
+          = 200/3 + 1200/7 = (1400 + 3600) / 21 = 5000 / 21 ≈ 238.0952 Ω
+    """
+    elements = [
+        VoltageSource("Vs", "1", "0", 12.0),
+        Resistor("R1", "1", "a", 100.0),
+        Resistor("R2", "a", "0", 200.0),
+        Resistor("R3", "1", "b", 300.0),
+        Resistor("R4", "b", "0", 400.0),
+    ]
+    circuit = Circuit(elements)
+    th = thevenin_norton(circuit, node_a="a", node_b="b")
+
+    assert th.V_th == pytest.approx(8.0 / 7.0, rel=1e-6)
+    assert th.R_th == pytest.approx(5000.0 / 21.0, rel=1e-6)
+
+
+def test_irwin_cap03_cccs_dependent_source_nodal_analysis():
+    """Irwin & Nelms, Capítulo 3:
+    Análise Nodal Modificada com Fonte Controlada por Corrente (CCCS - Elemento F SPICE).
+    Circuito:
+      - Fonte independente Vs = 10.0 V conectada ao resistor R1 = 5.0 Ω.
+      - Corrente gerada pela fonte de controle: I(Vs) = Vs / R1 = 10 / 5 = 2.0 A saindo do terminal positivo.
+      - Fonte controlada por corrente CCCS F1: ganho beta = 4.0, bombeia corrente no nó 2.
+      - Resistor de carga R2 = 10.0 Ω ligado entre o nó 2 e o terra.
+
+    Solução analítica:
+      Corrente injetada por F1: I_F1 = 4.0 * I(Vs) = 4.0 * 2.0 A = 8.0 A
+      Tensão gerada sobre a carga: V(2) = I_F1 * R2 = 8.0 A * 10.0 Ω = 80.000 V
+    """
+    elements = [
+        VoltageSource("Vs", "1", "0", 10.0),
+        Resistor("R1", "1", "0", 5.0),
+        CCCS("F1", "2", "0", vctrl_name="Vs", gain=4.0),
+        Resistor("R2", "2", "0", 10.0),
+    ]
+    circuit = Circuit(elements)
+    sol = solve(circuit)
+
+    assert sol.V("1") == pytest.approx(10.0)
+    assert sol.V("2") == pytest.approx(80.0)
+    assert sol.I_resistor("R2") == pytest.approx(8.0)
+
+
+# ===========================================================================
+# 8. ALEXANDER & SADIKU — Casos Avançados (Capítulos 6 e 13)
+# ===========================================================================
+
+def test_sadiku_cap06_ideal_opamp_integrator_transient():
+    """Alexander & Sadiku, Capítulo 6:
+    Amplificador Integrador Ideal com Amplificador Operacional e Capacitor no Feedback.
+    Equação constitutiva ideal de transferência no tempo:
+      v_out(t) = - 1 / (R * C) * integral_0^t v_in(tau) dtau + v_out(0)
+
+    Valores:
+      v_in(t) = constante de +2.0 V (degrau DC)
+      R = 10.0 kΩ, C = 1.0 μF  -->  tau = R * C = 10.0 ms
+      Taxa de integração linear analítica (rampa descendente):
+        dv_out / dt = - Vin / (R * C) = - 2.0 / 0.01 = -200.0 V/s
+
+    Em t = 5.0 ms:
+      v_out(5 ms) = - 200.0 V/s * 0.005 s = - 1.000 V
+    """
+    elements = [
+        VoltageSource("Vin", "in", "0", 2.0),
+        Resistor("R", "in", "vn", 10_000.0),
+        Capacitor("C", "vn", "out", 1.0e-6, ic=0.0),
+        OpAmp("U1", in_p="0", in_n="vn", out="out", gnd="0"),
+    ]
+    circuit = Circuit(elements)
+    dt = 1e-5
+    res = solve_transient(circuit, t_stop=5.0e-3, dt=dt, uic=True)
+
+    assert res.V("out")[-1] == pytest.approx(-1.000, abs=0.005)
+
+
+def test_sadiku_cap13_linear_transformer_mutual_coupling():
+    """Alexander & Sadiku, Capítulo 13 (Exemplo 13.1):
+    Circuito com Bobinas Acopladas Magneticamente em Regime Permanente Senoidal CA.
+    Parâmetros:
+      Vs = 12 ∠ 0° V a omega = 1.0 rad/s (f = 1 / (2*pi) Hz)
+      Primário: R1 = 4.0 Ω, L1 = 8.0 H
+      Secundário: L2 = 10.0 H, C1 = 0.5 F (XC = -j2 Ω), R2 = 5.0 Ω
+      Acoplamento mútuo: M = 1.0 H ==> k = 1 / sqrt(8 * 10) ≈ 0.1118034
+
+    Solução analítica exata de Sadiku:
+      Corrente fasorial de malha primária:   I1 = 1.350 ∠ -62.85° A
+      Corrente fasorial de malha secundária: I2 = 0.1431 ∠ -30.85° A
+    """
+    omega = 1.0
+    f = omega / (2.0 * math.pi)
+    k = 1.0 / math.sqrt(8.0 * 10.0)
+
+    elements = [
+        VoltageSource("V1", "1", "0", voltage=12.0, ac_mag=12.0, ac_phase=0.0),
+        Resistor("R1", "1", "2", 4.0),
+        Inductor("L1", "2", "0", 8.0),
+        Inductor("L2", "3", "0", 10.0),
+        Capacitor("C1", "3", "4", 0.5),
+        Resistor("R2", "4", "0", 5.0),
+        MutualCoupling("K1", "L1", "L2", k),
+    ]
+    circuit = Circuit(elements)
+    sol = solve_ac(circuit, frequency=f)
+
+    # Corrente do primário (em R1)
+    i1 = sol.I_resistor("R1")
+    i1_mag = abs(i1)
+    i1_phase = float(np.degrees(np.angle(i1)))
+    assert i1_mag == pytest.approx(1.350, abs=0.01)
+    assert i1_phase == pytest.approx(-62.85, abs=0.2)
+
+    # Corrente do secundário (em R2)
+    i2 = sol.I_resistor("R2")
+    i2_mag = abs(i2)
+    i2_phase = float(np.degrees(np.angle(i2)))
+    assert i2_mag == pytest.approx(0.1431, abs=0.005)
+    assert i2_phase == pytest.approx(-30.85, abs=0.3)
+

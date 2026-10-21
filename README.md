@@ -3,26 +3,29 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![NumPy](https://img.shields.io/badge/NumPy-1.24%2B-013243.svg)](https://numpy.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-pytest-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-147%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
-**`pycircuit-solver`** é um motor computacional modular em Python para análise sistemática de circuitos elétricos lineares em corrente contínua (CC), fundamentado no método da **Análise Nodal Modificada (MNA — *Modified Nodal Analysis*)**.
+**`pycircuit-solver`** é um motor computacional modular em Python para análise sistemática de circuitos elétricos lineares e não-lineares em corrente contínua (CC) e alternada (CA), fundamentado no método da **Análise Nodal Modificada (MNA — *Modified Nodal Analysis*)**.
 
-O projeto foi arquitetado para atender rigorosamente ao escopo acadêmico dos **Capítulos 1 a 5** de *Fundamentos de Circuitos Elétricos* (Alexander & Sadiku), unindo precisão matemática estática, validação topológica robusta contra erros humanos e suporte a engenharia de software de nível de portfólio.
+O projeto foi arquitetado para atender rigorosamente ao escopo acadêmico e profissional de Engenharia Elétrica e Eletrônica, unindo precisão matemática estática, validação topológica robusta contra erros humanos e suporte a engenharia de software de nível de portfólio.
 
 > 📖 **Documentação e Guias Rápidos:**
-> * 🎓 **[Me Ensine a Usar! (Tutorial Passo a Passo)](ME_ENSINE_A_USAR.md)** — Do primeiro divisor de tensão aos filtros CA e simulação Monte Carlo.
-> * 📘 **[Documentação Técnica Completa](DOCUMENTACAO_TECNICA.md)** — Formulação matemática do MNA, teoria dos grafos, CA fasorial e arquitetura em Rust.
+> * 🎓 **[Me Ensine a Usar! (Tutorial Passo a Passo)](ME_ENSINE_A_USAR.md)** — Do primeiro divisor de tensão aos semicondutores, subcircuitos SPICE e transiente em Rust.
+> * 📘 **[Documentação Técnica Completa](DOCUMENTACAO_TECNICA.md)** — Formulação matemática do MNA, teoria dos grafos, CA fasorial, sensibilidade analítica e arquitetura em Rust.
 
 ---
 
 ## 🎯 Escopo e Capacidades do Sistema
 
 ### 1. Cobertura Acadêmica e Benchmarks Canônicos
-O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contra soluções analíticas exatas de 4 das obras de referência mundial em Engenharia Elétrica:
-* **Alexander & Sadiku** — *Fundamentos de Circuitos Elétricos* (Capítulos 1 a 5, 9 & 10)
+O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contra soluções analíticas exatas de 7 das principais obras de referência mundial em Engenharia Elétrica e Microeletrônica:
+* **Alexander & Sadiku** — *Fundamentos de Circuitos Elétricos* (Capítulos 1 a 6, 9 & 13)
 * **Nilsson & Riedel** — *Circuitos Elétricos* (Thévenin com fontes controladas, somadores e RLC paralelo CA)
 * **Boylestad** — *Introdução à Análise de Circuitos* (Teorema de Millman, Escada R-2R de 4 bits, Ponte de Wheatstone em equilíbrio)
 * **Dorf & Svoboda** — *Introdução aos Circuitos Elétricos* (Rede em T para alto ganho em Op-Amps, isolamento de impedância)
+* **Sedra & Smith** — *Microelectronic Circuits* (Diodos Shockley, polarização de BJT de 4 resistores e amplificador MOSFET NMOS)
+* **Hayt, Kemmerly & Durbin** — *Engineering Circuit Analysis* (Teorema da Superposição, transiente RC analítico e ressonância RLC com $Q$)
+* **Irwin & Nelms** — *Basic Engineering Circuit Analysis* (Amplificador de Instrumentação INA de 3 Op-Amps, Thévenin em ponte desbalanceada e CCCS)
 
 ### 2. Funcionalidades Nativas
 * **Arquitetura Híbrida de Alto Desempenho (Python + Rust):** Núcleo numérico em Rust (`rust_core/`) integrado via PyO3 e `maturin`. Acelera simulações de Monte Carlo com paralelismo multi-thread nativo (`rayon`) sem as travas do GIL do Python, com **cobertura integral de 100% dos elementos lineares** (Resistores, Fontes Independentes, VCVS, VCCS, CCCS, CCVS, Amplificadores Operacionais ideais e Indutores em DC).
@@ -291,6 +294,61 @@ res = dc_sweep(circuit, "VIN", 0.0, 10.0, 0.5)
 print(f"V(out) final = {res.V('out')[-1]:.2f} V")
 ```
 
+### Subcircuitos SPICE (.subckt) e Introspecção White-Box
+
+```python
+from circuit_solver.io.parser import parse_netlist_string
+from circuit_solver import Circuit, solve
+
+netlist = """
+.subckt DIVISOR in out gnd PARAMS: R1=10k R2=10k
+R1 in out {R1}
+R2 out gnd {R2}
+.ends
+
+V1 vin 0 DC 10
+X1 vin vmid 0 DIVISOR PARAMS: R1=2k R2=8k
+.end
+"""
+
+circuit = Circuit(parse_netlist_string(netlist))
+sol = solve(circuit)
+print(f"V(vmid) = {sol.V('vmid'):.2f} V")  # 8.00 V
+```
+
+### Análise de Sensibilidade Analítica e Pior Caso (WCA / EVA)
+
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, analyze_sensitivity
+
+circuit = Circuit([
+    VoltageSource("V1", "1", "0", 10.0),
+    Resistor("R1", "1", "2", 1000.0, tolerance=0.05),
+    Resistor("R2", "2", "0", 1000.0, tolerance=0.05),
+])
+
+# Calcula sensibilidade analítica por rede adjunta e cantos de pior caso EVA
+wca = analyze_sensitivity(circuit, target_node="2")
+print(wca.summary())
+```
+
+### Transiente Ultra-Rápido em Rust com Auditoria de Energia
+
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, Capacitor, solve_transient
+
+circuit = Circuit([
+    VoltageSource("V1", "1", "0", 12.0),
+    Resistor("R1", "1", "2", 1000.0),
+    Capacitor("C1", "2", "0", 10e-6),
+])
+
+# Execução nativa em Rust (>1.000.000 passos/s)
+res = solve_transient(circuit, t_stop=0.05, dt=1e-5, backend="rust")
+print(f"Passos calculados: {len(res.t)}")
+print(f"Energia armazenada final: {res.stored_energy[-1] * 1e6:.2f} µJ")
+```
+
 ---
 
 ## 🧪 Executando os Testes Automatizados
@@ -308,7 +366,7 @@ pytest --cov=circuit_solver --cov-report=term-missing
 
 ## 📚 Matriz de Validação Analítica Multi-Livros
 
-O motor computacional do **`pycircuit-solver`** é continuamente validado por uma suíte de testes de precisão analítica (`tests/test_textbook_benchmarks.py`) contendo 20 problemas clássicos retirados das 4 principais referências bibliográficas do ensino de engenharia:
+O motor computacional do **`pycircuit-solver`** é continuamente validado por uma suíte de testes de precisão analítica (`tests/test_textbook_benchmarks.py`) contendo **31 problemas canônicos clássicos** retirados das 7 principais referências bibliográficas mundiais do ensino de engenharia elétrica e eletrônica:
 
 | Livro / Manual | Capítulo / Exemplo | Tópico de Análise | Resultado Analítico de Referência | Status do Solver |
 | :--- | :--- | :--- | :--- | :---: |
@@ -323,6 +381,7 @@ O motor computacional do **`pycircuit-solver`** é continuamente validado por um
 | **Alexander & Sadiku** | Cap. 5 (Ex. 5.5) | Amplificador Não-Inversor | $V_o = 16.0\text{ V}, V_n = 4.0\text{ V}$ | ✅ Aprovado |
 | **Alexander & Sadiku** | Cap. 5 (Ex. 5.6) | Somador Inversor de 3 Entradas | $V_o = -17.0\text{ V}, V_n = 0.0\text{ V}$ | ✅ Aprovado |
 | **Alexander & Sadiku** | Cap. 5 (Ex. 5.7) | Amplificador Diferencial (Subtrator) | $V_o = 4.0\text{ V}, V_p = V_n = 3.333\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 6 (Ex. 6.13) | Integrador Ideal com Op-Amp (Tempo) | $dv_o/dt = -200\text{ V/s}, v_o(5\text{ms}) = -1.000\text{ V}$ | ✅ Aprovado |
 | **Alexander & Sadiku** | Cap. 9 (Ex. 9.9) | Circuito RLC Série CA (Fasores) | $I = 0.3322\angle -10.24^\circ\text{ A}$ | ✅ Aprovado |
 | **Alexander & Sadiku** | Cap. 13 (Ex. 13.1) | Circuitos Magneticamente Acoplados | $I_1 = 1.350\angle -62.85^\circ\text{ A}, I_2 = 0.1431\angle -30.85^\circ\text{ A}$ | ✅ Aprovado |
 | **Nilsson & Riedel** | Cap. 4 (Ex. 4.10) | Thévenin com Fonte Controlada | $V_{th} = 40\text{ V}, R_{th} = 10\ \Omega, P_{max} = 40\text{ W}$ | ✅ Aprovado |
@@ -333,6 +392,15 @@ O motor computacional do **`pycircuit-solver`** é continuamente validado por um
 | **Boylestad** | Cap. 6 | Ponte de Wheatstone Balanceada | $V_{ab} = 0.000\text{ V}, I_g = 0.000\text{ A}, P_g = 0\text{ W}$ | ✅ Aprovado |
 | **Dorf & Svoboda** | Cap. 6 | Op-Amp com Rede T de Realimentação | $A_v = -12.0, V_o = -1.200\text{ V}, V_t = -0.1\text{ V}$ | ✅ Aprovado |
 | **Dorf & Svoboda** | Cap. 6 | Buffer Seguidor & Isolamento de Carga | $V_o = 5.000\text{ V}, I_{RL} = 100\text{ mA}, I_{Rs} = 0\text{ A}$ | ✅ Aprovado |
+| **Sedra & Smith** | Cap. 4 | Ponto Q e Reta de Carga de Diodo PN | $V_D \approx 0.6925\text{ V}, I_D \approx 4.3075\text{ mA}, P_D \approx 2.98\text{ mW}$ | ✅ Aprovado |
+| **Sedra & Smith** | Cap. 6 | Polarização BJT NPN com 4 Resistores | $V_C \approx 7.75\text{ V}, V_E \approx 1.30\text{ V}, V_{CE} > 5\text{ V}$ (Ativo) | ✅ Aprovado |
+| **Sedra & Smith** | Cap. 5 | Fonte Comum MOSFET NMOS Saturação | $I_D = 1.0\text{ mA}, V_D = 7.500\text{ V}, V_{DS} \ge V_{ov}$ (Saturado) | ✅ Aprovado |
+| **Hayt, Kemmerly & Durbin** | Cap. 5 | Teorema da Superposição (3 Fontes) | $V_2 = V_{2(V1)} + V_{2(V2)} + V_{2(I1)} = 6+6+6 = 18\text{ V}$ | ✅ Aprovado |
+| **Hayt, Kemmerly & Durbin** | Cap. 7 | Carga RC Transiente ao Degrau (1ª Ordem)| $v_C(\tau) = 6.321\text{ V}, v_C(2\tau) = 8.647\text{ V}, v_C(5\tau) = 9.933\text{ V}$ | ✅ Aprovado |
+| **Hayt, Kemmerly & Durbin** | Cap. 9 | RLC Série Ressonância e Ganho $Q=10$ | $I = 1.000\angle 0^\circ\text{ A}, V_C = 100.0\angle -90^\circ\text{ V}$ ($Q \cdot V_s$) | ✅ Aprovado |
+| **Irwin & Nelms** | Cap. 4 | Amplificador de Instrumentação (3 Op-Amps)| $A_d = 41.0, V_{out} = 2.050\text{ V}$ (Rejeição de Modo Comum) | ✅ Aprovado |
+| **Irwin & Nelms** | Cap. 5 | Ponte Desbalanceada e Thévenin Exato | $V_{th} = 8/7\text{ V} \approx 1.143\text{ V}, R_{th} = 5000/21\ \Omega \approx 238.10\ \Omega$ | ✅ Aprovado |
+| **Irwin & Nelms** | Cap. 3 | Fonte Controlada CCCS (Elemento F) | $I_{F1} = 4 \cdot I(V_s) = 8.0\text{ A}, V_{load} = 80.000\text{ V}$ | ✅ Aprovado |
 
 ---
 

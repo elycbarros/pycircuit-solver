@@ -340,63 +340,105 @@ O módulo `circuit_solver.engine.monte_carlo_rust` verifica a disponibilidade do
 pycircuit-solver/
 ├── circuit_solver/
 │   ├── core/
-│   │   ├── elements.py     # Dataclasses de componentes (Resistor, Fontes, OpAmp, etc.)
-│   │   ├── circuit.py      # Gestor de topologia e dicionários de mapeamento nodal
-│   │   ├── validator.py    # Grafos (BFS/DFS), coerência de nós e conversão de unidades
-│   │   └── solution.py     # Encapsulador do vetor solução com Tellegen e métodos V(node)
+│   │   ├── elements.py         # Dataclasses de componentes (R, C, L, V, I, VCVS, VCCS, CCCS, CCVS, OpAmp, Diodos, BJT, MOS, Transformador)
+│   │   ├── circuit.py          # Gestor de topologia e dicionários de mapeamento nodal
+│   │   ├── validator.py        # Grafos (BFS/DFS), coerência de nós, loops ilegais e conversão de unidades
+│   │   ├── solution.py         # Encapsulador do vetor solução com Tellegen e métodos V(node)
+│   │   ├── subcircuit.py       # Expansão hierárquica e introspecção White-Box de subcircuitos
+│   │   └── builtin_library.py  # Macromodelos didáticos embutidos (LM741, CMOS, Sallen-Key)
 │   ├── engine/
-│   │   ├── mna.py          # Montagem matricial MNA e solução linear DC
-│   │   ├── ac.py           # Formulação fasorial em complex128 e resposta em frequência
-│   │   ├── thevenin.py     # Algoritmo de injeção dual de Thévenin/Norton e P_max
-│   │   ├── monte_carlo.py  # Implementação de referência em Python
-│   │   └── monte_carlo_rust.py # Ponte de alta performance para o crate Rust
+│   │   ├── mna.py              # Montagem matricial MNA densa e esparsa e solução linear DC
+│   │   ├── ac.py               # Formulação fasorial em complex128 e resposta em frequência
+│   │   ├── small_signal.py     # Análise CA de pequenos sinais com linearização de semicondutores
+│   │   ├── sensitivity.py      # Análise de Sensibilidade Analítica (Rede Adjunta), WCA e EVA
+│   │   ├── transient.py        # Motor de análise transitória com auto-dispatch para Rust
+│   │   ├── transient_rust.py   # Ponte Python ↔ Rust para simulação transiente ultra-rápida
+│   │   ├── nonlinear.py        # Semicondutores e solver não-linear Newton-Raphson com amortecimento
+│   │   ├── dc_sweep.py         # Varredura paramétrica DC (.dc sweep) de fontes e resistências
+│   │   ├── thevenin.py         # Algoritmo de injeção dual de Thévenin/Norton e P_max
+│   │   ├── monte_carlo.py      # Implementação de referência Monte Carlo em Python puro
+│   │   └── monte_carlo_rust.py # Ponte de alta performance para o crate Rust (Rayon)
 │   ├── io/
-│   │   └── parser.py       # Parser de netlists padrão SPICE com suporte a '+'
+│   │   └── parser.py           # Parser de netlists padrão SPICE (.subckt, .include, PULSE, SIN e '+')
 │   ├── visualization/
-│   │   └── plots.py        # Gráficos de Monte Carlo, Thévenin e Diagramas de Bode
-│   └── cli.py              # Interface CLI (pycircuit solve/thevenin/ac/monte-carlo)
+│   │   └── plots.py            # Gráficos de Monte Carlo, Thévenin, Diagramas de Bode, Transiente e DC Sweep
+│   └── cli.py                  # Interface CLI (solve, thevenin, ac, monte-carlo, tran, op, wca, explain, hierarchy, dc)
 │
-├── rust_core/              # Crate Rust nativo
-│   ├── Cargo.toml          # Dependências: pyo3, rayon, nalgebra, rand_chacha, numpy
+├── rust_core/                  # Crate Rust nativo (PyO3 + Rayon + Faer + Nalgebra)
+│   ├── Cargo.toml              # Dependências de alta performance
 │   └── src/
-│       ├── lib.rs          # Definição do módulo PyO3
-│       ├── types.rs        # Structs sem overhead de strings
-│       ├── mna_core.rs     # Montagem e decomposição LU pura em Rust
-│       └── monte_carlo.rs  # Rayon data-parallel worker
+│       ├── lib.rs              # Definição do módulo PyO3 e exportações Python
+│       ├── types.rs            # Structs pré-resolvidas sem overhead de strings
+│       ├── mna_core.rs         # Montagem e decomposição LU densa e esparsa (Faer)
+│       ├── monte_carlo.rs      # Rayon data-parallel worker para simulação Monte Carlo
+│       └── transient.rs        # Motor de integração implícita transiente (>1M passos/s) com balanço Joule
 │
-└── tests/                  # 68 testes unitários e de integração
+└── tests/                      # Suíte de 136 testes automatizados com pytest
+    ├── test_textbook_benchmarks.py     # 20 benchmarks analíticos canônicos (Sadiku, Nilsson, Boylestad, Dorf)
+    ├── test_sensitivity_wca.py        # Sensibilidade analítica (Rede Adjunta), EVA, Taylor e RSS
+    ├── test_rust_transient.py          # Transiente em Rust, conservação de energia e speedup
+    ├── test_small_signal_ac.py         # Análise de pequenos sinais com Diodos, BJT e MOSFET
+    ├── test_subcircuits.py             # Subcircuitos (.subckt), parâmetros, fórmulas e introspecção
+    ├── test_coupled_inductors.py       # Transformadores e acoplamento magnético mútuo (elemento K)
+    ├── test_nonlinear.py               # Newton-Raphson e semicondutores (Diodo, Zener, BJT, MOS)
+    ├── test_dc_sweep.py                # Varredura paramétrica DC e famílias de curvas características
+    ├── test_transient.py               # Transiente analítico RC, RL, RLC e formas de onda PULSE/SIN
+    ├── test_rust_monte_carlo.py        # Correção, sementes e paralelismo do motor Rust
+    ├── test_sparse_and_rust.py         # MNA esparso (Faer / SciPy) e circuitos gigantes (>1000 nós)
+    ├── test_robustness_edge_cases.py   # Grafos BFS, laços ilegais KVL, R_th=0 e parser
+    ├── test_validator.py               # Validação topológica, terra '0' e sufixos de engenharia
+    ├── test_mna_engine.py              # Motor MNA estático e 4 fontes dependentes
+    ├── test_ac_engine.py               # Análise CA fasorial, filtros e ressonância
+    └── test_cli.py                     # Validação completa de todos os subcomandos da CLI
 ```
 
 ---
 
-## 5. 📊 Matriz de Validação Multi-Livros (68 Testes)
+## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (147 Testes)
 
-A biblioteca é auditada contra exercícios canônicos clássicos com respostas analíticas publicadas:
+A biblioteca é auditada de ponta a ponta por uma suíte de **147 testes automatizados** executados via `pytest`, cobrindo exercícios canônicos clássicos com soluções analíticas exatas publicadas em 7 das maiores referências bibliográficas mundiais da Engenharia Elétrica e Microeletrônica:
 
-1. **Alexander & Sadiku:**
-   * Divisores e reduções série-paralelo (Cap. 2).
-   * Transformação estrela-triângulo ($\Delta - Y$) em ponte (Cap. 2).
-   * Análise nodal com supernós e fontes de corrente (Cap. 3).
-   * Análise com fonte controlada VCCS (Cap. 3).
-   * Teorema de Thévenin com VCVS dependente (Cap. 4).
-   * Circuitos com Op-Amp: Inversor, Não-Inversor, Somador e Subtrator (Cap. 5).
-   * Regime permanente CA fasorial RLC série (Cap. 9).
-2. **Nilsson & Riedel:**
-   * Equivalente de Thévenin com fonte dependente mista (Cap. 4).
-   * Somador inversor com ponderação de ganhos arbitrários (Cap. 5).
-   * Circuito RLC paralelo em alta frequência (Cap. 9).
-3. **Boylestad:**
-   * Teorema de Millman para baterias em paralelo (Cap. 9).
+1. **Alexander & Sadiku (*Fundamentos de Circuitos Elétricos*):**
+   * Divisores e reduções série-paralelo (Cap. 2, Ex. 2.8).
+   * Transformação estrela-triângulo ($\Delta - Y$) em ponte (Cap. 2, Ex. 2.15).
+   * Análise nodal com supernós e fontes de corrente (Cap. 3, Ex. 3.1 & 3.3).
+   * Análise com fonte controlada VCCS (Cap. 3, Ex. 3.2).
+   * Teorema de Thévenin, Norton e Máxima Transferência de Potência (Cap. 4, Ex. 4.8 & 4.9).
+   * Circuitos com Op-Amp: Inversor, Não-Inversor, Somador e Subtrator (Cap. 5, Ex. 5.2, 5.5, 5.6 & 5.7).
+   * Regime permanente CA fasorial RLC série (Cap. 9, Ex. 9.9).
+   * Amplificador integrador ideal com Op-Amp e resposta à rampa no tempo (Cap. 6, Ex. 6.13).
+   * Circuitos magneticamente acoplados e transformador linear (Cap. 13, Ex. 13.1).
+2. **Nilsson & Riedel (*Circuitos Elétricos*):**
+   * Equivalente de Thévenin com fonte dependente mista (Cap. 4, Ex. 4.10).
+   * Somador inversor com ponderação de ganhos arbitrários (Cap. 5, Ex. 5.3).
+   * Circuito RLC paralelo em regime CA de alta frequência (Cap. 9, Ex. 9.6).
+3. **Boylestad (*Introdução à Análise de Circuitos*):**
+   * Teorema de Millman para baterias em paralelo com resistência interna (Cap. 9).
    * Escada R-2R de 4 bits para conversão Digital/Analógica (Cap. 8).
    * Ponte de Wheatstone em condição de equilíbrio de nulo (Cap. 6).
-4. **Dorf & Svoboda:**
-   * Op-Amp com rede de realimentação em T (Cap. 6).
-   * Buffer seguidor de tensão e isolamento de impedância (Cap. 6).
-5. **Casos Degenerados e Robustez:**
-   * Redes com $R_{th} = 0\ \Omega$ (fonte ideal nos terminais).
-   * Detecção de loops fechados de fontes de tensão.
-   * Isolamento de subcircuitos sem terra via BFS.
-   * Parser com linhas longas quebradas com o operador SPICE `+`.
+4. **Dorf & Svoboda (*Introdução aos Circuitos Elétricos*):**
+   * Op-Amp com rede de realimentação em T para altíssimo ganho estável (Cap. 6).
+   * Buffer seguidor de tensão e isolamento de impedância de carga (Cap. 6).
+5. **Sedra & Smith (*Microelectronic Circuits / Microeletrônica*):**
+   * Ponto Q e reta de carga DC de diodo retificador PN com modelo de Shockley (Cap. 4).
+   * Polarização de transistor BJT NPN por divisor de 4 resistores na região ativa (Cap. 6).
+   * Amplificador Fonte Comum MOSFET NMOS operando na saturação quadrática (Cap. 5).
+6. **Hayt, Kemmerly & Durbin (*Engineering Circuit Analysis / Análise de Circuitos em Engenharia*):**
+   * Teorema e Princípio da Superposição com 3 fontes independentes simultâneas (Cap. 5).
+   * Resposta transitória analítica de carga RC de 1ª ordem ($v_C(t) = V_s(1 - e^{-t/\tau})$) (Cap. 7).
+   * Circuito RLC série em ressonância e fator de qualidade $Q$ com ganho de tensão reativa (Cap. 9).
+7. **Irwin & Nelms (*Basic Engineering Circuit Analysis / Análise Básica de Circuitos*):**
+   * Amplificador de Instrumentação (INA) de 3 Op-Amps com ganho diferencial calibrado (Cap. 4).
+   * Ponte de Wheatstone desbalanceada e extração exata do equivalente de Thévenin (Cap. 5).
+   * Análise Nodal Modificada com fonte de corrente controlada por corrente (CCCS - Elemento F) (Cap. 3).
+8. **Casos Degenerados, Não-Lineares e Robustez:**
+   * Redes com $R_{th} = 0\ \Omega$ (fonte ideal nos terminais) e $R_{th} \to \infty$ (circuito aberto).
+   * Detecção topológica de loops fechados de fontes ideais de tensão via DFS.
+   * Isolamento e poda de subcircuitos desconectados sem caminho para o terra via BFS.
+   * Tolerância do parser SPICE para quebras de linha com o operador `+`.
+   * Convergência quadrática estrita de Newton-Raphson com semicondutores.
+   * Conservação de energia e balanço de Joule em regime transitório.
+   * Análise de sensibilidade exata por rede adjunta versus diferenças finitas.
 
 ---
 
@@ -432,17 +474,36 @@ print(mc.summary())
 
 ### 6.2 Via Linha de Comando (CLI)
 ```bash
-# Resolver netlist SPICE
+# Resolver netlist SPICE linear ou não-linear (DC)
 pycircuit solve circuito.cir
 
-# Extrair equivalente de Thévenin
+# Ponto de operação DC (.op) e linearização para pequenos sinais
+pycircuit op amplificador.cir
+
+# Análise de Sensibilidade e Pior Caso (Worst-Case / EVA)
+pycircuit sensitivity circuito.cir --target out
+pycircuit wca circuito.cir -t out --tol 0.05
+
+# Extrair equivalente de Thévenin e Norton com curva de máxima potência
 pycircuit thevenin circuito.cir -a 2 -b 0 --plot
 
-# Análise de Monte Carlo com histograma
+# Análise de Monte Carlo acelerada em Rust com histograma
 pycircuit monte-carlo circuito.cir -n 10000 -t 0.05 --plot
 
 # Resposta em frequência CA (Diagrama de Bode)
 pycircuit ac filtro.cir --sweep 10 100000 100 --node out --plot
+
+# Análise transitória no domínio do tempo (backend Rust de alta velocidade)
+pycircuit tran circuito.cir --tstop 10m --dt 10u --backend rust --plot
+
+# Relatório didático White-Box e matrizes MNA de subcircuitos
+pycircuit explain circuito.cir
+
+# Árvore ASCII de hierarquia de subcircuitos
+pycircuit hierarchy circuito.cir
+
+# Varredura paramétrica DC (.dc sweep)
+pycircuit dc circuito.cir --sweep V1 0 10 0.1 --node out --plot
 ```
 
 ---

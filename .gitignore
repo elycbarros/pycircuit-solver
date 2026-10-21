@@ -47,6 +47,7 @@ Thumbs.db
 *.svg
 *.pdf
 *.html
+!ME_ENSINE_A_USAR.html
 
 # Distribution
 MANIFEST
