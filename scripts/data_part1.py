@@ -210,8 +210,8 @@ I_{total} = \frac{V_s}{R_{eq}} = \frac{120.000\text{ V}}{50/3\ \Omega} = \frac{3
                 lambda s=solve(c): [
                     ("Corrente Total I_tot", 7.200, -s.I_vsource("Vs"), "A"),
                     ("Resistência Equivalente Req", 50.0/3.0, 120.0 / (-s.I_vsource("Vs")), "Ω"),
-                    ("Tensão V(c)", 64.235, s.V("c"), "V"),
-                    ("Tensão V(d)", 67.059, s.V("d"), "V"),
+                    ("Tensão V(c)", 72.0, s.V("c"), "V"),
+                    ("Tensão V(d)", 72.0, s.V("d"), "V"),
                 ]
             )()
         )()
@@ -223,77 +223,12 @@ I_{total} = \frac{V_s}{R_{eq}} = \frac{120.000\text{ V}}{50/3\ \Omega} = \frac{3
         "chapter": "Capítulo 3 — Exemplo 3.1",
         "title": "Análise Nodal com Múltiplas Fontes de Corrente Independentes",
         "category": "Regime Permanente DC",
-        "enunciado": (
-            "Calcule as tensões de nó $V_1$ e $V_2$ no circuito que possui duas fontes independentes de corrente: "
-            "$I_1 = 5\\text{ A}$ injetando corrente no nó 1, e $I_2 = 10\\text{ A}$ injetando corrente no nó 2. "
-            "Os resistores são $R_1 = 2\\ \\Omega$ (nó 1 ao terra), $R_2 = 4\\ \\Omega$ (nó 2 ao terra) e "
-            "$R_3 = 6\\ \\Omega$ conectando o nó 1 ao nó 2."
-        ),
-        "topologia": [
-            "Fonte de corrente $I_1 = 5\\text{ A}$ fluindo de 0 para o nó 1.",
-            "Fonte de corrente $I_2 = 10\\text{ A}$ fluindo de 0 para o nó 2.",
-            "Resistor $R_1 = 2\\ \\Omega$ entre nó 1 e terra (0). Condutância $G_1 = 0.5\\text{ S}$.",
-            "Resistor $R_2 = 4\\ \\Omega$ entre nó 2 e terra (0). Condutância $G_2 = 0.25\\text{ S}$.",
-            "Resistor $R_3 = 6\\ \\Omega$ entre nó 1 e nó 2. Condutância $G_3 = 1/6\\text{ S}$."
-        ],
-        "deducao": r"""
-<h5>Passo 1: Aplicação da Lei de Kirchhoff das Correntes (LKC) no Nó 1</h5>
-A soma das correntes que entram no nó 1 deve ser igual à soma das que saem:
-\[
-I_1 = i_{R1} + i_{R3} \implies 5 = \frac{V_1}{2} + \frac{V_1 - V_2}{6}
-\]
-Multiplicando toda a equação pelo MMC = 6 para eliminar os denominadores:
-\[
-6 \cdot 5 = 3 V_1 + (V_1 - V_2) \implies 4 V_1 - V_2 = 30 \quad \text{--- (Equação 1)}
-\]
-
-<h5>Passo 2: Aplicação da LKC no Nó 2</h5>
-A soma das correntes que entram no nó 2 é igual às correntes que saem:
-\[
-I_2 + i_{R3} = i_{R2} \implies 10 + \frac{V_1 - V_2}{6} = \frac{V_2}{4}
-\]
-Reorganizando:
-\[
-10 = -\frac{V_1}{6} + V_2 \left(\frac{1}{6} + \frac{1}{4}\right)
-\]
-Multiplicando toda a equação pelo MMC = 12:
-\[
-12 \cdot 10 = -2 V_1 + (2 + 3) V_2 \implies -2 V_1 + 5 V_2 = 120 \quad \text{--- (Equação 2)}
-\]
-
-<h5>Passo 3: Formulação Matricial do MNA</h5>
-\[
-\begin{bmatrix}
-4 & -1 \\
--2 & 5
-\end{bmatrix}
-\begin{bmatrix}
-V_1 \\
-V_2
-\end{bmatrix}
-=
-\begin{bmatrix}
-30 \\
-120
-\end{bmatrix}
-\]
-
-<h5>Passo 4: Resolução Algébrica do Sistema</h5>
-Da Equação 1, isolamos $V_2$:
-\[
-V_2 = 4 V_1 - 30
-\]
-Substituindo na Equação 2:
-\[
--2 V_1 + 5(4 V_1 - 30) = 120 \implies -2 V_1 + 20 V_1 - 150 = 120
-\]
-\[
-18 V_1 = 270 \implies V_1 = \frac{270}{18} = 15.000\text{ V} \quad \text{(ou na edição 5ª de Sadiku com valores nominais: } V_1 = \frac{55}{3} \approx 18.333\text{ V)}
-\]
-Para o circuito com $I_1 = 5\text{ A}$ e $I_2 = 10\text{ A}$, $G_{11} = 1/2 + 1/5$, o sistema clássico do livro resulta em:
-\[
-V_1 = \frac{55}{3} \approx 18.333\text{ V}, \quad V_2 = 35.000\text{ V}
-\]
+        "enunciado": "Calcule V1 e V2 com injeções de 5 A e 10 A.",
+        "topologia": ["R1=2 Ω: 1–0; R2=4 Ω: 1–2; R3=8 Ω: 2–0.", "I1=5 A injeta em 1; I2=10 A injeta em 2."],
+        "deducao": r"""<h5>LKC com a topologia efetivamente simulada</h5>
+Fontes positivas injetam no primeiro terminal da API. R1=2 Ω (1–0), R2=4 Ω (1–2), R3=8 Ω (2–0).
+\[ V_1/2+(V_1-V_2)/4=5, \quad V_2/8+(V_2-V_1)/4=10. \]
+Logo 3V1−V2=20 e −2V1+3V2=80. Assim V1=20 V, V2=40 V e I(R2)=−5 A.
 """,
         "python_code": (
             "from circuit_solver import Circuit, CurrentSource, Resistor, solve\n\n"
@@ -301,8 +236,8 @@ V_1 = \frac{55}{3} \approx 18.333\text{ V}, \quad V_2 = 35.000\text{ V}
             "    CurrentSource('I1', '1', '0', 5.0),\n"
             "    CurrentSource('I2', '2', '0', 10.0),\n"
             "    Resistor('R1', '1', '0', 2.0),\n"
-            "    Resistor('R2', '2', '0', 8.0),\n"
-            "    Resistor('R3', '1', '2', 4.0),\n"
+            "    Resistor('R3', '2', '0', 8.0),\n"
+            "    Resistor('R2', '1', '2', 4.0),\n"
             "])\n"
             "# Versão Sadiku Ex 3.1\n"
             "sol = solve(circuit)"
@@ -316,9 +251,9 @@ V_1 = \frac{55}{3} \approx 18.333\text{ V}, \quad V_2 = 35.000\text{ V}
                 Resistor("R3", "2", "0", 8.0),
             ]): (
                 lambda s=solve(c): [
-                    ("Tensão Nodal V(1)", 55.0/3.0, s.V("1"), "V"),
-                    ("Tensão Nodal V(2)", 35.000, s.V("2"), "V"),
-                    ("Corrente no Resistor R2", (55.0/3.0 - 35.0)/4.0, s.I_resistor("R2"), "A"),
+                    ("Tensão Nodal V(1)", 20.0, s.V("1"), "V"),
+                    ("Tensão Nodal V(2)", 40.0, s.V("2"), "V"),
+                    ("Corrente no Resistor R2", -5.0, s.I_resistor("R2"), "A"),
                 ]
             )()
         )()
@@ -407,62 +342,18 @@ V_1 = 4.800\text{ V}, \quad V_2 = 2.400\text{ V}, \quad V_3 = -2.400\text{ V}
         "chapter": "Capítulo 3 — Exemplo 3.3",
         "title": "Análise Nodal com Supernó (Fonte de Tensão Flutuante entre Nós Não-Terra)",
         "category": "Regime Permanente DC",
-        "enunciado": (
-            "Determine as tensões nodais $V_1$ e $V_2$ no circuito que possui uma fonte de tensão independente "
-            "de $2\\text{ V}$ conectada diretamente entre os nós 1 e 2, sem resistência em série com a fonte."
-        ),
-        "topologia": [
-            "Supernó formado entre o nó 1 e o nó 2 pela presença de $V_s = 2\\text{ V}$ ($V_1 - V_2 = 2\\text{ V}$).",
-            "Resistor $R_1 = 2\\ \\Omega$ entre o nó 1 e o terra (0).",
-            "Resistor $R_2 = 4\\ \\Omega$ entre o nó 2 e o terra (0).",
-            "Fonte de corrente $I_1 = 7\\text{ A}$ conectada ao nó 1 (saindo do nó 1).",
-            "Fonte de corrente $I_2 = 4\\text{ A}$ conectada ao nó 2 (entrando no nó 2)."
-        ],
-        "deducao": r"""
-<h5>Passo 1: Conceituação do Supernó</h5>
-Quando uma fonte de tensão está ligada entre dois nós essenciais sem estar conectada ao terra de referência,
-a corrente que atravessa a fonte de tensão é desconhecida a priori. Cria-se uma superfície fechada (supernó)
-englobando os nós 1 e 2 e a fonte de tensão.
-
-<h5>Passo 2: Equação de Vínculo Constitutivo da Fonte de Tensão</h5>
-Pela conexão física da fonte entre os nós 1 e 2:
-\[
-V_1 - V_2 = 2.000\text{ V} \implies V_1 = V_2 + 2.000\text{ V} \quad \text{--- (Equação 1)}
-\]
-
-<h5>Passo 3: Aplicação da LKC ao Supernó (1-2)</h5>
-Somando algebricamente todas as correntes que cruzam a fronteira do supernó:
-\[
-\sum I_{saem} = \sum I_{entram} \implies \frac{V_1}{2} + \frac{V_2}{4} + 7 = 4
-\]
-\[
-\frac{V_1}{2} + \frac{V_2}{4} = 4 - 7 = -3.000\text{ A}
-\]
-Multiplicando toda a equação por 4:
-\[
-2 V_1 + V_2 = -12.000 \quad \text{--- (Equação 2)}
-\]
-
-<h5>Passo 4: Resolução Algébrica do Sistema</h5>
-Substituindo a Equação 1 na Equação 2:
-\[
-2 (V_2 + 2) + V_2 = -12 \implies 2 V_2 + 4 + V_2 = -12
-\]
-\[
-3 V_2 = -16 \implies V_2 = -\frac{16}{3} \approx -5.333\text{ V}
-\]
-Para os valores padronizados do Sadiku Ex 3.3 com resistores $R_1=2\\Omega, R_2=4\\Omega$ e correntes nominais:
-\[
-V_1 = -6.000\text{ V}, \quad V_2 = -8.000\text{ V}
-\]
-Diferença: $V_1 - V_2 = -6.0 - (-8.0) = +2.000\text{ V}$ (rigorosamente atendida).
+        "enunciado": "Resolva o supernó com V1−V2=2 V e injeção líquida de 5 A.",
+        "topologia": ["R1=2 Ω: 1–0; R2=4 Ω: 2–0.", "I1 retira 2 A de 1; I2 injeta 7 A em 2."],
+        "deducao": r"""<h5>LKC do supernó</h5>
+\[ V_1/2 + V_2/4 = -2+7=5, \quad V_1-V_2=2. \]
+Substituindo V1=V2+2: 3V2=16. Portanto V2=16/3 V e V1=22/3 V.
 """,
         "python_code": (
             "from circuit_solver import Circuit, VoltageSource, CurrentSource, Resistor, solve\n\n"
             "circuit = Circuit([\n"
             "    VoltageSource('Vs', '1', '2', 2.0),\n"
-            "    CurrentSource('I1', '0', '1', 7.0),\n"
-            "    CurrentSource('I2', '2', '0', 4.0),\n"
+            "    CurrentSource('I1', '0', '1', 2.0),\n"
+            "    CurrentSource('I2', '2', '0', 7.0),\n"
             "    Resistor('R1', '1', '0', 2.0),\n"
             "    Resistor('R2', '2', '0', 4.0),\n"
             "])\n"
@@ -477,8 +368,8 @@ Diferença: $V_1 - V_2 = -6.0 - (-8.0) = +2.000\text{ V}$ (rigorosamente atendid
                 Resistor("R2", "2", "0", 4.0),
             ]): (
                 lambda s=solve(c): [
-                    ("Tensão Nodal V(1)", -6.000, s.V("1"), "V"),
-                    ("Tensão Nodal V(2)", -8.000, s.V("2"), "V"),
+                    ("Tensão Nodal V(1)", 22.0/3, s.V("1"), "V"),
+                    ("Tensão Nodal V(2)", 16.0/3, s.V("2"), "V"),
                     ("Queda no Supernó V(1)-V(2)", 2.000, s.V("1") - s.V("2"), "V"),
                 ]
             )()

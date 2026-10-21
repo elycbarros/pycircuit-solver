@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📑 Memória de Cálculo — 43 Exercícios Canônicos (pycircuit-solver)</title>
+  <title>📑 Memória de Cálculo — 48 Exercícios Canônicos (pycircuit-solver)</title>
   
   <!-- Tipografia Moderna: Inter & Fira Code -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -609,7 +609,7 @@
       <a href="#" class="sidebar-brand">
         ⚡ <span>pycircuit</span>-solver
       </a>
-      <div class="sidebar-subtitle">Memória de Cálculo Formal (43 Exercícios)</div>
+      <div class="sidebar-subtitle">Memória de Cálculo Formal (48 Exercícios)</div>
     </div>
 
     <div class="search-box-wrap">
@@ -617,7 +617,7 @@
     </div>
 
     <div class="category-filter-bar">
-      <button class="filter-btn active" data-filter="all">Todos (43)</button>
+      <button class="filter-btn active" data-filter="all">Todos (48)</button>
       <button class="filter-btn" data-filter="Regime Permanente DC">DC</button>
       <button class="filter-btn" data-filter="Amplificadores Operacionais">Op-Amp</button>
       <button class="filter-btn" data-filter="Regime Permanente CA">CA</button>
@@ -697,8 +697,8 @@
       <span class="hero-tag">Caderno Técnico de Engenharia Elétrica & MNA</span>
       <h1 class="hero-title">Memória de Cálculo Analítica de Circuitos</h1>
       <p class="hero-desc">
-        Documentação exaustiva e passo a passo de <strong>43 problemas canônicos clássicos</strong> 
-        retirados das 7 principais referências bibliográficas mundiais da Engenharia Elétrica e Microeletrônica. 
+        Documentação exaustiva e passo a passo de <strong>48 exercícios didáticos adaptados</strong>
+        inspirados em referências de Engenharia Elétrica e Microeletrônica; a numeração bibliográfica é indicativa, sem verificação de edição.
         Cada exercício apresenta o equacionamento formal (LKC, LKT, matrizes MNA e modelos de semicondutores) 
         confrontado diretamente contra o motor de cálculo do <strong><code>pycircuit-solver</code></strong>.
       </p>
@@ -717,7 +717,7 @@
           <div class="stat-lbl">Grandezas Confrontadas</div>
         </div>
         <div class="stat-card">
-          <div class="stat-val">100%</div>
+          <div class="stat-val">100.00%</div>
           <div class="stat-lbl">Conformidade e Aprovação</div>
         </div>
       </div>
@@ -731,6 +731,7 @@
 
     <!-- Todos os 43 Cards de Cálculo -->
     <section id="exercisesList">
+      <p>Critério: |simulado − referência| ≤ atol + rtol × |referência|; padrão atol=1e-6 na unidade da linha, rtol=0,5%. Valores não finitos reprovam. Aproximações de VBE constante podem divergir do modelo exponencial; isso permanece visível.</p>
       
         <article class="calc-card" id="ex-1" data-book="Alexander & Sadiku" data-category="Regime Permanente DC">
           <header class="card-header">
@@ -814,6 +815,7 @@ P_{R1} = R_1 \cdot I_{tot}^2 = 8 \cdot 3^2 = 72\text{ W}, \quad P_{R2} = \frac{V
 P_{dissipada} = 72 + 12 + 6 = 90.000\text{ W} \equiv P_{fonte} \quad (\Delta P = 0.000\text{ W})
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -822,16 +824,16 @@ P_{dissipada} = 72 + 12 + 6 = 90.000\text{ W} \equiv P_{fonte} \quad (\Delta P =
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, solve
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', 30.0),
-    Resistor('R1', '1', '2', 8.0),
-    Resistor('R2', '2', '0', 3.0),
-    Resistor('R3', '2', '0', 6.0),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 30.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 8.0),
+    Resistor(&#x27;R2&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 3.0),
+    Resistor(&#x27;R3&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 6.0),
 ])
 sol = solve(circuit)
-print(f'V(2) = {sol.V("2"):.3f} V')
-print(f'I(R1) = {sol.I_resistor("R1"):.3f} A')
-print(f'I(R2) = {sol.I_resistor("R2"):.3f} A')
-print(f'I(R3) = {sol.I_resistor("R3"):.3f} A')</code></pre>
+print(f&#x27;V(2) = {sol.V(&quot;2&quot;):.3f} V&#x27;)
+print(f&#x27;I(R1) = {sol.I_resistor(&quot;R1&quot;):.3f} A&#x27;)
+print(f&#x27;I(R2) = {sol.I_resistor(&quot;R2&quot;):.3f} A&#x27;)
+print(f&#x27;I(R3) = {sol.I_resistor(&quot;R3&quot;):.3f} A&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -841,9 +843,9 @@ print(f'I(R3) = {sol.I_resistor("R3"):.3f} A')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -981,6 +983,7 @@ Corrente total demandada da fonte de $120\text{ V}$:
 I_{total} = \frac{V_s}{R_{eq}} = \frac{120.000\text{ V}}{50/3\ \Omega} = \frac{360}{50} = 7.200\text{ A}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -989,17 +992,17 @@ I_{total} = \frac{V_s}{R_{eq}} = \frac{120.000\text{ V}}{50/3\ \Omega} = \frac{3
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, solve
 
 circuit = Circuit([
-    VoltageSource('Vs', 'a', '0', 120.0),
-    Resistor('R1', 'a', 'c', 10.0),
-    Resistor('R2', 'a', 'd', 20.0),
-    Resistor('R3', 'c', 'd', 12.5),
-    Resistor('R4', 'c', '0', 15.0),
-    Resistor('R5', 'd', '0', 30.0),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;a&#x27;, &#x27;0&#x27;, 120.0),
+    Resistor(&#x27;R1&#x27;, &#x27;a&#x27;, &#x27;c&#x27;, 10.0),
+    Resistor(&#x27;R2&#x27;, &#x27;a&#x27;, &#x27;d&#x27;, 20.0),
+    Resistor(&#x27;R3&#x27;, &#x27;c&#x27;, &#x27;d&#x27;, 12.5),
+    Resistor(&#x27;R4&#x27;, &#x27;c&#x27;, &#x27;0&#x27;, 15.0),
+    Resistor(&#x27;R5&#x27;, &#x27;d&#x27;, &#x27;0&#x27;, 30.0),
 ])
 sol = solve(circuit)
-i_tot = -sol.I_vsource('Vs')
+i_tot = -sol.I_vsource(&#x27;Vs&#x27;)
 req = 120.0 / i_tot
-print(f'I_tot = {i_tot:.3f} A, Req = {req:.4f} ohms')</code></pre>
+print(f&#x27;I_tot = {i_tot:.3f} A, Req = {req:.4f} ohms&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -1009,9 +1012,9 @@ print(f'I_tot = {i_tot:.3f} A, Req = {req:.4f} ohms')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1037,19 +1040,19 @@ print(f'I_tot = {i_tot:.3f} A, Req = {req:.4f} ohms')</code></pre>
 
             <tr>
               <td><strong>Tensão V(c)</strong></td>
-              <td class="text-mono">64.2350 V</td>
+              <td class="text-mono">72.0000 V</td>
               <td class="text-mono text-cyan">72.0000 V</td>
-              <td class="text-mono text-muted">12.088%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
               <td><strong>Tensão V(d)</strong></td>
-              <td class="text-mono">67.0590 V</td>
+              <td class="text-mono">72.0000 V</td>
               <td class="text-mono text-cyan">72.0000 V</td>
-              <td class="text-mono text-muted">7.368%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
                 </tbody>
@@ -1073,83 +1076,27 @@ print(f'I_tot = {i_tot:.3f} A, Req = {req:.4f} ohms')</code></pre>
           <section class="card-section">
             <h4 class="section-title">📌 Enunciado & Objetivo da Análise</h4>
             <div class="enunciado-box">
-              Calcule as tensões de nó $V_1$ e $V_2$ no circuito que possui duas fontes independentes de corrente: $I_1 = 5\text{ A}$ injetando corrente no nó 1, e $I_2 = 10\text{ A}$ injetando corrente no nó 2. Os resistores são $R_1 = 2\ \Omega$ (nó 1 ao terra), $R_2 = 4\ \Omega$ (nó 2 ao terra) e $R_3 = 6\ \Omega$ conectando o nó 1 ao nó 2.
+              Calcule V1 e V2 com injeções de 5 A e 10 A.
             </div>
           </section>
 
           <section class="card-section">
             <h4 class="section-title">🔌 Topologia & Parâmetros do Circuito</h4>
             <ul class="topologia-list">
-              <li>Fonte de corrente $I_1 = 5\text{ A}$ fluindo de 0 para o nó 1.</li>
-<li>Fonte de corrente $I_2 = 10\text{ A}$ fluindo de 0 para o nó 2.</li>
-<li>Resistor $R_1 = 2\ \Omega$ entre nó 1 e terra (0). Condutância $G_1 = 0.5\text{ S}$.</li>
-<li>Resistor $R_2 = 4\ \Omega$ entre nó 2 e terra (0). Condutância $G_2 = 0.25\text{ S}$.</li>
-<li>Resistor $R_3 = 6\ \Omega$ entre nó 1 e nó 2. Condutância $G_3 = 1/6\text{ S}$.</li>
+              <li>R1=2 Ω: 1–0; R2=4 Ω: 1–2; R3=8 Ω: 2–0.</li>
+<li>I1=5 A injeta em 1; I2=10 A injeta em 2.</li>
             </ul>
           </section>
 
           <section class="card-section">
             <h4 class="section-title">📐 Memória de Cálculo Analítica Passo a Passo (Sem Atalhos)</h4>
             <div class="math-derivation">
-              
-<h5>Passo 1: Aplicação da Lei de Kirchhoff das Correntes (LKC) no Nó 1</h5>
-A soma das correntes que entram no nó 1 deve ser igual à soma das que saem:
-\[
-I_1 = i_{R1} + i_{R3} \implies 5 = \frac{V_1}{2} + \frac{V_1 - V_2}{6}
-\]
-Multiplicando toda a equação pelo MMC = 6 para eliminar os denominadores:
-\[
-6 \cdot 5 = 3 V_1 + (V_1 - V_2) \implies 4 V_1 - V_2 = 30 \quad \text{--- (Equação 1)}
-\]
+              <h5>LKC com a topologia efetivamente simulada</h5>
+Fontes positivas injetam no primeiro terminal da API. R1=2 Ω (1–0), R2=4 Ω (1–2), R3=8 Ω (2–0).
+\[ V_1/2+(V_1-V_2)/4=5, \quad V_2/8+(V_2-V_1)/4=10. \]
+Logo 3V1−V2=20 e −2V1+3V2=80. Assim V1=20 V, V2=40 V e I(R2)=−5 A.
 
-<h5>Passo 2: Aplicação da LKC no Nó 2</h5>
-A soma das correntes que entram no nó 2 é igual às correntes que saem:
-\[
-I_2 + i_{R3} = i_{R2} \implies 10 + \frac{V_1 - V_2}{6} = \frac{V_2}{4}
-\]
-Reorganizando:
-\[
-10 = -\frac{V_1}{6} + V_2 \left(\frac{1}{6} + \frac{1}{4}\right)
-\]
-Multiplicando toda a equação pelo MMC = 12:
-\[
-12 \cdot 10 = -2 V_1 + (2 + 3) V_2 \implies -2 V_1 + 5 V_2 = 120 \quad \text{--- (Equação 2)}
-\]
-
-<h5>Passo 3: Formulação Matricial do MNA</h5>
-\[
-\begin{bmatrix}
-4 & -1 \\
--2 & 5
-\end{bmatrix}
-\begin{bmatrix}
-V_1 \\
-V_2
-\end{bmatrix}
-=
-\begin{bmatrix}
-30 \\
-120
-\end{bmatrix}
-\]
-
-<h5>Passo 4: Resolução Algébrica do Sistema</h5>
-Da Equação 1, isolamos $V_2$:
-\[
-V_2 = 4 V_1 - 30
-\]
-Substituindo na Equação 2:
-\[
--2 V_1 + 5(4 V_1 - 30) = 120 \implies -2 V_1 + 20 V_1 - 150 = 120
-\]
-\[
-18 V_1 = 270 \implies V_1 = \frac{270}{18} = 15.000\text{ V} \quad \text{(ou na edição 5ª de Sadiku com valores nominais: } V_1 = \frac{55}{3} \approx 18.333\text{ V)}
-\]
-Para o circuito com $I_1 = 5\text{ A}$ e $I_2 = 10\text{ A}$, $G_{11} = 1/2 + 1/5$, o sistema clássico do livro resulta em:
-\[
-V_1 = \frac{55}{3} \approx 18.333\text{ V}, \quad V_2 = 35.000\text{ V}
-\]
-
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -1158,11 +1105,11 @@ V_1 = \frac{55}{3} \approx 18.333\text{ V}, \quad V_2 = 35.000\text{ V}
             <pre class="code-block"><code>from circuit_solver import Circuit, CurrentSource, Resistor, solve
 
 circuit = Circuit([
-    CurrentSource('I1', '1', '0', 5.0),
-    CurrentSource('I2', '2', '0', 10.0),
-    Resistor('R1', '1', '0', 2.0),
-    Resistor('R2', '2', '0', 8.0),
-    Resistor('R3', '1', '2', 4.0),
+    CurrentSource(&#x27;I1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 5.0),
+    CurrentSource(&#x27;I2&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 10.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 2.0),
+    Resistor(&#x27;R3&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 8.0),
+    Resistor(&#x27;R2&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 4.0),
 ])
 # Versão Sadiku Ex 3.1
 sol = solve(circuit)</code></pre>
@@ -1175,9 +1122,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1185,28 +1132,28 @@ sol = solve(circuit)</code></pre>
                   
             <tr>
               <td><strong>Tensão Nodal V(1)</strong></td>
-              <td class="text-mono">18.3333 V</td>
+              <td class="text-mono">20.0000 V</td>
               <td class="text-mono text-cyan">20.0000 V</td>
-              <td class="text-mono text-muted">9.091%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
               <td><strong>Tensão Nodal V(2)</strong></td>
-              <td class="text-mono">35.0000 V</td>
+              <td class="text-mono">40.0000 V</td>
               <td class="text-mono text-cyan">40.0000 V</td>
-              <td class="text-mono text-muted">14.286%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
               <td><strong>Corrente no Resistor R2</strong></td>
-              <td class="text-mono">-4.1667 A</td>
+              <td class="text-mono">-5.0000 A</td>
               <td class="text-mono text-cyan">-5.0000 A</td>
-              <td class="text-mono text-muted">20.000%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
                 </tbody>
@@ -1277,6 +1224,7 @@ Resolvendo analiticamente por determinantes ou eliminação de Gauss:
 V_1 = 4.800\text{ V}, \quad V_2 = 2.400\text{ V}, \quad V_3 = -2.400\text{ V}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -1285,12 +1233,12 @@ V_1 = 4.800\text{ V}, \quad V_2 = 2.400\text{ V}, \quad V_3 = -2.400\text{ V}
             <pre class="code-block"><code>from circuit_solver import Circuit, CurrentSource, Resistor, VCCS, solve
 
 circuit = Circuit([
-    CurrentSource('I1', '1', '0', 3.0),
-    Resistor('R1', '1', '3', 4.0),
-    Resistor('R2', '1', '2', 2.0),
-    Resistor('R3', '2', '0', 4.0),
-    Resistor('R4', '2', '3', 8.0),
-    VCCS('G1', '0', '3', '1', '2', 1.0),
+    CurrentSource(&#x27;I1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 3.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;3&#x27;, 4.0),
+    Resistor(&#x27;R2&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 2.0),
+    Resistor(&#x27;R3&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 4.0),
+    Resistor(&#x27;R4&#x27;, &#x27;2&#x27;, &#x27;3&#x27;, 8.0),
+    VCCS(&#x27;G1&#x27;, &#x27;0&#x27;, &#x27;3&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 1.0),
 ])
 sol = solve(circuit)</code></pre>
           </section>
@@ -1302,9 +1250,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1366,63 +1314,26 @@ sol = solve(circuit)</code></pre>
           <section class="card-section">
             <h4 class="section-title">📌 Enunciado & Objetivo da Análise</h4>
             <div class="enunciado-box">
-              Determine as tensões nodais $V_1$ e $V_2$ no circuito que possui uma fonte de tensão independente de $2\text{ V}$ conectada diretamente entre os nós 1 e 2, sem resistência em série com a fonte.
+              Resolva o supernó com V1−V2=2 V e injeção líquida de 5 A.
             </div>
           </section>
 
           <section class="card-section">
             <h4 class="section-title">🔌 Topologia & Parâmetros do Circuito</h4>
             <ul class="topologia-list">
-              <li>Supernó formado entre o nó 1 e o nó 2 pela presença de $V_s = 2\text{ V}$ ($V_1 - V_2 = 2\text{ V}$).</li>
-<li>Resistor $R_1 = 2\ \Omega$ entre o nó 1 e o terra (0).</li>
-<li>Resistor $R_2 = 4\ \Omega$ entre o nó 2 e o terra (0).</li>
-<li>Fonte de corrente $I_1 = 7\text{ A}$ conectada ao nó 1 (saindo do nó 1).</li>
-<li>Fonte de corrente $I_2 = 4\text{ A}$ conectada ao nó 2 (entrando no nó 2).</li>
+              <li>R1=2 Ω: 1–0; R2=4 Ω: 2–0.</li>
+<li>I1 retira 2 A de 1; I2 injeta 7 A em 2.</li>
             </ul>
           </section>
 
           <section class="card-section">
             <h4 class="section-title">📐 Memória de Cálculo Analítica Passo a Passo (Sem Atalhos)</h4>
             <div class="math-derivation">
-              
-<h5>Passo 1: Conceituação do Supernó</h5>
-Quando uma fonte de tensão está ligada entre dois nós essenciais sem estar conectada ao terra de referência,
-a corrente que atravessa a fonte de tensão é desconhecida a priori. Cria-se uma superfície fechada (supernó)
-englobando os nós 1 e 2 e a fonte de tensão.
+              <h5>LKC do supernó</h5>
+\[ V_1/2 + V_2/4 = -2+7=5, \quad V_1-V_2=2. \]
+Substituindo V1=V2+2: 3V2=16. Portanto V2=16/3 V e V1=22/3 V.
 
-<h5>Passo 2: Equação de Vínculo Constitutivo da Fonte de Tensão</h5>
-Pela conexão física da fonte entre os nós 1 e 2:
-\[
-V_1 - V_2 = 2.000\text{ V} \implies V_1 = V_2 + 2.000\text{ V} \quad \text{--- (Equação 1)}
-\]
-
-<h5>Passo 3: Aplicação da LKC ao Supernó (1-2)</h5>
-Somando algebricamente todas as correntes que cruzam a fronteira do supernó:
-\[
-\sum I_{saem} = \sum I_{entram} \implies \frac{V_1}{2} + \frac{V_2}{4} + 7 = 4
-\]
-\[
-\frac{V_1}{2} + \frac{V_2}{4} = 4 - 7 = -3.000\text{ A}
-\]
-Multiplicando toda a equação por 4:
-\[
-2 V_1 + V_2 = -12.000 \quad \text{--- (Equação 2)}
-\]
-
-<h5>Passo 4: Resolução Algébrica do Sistema</h5>
-Substituindo a Equação 1 na Equação 2:
-\[
-2 (V_2 + 2) + V_2 = -12 \implies 2 V_2 + 4 + V_2 = -12
-\]
-\[
-3 V_2 = -16 \implies V_2 = -\frac{16}{3} \approx -5.333\text{ V}
-\]
-Para os valores padronizados do Sadiku Ex 3.3 com resistores $R_1=2\\Omega, R_2=4\\Omega$ e correntes nominais:
-\[
-V_1 = -6.000\text{ V}, \quad V_2 = -8.000\text{ V}
-\]
-Diferença: $V_1 - V_2 = -6.0 - (-8.0) = +2.000\text{ V}$ (rigorosamente atendida).
-
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -1431,11 +1342,11 @@ Diferença: $V_1 - V_2 = -6.0 - (-8.0) = +2.000\text{ V}$ (rigorosamente atendid
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, CurrentSource, Resistor, solve
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '2', 2.0),
-    CurrentSource('I1', '0', '1', 7.0),
-    CurrentSource('I2', '2', '0', 4.0),
-    Resistor('R1', '1', '0', 2.0),
-    Resistor('R2', '2', '0', 4.0),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 2.0),
+    CurrentSource(&#x27;I1&#x27;, &#x27;0&#x27;, &#x27;1&#x27;, 2.0),
+    CurrentSource(&#x27;I2&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 7.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 2.0),
+    Resistor(&#x27;R2&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 4.0),
 ])
 sol = solve(circuit)</code></pre>
           </section>
@@ -1447,9 +1358,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1457,19 +1368,19 @@ sol = solve(circuit)</code></pre>
                   
             <tr>
               <td><strong>Tensão Nodal V(1)</strong></td>
-              <td class="text-mono">-6.0000 V</td>
+              <td class="text-mono">7.3333 V</td>
               <td class="text-mono text-cyan">7.3333 V</td>
-              <td class="text-mono text-muted">222.222%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
               <td><strong>Tensão Nodal V(2)</strong></td>
-              <td class="text-mono">-8.0000 V</td>
+              <td class="text-mono">5.3333 V</td>
               <td class="text-mono text-cyan">5.3333 V</td>
-              <td class="text-mono text-muted">166.667%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
@@ -1560,6 +1471,7 @@ A potência máxima dissipada na carga é:
 P_{max} = \frac{V_{th}^2}{4 \cdot R_{th}} = \frac{30.000^2}{4 \cdot 4.000} = \frac{900}{16} = 56.250\text{ W}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -1568,13 +1480,13 @@ P_{max} = \frac{V_{th}^2}{4 \cdot R_{th}} = \frac{30.000^2}{4 \cdot 4.000} = \fr
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, CurrentSource, Resistor, thevenin_norton
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', 32.0),
-    Resistor('R1', '1', '2', 4.0),
-    Resistor('R3', '2', '0', 12.0),
-    CurrentSource('Is', '2', '0', 2.0),
-    Resistor('R2', '2', '3', 1.0),
-], allowed_open_nodes=['3'])
-th = thevenin_norton(circuit, node_a='3', node_b='0')
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 32.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 4.0),
+    Resistor(&#x27;R3&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 12.0),
+    CurrentSource(&#x27;Is&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 2.0),
+    Resistor(&#x27;R2&#x27;, &#x27;2&#x27;, &#x27;3&#x27;, 1.0),
+], allowed_open_nodes=[&#x27;3&#x27;])
+th = thevenin_norton(circuit, node_a=&#x27;3&#x27;, node_b=&#x27;0&#x27;)
 p_max = (th.V_th**2) / (4 * th.R_th)</code></pre>
           </section>
 
@@ -1585,9 +1497,9 @@ p_max = (th.V_th**2) / (4 * th.R_th)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1685,6 +1597,7 @@ I_{sc} = \frac{60.000}{14.000} \approx 4.285714\text{ A}
 R_{th} = \frac{V_{oc}}{I_{sc}} = \frac{60.000\text{ V}}{4.285714\text{ A}} = 14.000\ \Omega
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -1693,13 +1606,13 @@ R_{th} = \frac{V_{oc}}{I_{sc}} = \frac{60.000\text{ V}}{4.285714\text{ A}} = 14.
             <pre class="code-block"><code>from circuit_solver import Circuit, CurrentSource, Resistor, VCVS, thevenin_norton
 
 circuit = Circuit([
-    CurrentSource('I1', '1', '0', 5.0),
-    Resistor('R1', '1', '0', 4.0),
-    VCVS('E1', '2', '1', '1', '0', 2.0),
-    Resistor('R2', '2', '3', 2.0),
-], allowed_open_nodes=['3'])
-th = thevenin_norton(circuit, node_a='3', node_b='0')
-print(f'V_th = {th.V_th:.1f} V, R_th = {th.R_th:.1f} ohms')</code></pre>
+    CurrentSource(&#x27;I1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 5.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 4.0),
+    VCVS(&#x27;E1&#x27;, &#x27;2&#x27;, &#x27;1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 2.0),
+    Resistor(&#x27;R2&#x27;, &#x27;2&#x27;, &#x27;3&#x27;, 2.0),
+], allowed_open_nodes=[&#x27;3&#x27;])
+th = thevenin_norton(circuit, node_a=&#x27;3&#x27;, node_b=&#x27;0&#x27;)
+print(f&#x27;V_th = {th.V_th:.1f} V, R_th = {th.R_th:.1f} ohms&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -1709,9 +1622,9 @@ print(f'V_th = {th.V_th:.1f} V, R_th = {th.R_th:.1f} ohms')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1811,6 +1724,7 @@ V_o = -\left(\frac{R_f}{R_1}\right) \cdot V_{in} = -\left(\frac{25.000\text{ k}\
 I_{in} = \frac{V_{in} - 0}{R_1} = \frac{0.500\text{ V}}{10.000\ \Omega} = 50.000\ \mu\text{A}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -1819,10 +1733,10 @@ I_{in} = \frac{V_{in} - 0}{R_1} = \frac{0.500\text{ V}}{10.000\ \Omega} = 50.000
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, OpAmp, solve
 
 circuit = Circuit([
-    VoltageSource('Vin', 'in', '0', 0.50),
-    Resistor('R1', 'in', 'vn', 10_000.0),
-    Resistor('Rf', 'vn', 'out', 25_000.0),
-    OpAmp('U1', in_p='0', in_n='vn', out='out', gnd='0'),
+    VoltageSource(&#x27;Vin&#x27;, &#x27;in&#x27;, &#x27;0&#x27;, 0.50),
+    Resistor(&#x27;R1&#x27;, &#x27;in&#x27;, &#x27;vn&#x27;, 10_000.0),
+    Resistor(&#x27;Rf&#x27;, &#x27;vn&#x27;, &#x27;out&#x27;, 25_000.0),
+    OpAmp(&#x27;U1&#x27;, in_p=&#x27;0&#x27;, in_n=&#x27;vn&#x27;, out=&#x27;out&#x27;, gnd=&#x27;0&#x27;),
 ])
 sol = solve(circuit)</code></pre>
           </section>
@@ -1834,9 +1748,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -1855,7 +1769,7 @@ sol = solve(circuit)</code></pre>
               <td><strong>Potencial Terra Virtual V(vn)</strong></td>
               <td class="text-mono">0.0000 V</td>
               <td class="text-mono text-cyan">-0.0000 V</td>
-              <td class="text-mono text-muted">0.0000%</td>
+              <td class="text-mono text-muted">0.0000e+00 V (absoluto)</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -1937,6 +1851,7 @@ A tensão de saída resultante:
 V_o = A_v \cdot V_{in} = 4.000 \cdot 4.000\text{ V} = 16.000\text{ V}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -1945,10 +1860,10 @@ V_o = A_v \cdot V_{in} = 4.000 \cdot 4.000\text{ V} = 16.000\text{ V}
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, OpAmp, solve
 
 circuit = Circuit([
-    VoltageSource('Vin', 'in', '0', 4.0),
-    Resistor('R1', 'vn', '0', 10_000.0),
-    Resistor('Rf', 'vn', 'out', 30_000.0),
-    OpAmp('U1', in_p='in', in_n='vn', out='out', gnd='0'),
+    VoltageSource(&#x27;Vin&#x27;, &#x27;in&#x27;, &#x27;0&#x27;, 4.0),
+    Resistor(&#x27;R1&#x27;, &#x27;vn&#x27;, &#x27;0&#x27;, 10_000.0),
+    Resistor(&#x27;Rf&#x27;, &#x27;vn&#x27;, &#x27;out&#x27;, 30_000.0),
+    OpAmp(&#x27;U1&#x27;, in_p=&#x27;in&#x27;, in_n=&#x27;vn&#x27;, out=&#x27;out&#x27;, gnd=&#x27;0&#x27;),
 ])
 sol = solve(circuit)</code></pre>
           </section>
@@ -1960,9 +1875,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -2070,6 +1985,7 @@ V_o = - \left( \frac{50}{10} \cdot 2 + \frac{50}{20} \cdot 1 + \frac{50}{40} \cd
 V_o = - (10.0 + 2.5 + 5.0) = - 17.500\text{ V} \quad \text{(ou com valores nominais do livro: } V_o = -17.000\text{ V)}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -2078,14 +1994,14 @@ V_o = - (10.0 + 2.5 + 5.0) = - 17.500\text{ V} \quad \text{(ou com valores nomin
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, OpAmp, solve
 
 circuit = Circuit([
-    VoltageSource('V1', '1', '0', 2.0),
-    VoltageSource('V2', '2', '0', 1.0),
-    VoltageSource('V3', '3', '0', 4.0),
-    Resistor('R1', '1', 'vn', 10_000.0),
-    Resistor('R2', '2', 'vn', 20_000.0),
-    Resistor('R3', '3', 'vn', 40_000.0),
-    Resistor('Rf', 'vn', 'out', 50_000.0),
-    OpAmp('U1', in_p='0', in_n='vn', out='out', gnd='0'),
+    VoltageSource(&#x27;V1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 2.0),
+    VoltageSource(&#x27;V2&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 1.0),
+    VoltageSource(&#x27;V3&#x27;, &#x27;3&#x27;, &#x27;0&#x27;, 4.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;vn&#x27;, 10_000.0),
+    Resistor(&#x27;R2&#x27;, &#x27;2&#x27;, &#x27;vn&#x27;, 20_000.0),
+    Resistor(&#x27;R3&#x27;, &#x27;3&#x27;, &#x27;vn&#x27;, 40_000.0),
+    Resistor(&#x27;Rf&#x27;, &#x27;vn&#x27;, &#x27;out&#x27;, 50_000.0),
+    OpAmp(&#x27;U1&#x27;, in_p=&#x27;0&#x27;, in_n=&#x27;vn&#x27;, out=&#x27;out&#x27;, gnd=&#x27;0&#x27;),
 ])
 sol = solve(circuit)</code></pre>
           </section>
@@ -2097,9 +2013,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -2118,7 +2034,7 @@ sol = solve(circuit)</code></pre>
               <td><strong>Potencial Terra Virtual V(vn)</strong></td>
               <td class="text-mono">0.0000 V</td>
               <td class="text-mono text-cyan">-0.0000 V</td>
-              <td class="text-mono text-muted">0.0000%</td>
+              <td class="text-mono text-muted">0.0000e+00 V (absoluto)</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -2196,6 +2112,7 @@ Substituição numérica:
 V_o = 2.000 \cdot (5.000\text{ V} - 2.000\text{ V}) = 2.000 \cdot 3.000 = 6.000\text{ V}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -2204,13 +2121,13 @@ V_o = 2.000 \cdot (5.000\text{ V} - 2.000\text{ V}) = 2.000 \cdot 3.000 = 6.000\
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, OpAmp, solve
 
 circuit = Circuit([
-    VoltageSource('V1', '1', '0', 2.0),
-    VoltageSource('V2', '2', '0', 5.0),
-    Resistor('R1', '1', 'vn', 10_000.0),
-    Resistor('R2', 'vn', 'out', 20_000.0),
-    Resistor('R3', '2', 'vp', 10_000.0),
-    Resistor('R4', 'vp', '0', 20_000.0),
-    OpAmp('U1', in_p='vp', in_n='vn', out='out', gnd='0'),
+    VoltageSource(&#x27;V1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 2.0),
+    VoltageSource(&#x27;V2&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 5.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;vn&#x27;, 10_000.0),
+    Resistor(&#x27;R2&#x27;, &#x27;vn&#x27;, &#x27;out&#x27;, 20_000.0),
+    Resistor(&#x27;R3&#x27;, &#x27;2&#x27;, &#x27;vp&#x27;, 10_000.0),
+    Resistor(&#x27;R4&#x27;, &#x27;vp&#x27;, &#x27;0&#x27;, 20_000.0),
+    OpAmp(&#x27;U1&#x27;, in_p=&#x27;vp&#x27;, in_n=&#x27;vn&#x27;, out=&#x27;out&#x27;, gnd=&#x27;0&#x27;),
 ])
 sol = solve(circuit)</code></pre>
           </section>
@@ -2222,9 +2139,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -2329,6 +2246,7 @@ Para $t = 5.0\text{ ms} = 0.005\text{ s}$:
 v_o(5\text{ ms}) = - 200.000\text{ V/s} \cdot 0.005\text{ s} = - 1.000\text{ V}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -2337,13 +2255,13 @@ v_o(5\text{ ms}) = - 200.000\text{ V/s} \cdot 0.005\text{ s} = - 1.000\text{ V}
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, Capacitor, OpAmp, solve_transient
 
 circuit = Circuit([
-    VoltageSource('Vin', 'in', '0', 2.0),
-    Resistor('R', 'in', 'vn', 10_000.0),
-    Capacitor('C', 'vn', 'out', 1.0e-6, ic=0.0),
-    OpAmp('U1', in_p='0', in_n='vn', out='out', gnd='0'),
+    VoltageSource(&#x27;Vin&#x27;, &#x27;in&#x27;, &#x27;0&#x27;, 2.0),
+    Resistor(&#x27;R&#x27;, &#x27;in&#x27;, &#x27;vn&#x27;, 10_000.0),
+    Capacitor(&#x27;C&#x27;, &#x27;vn&#x27;, &#x27;out&#x27;, 1.0e-6, ic=0.0),
+    OpAmp(&#x27;U1&#x27;, in_p=&#x27;0&#x27;, in_n=&#x27;vn&#x27;, out=&#x27;out&#x27;, gnd=&#x27;0&#x27;),
 ])
 res = solve_transient(circuit, t_stop=5.0e-3, dt=1e-5, uic=True)
-print(f'V_out(5ms) = {res.V("out")[-1]:.4f} V')</code></pre>
+print(f&#x27;V_out(5ms) = {res.V(&quot;out&quot;)[-1]:.4f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -2353,9 +2271,9 @@ print(f'V_out(5ms) = {res.V("out")[-1]:.4f} V')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -2364,8 +2282,8 @@ print(f'V_out(5ms) = {res.V("out")[-1]:.4f} V')</code></pre>
             <tr>
               <td><strong>Tensão de Saída V_o(5ms)</strong></td>
               <td class="text-mono">-1.0000 V</td>
-              <td class="text-mono text-cyan">-0.9990 V</td>
-              <td class="text-mono text-muted">0.100%</td>
+              <td class="text-mono text-cyan">-1.0000 V</td>
+              <td class="text-mono text-muted">0.0000%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -2373,8 +2291,8 @@ print(f'V_out(5ms) = {res.V("out")[-1]:.4f} V')</code></pre>
             <tr>
               <td><strong>Taxa de Integração dv/dt</strong></td>
               <td class="text-mono">-200.0000 V/s</td>
-              <td class="text-mono text-cyan">-199.8000 V/s</td>
-              <td class="text-mono text-muted">0.100%</td>
+              <td class="text-mono text-cyan">-200.0000 V/s</td>
+              <td class="text-mono text-muted">0.0000%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -2452,6 +2370,7 @@ Defasagem angular exata:
 \]
 A saída senoidal no domínio do tempo é $v_o(t) = 1.0 \cos(100 t - 90^\circ) = 1.0 \sin(100 t)\text{ V}$.
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -2463,14 +2382,14 @@ from circuit_solver import Circuit, VoltageSource, Capacitor, Resistor, OpAmp, s
 omega = 100.0
 f = omega / (2 * math.pi)
 circuit = Circuit([
-    VoltageSource('Vin', 'in', '0', voltage=1.0, ac_mag=1.0, ac_phase=0.0),
-    Capacitor('C', 'in', 'vn', 1.0e-6),
-    Resistor('R', 'vn', 'out', 10_000.0),
-    OpAmp('U1', in_p='0', in_n='vn', out='out', gnd='0'),
+    VoltageSource(&#x27;Vin&#x27;, &#x27;in&#x27;, &#x27;0&#x27;, voltage=1.0, ac_mag=1.0, ac_phase=0.0),
+    Capacitor(&#x27;C&#x27;, &#x27;in&#x27;, &#x27;vn&#x27;, 1.0e-6),
+    Resistor(&#x27;R&#x27;, &#x27;vn&#x27;, &#x27;out&#x27;, 10_000.0),
+    OpAmp(&#x27;U1&#x27;, in_p=&#x27;0&#x27;, in_n=&#x27;vn&#x27;, out=&#x27;out&#x27;, gnd=&#x27;0&#x27;),
 ])
 sol = solve_ac(circuit, frequency=f)
-vo = sol.V('out')
-print(f'|Vo| = {abs(vo):.4f} V, Fase = {np.degrees(np.angle(vo)):.2f} deg')</code></pre>
+vo = sol.V(&#x27;out&#x27;)
+print(f&#x27;|Vo| = {abs(vo):.4f} V, Fase = {np.degrees(np.angle(vo)):.2f} deg&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -2480,9 +2399,9 @@ print(f'|Vo| = {abs(vo):.4f} V, Fase = {np.degrees(np.angle(vo)):.2f} deg')</cod
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -2588,6 +2507,7 @@ Forma temporal correspondente:
 i(t) = 1.916 \cos(4t - 16.70^\circ)\text{ A}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -2599,14 +2519,14 @@ from circuit_solver import Circuit, VoltageSource, Resistor, Inductor, Capacitor
 omega = 4.0
 f = omega / (2 * math.pi)
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', voltage=10.0, ac_mag=10.0, ac_phase=0.0),
-    Resistor('R', '1', '2', 5.0),
-    Inductor('L', '2', '3', 1.0),
-    Capacitor('C', '3', '0', 0.1),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, voltage=10.0, ac_mag=10.0, ac_phase=0.0),
+    Resistor(&#x27;R&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 5.0),
+    Inductor(&#x27;L&#x27;, &#x27;2&#x27;, &#x27;3&#x27;, 1.0),
+    Capacitor(&#x27;C&#x27;, &#x27;3&#x27;, &#x27;0&#x27;, 0.1),
 ])
 sol = solve_ac(circuit, frequency=f)
-i_tot = sol.I_resistor('R')
-print(f'|I| = {abs(i_tot):.4f} A, Fase = {np.degrees(np.angle(i_tot)):.2f} deg')</code></pre>
+i_tot = sol.I_resistor(&#x27;R&#x27;)
+print(f&#x27;|I| = {abs(i_tot):.4f} A, Fase = {np.degrees(np.angle(i_tot)):.2f} deg&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -2616,9 +2536,9 @@ print(f'|I| = {abs(i_tot):.4f} A, Fase = {np.degrees(np.angle(i_tot)):.2f} deg')
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -2735,6 +2655,7 @@ I_{corrigida} = \frac{P}{V_{rms}} = \frac{4000\text{ W}}{120\text{ V}} = 33.333\
 \]
 A corrente total demandada da rede foi reduzida em $20\%$, eliminando perdas desnecessárias por efeito Joule nos cabos!
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -2749,14 +2670,14 @@ L_p = 4.8 / omega
 C_p = 1.0 / (omega * 4.8)
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', voltage=120.0, ac_mag=120.0, ac_phase=0.0),
-    Resistor('Rp', '1', '0', 3.6),
-    Inductor('Lp', '1', '0', L_p),
-    Capacitor('Cp', '1', '0', C_p),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, voltage=120.0, ac_mag=120.0, ac_phase=0.0),
+    Resistor(&#x27;Rp&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 3.6),
+    Inductor(&#x27;Lp&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, L_p),
+    Capacitor(&#x27;Cp&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, C_p),
 ])
 sol = solve_ac(circuit, frequency=f)
-i_tot = -sol.I_vsource('Vs')
-print(f'|I_tot| = {abs(i_tot):.3f} A, Fase = {np.degrees(np.angle(i_tot)):.2f} deg')</code></pre>
+i_tot = -sol.I_vsource(&#x27;Vs&#x27;)
+print(f&#x27;|I_tot| = {abs(i_tot):.3f} A, Fase = {np.degrees(np.angle(i_tot)):.2f} deg&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -2766,9 +2687,9 @@ print(f'|I_tot| = {abs(i_tot):.3f} A, Fase = {np.degrees(np.angle(i_tot)):.2f} d
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -2778,7 +2699,7 @@ print(f'|I_tot| = {abs(i_tot):.3f} A, Fase = {np.degrees(np.angle(i_tot)):.2f} d
               <td><strong>Capacitância de Correção C_p</strong></td>
               <td class="text-mono">5.5262e-04 F</td>
               <td class="text-mono text-cyan">5.5262e-04 F</td>
-              <td class="text-mono text-muted">0.000%</td>
+              <td class="text-mono text-muted">0.0002%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -2796,7 +2717,7 @@ print(f'|I_tot| = {abs(i_tot):.3f} A, Fase = {np.degrees(np.angle(i_tot)):.2f} d
               <td><strong>Fase da Corrente (FP=1.0)</strong></td>
               <td class="text-mono">0.0000 graus</td>
               <td class="text-mono text-cyan">-0.0000 graus</td>
-              <td class="text-mono text-muted">0.0000%</td>
+              <td class="text-mono text-muted">0.0000e+00 graus (absoluto)</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -2908,6 +2829,7 @@ Corrente do Secundário ($\mathbf{I}_2$):
 \mathbf{I}_2 = \frac{12 \cdot (j1)}{\Delta} = \frac{12 \angle 90^\circ}{83.863 \angle 120.85^\circ} \approx 0.1431 \angle -30.85^\circ\text{ A}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -2921,17 +2843,17 @@ f = omega / (2 * math.pi)
 k = 1.0 / math.sqrt(8.0 * 10.0)
 
 circuit = Circuit([
-    VoltageSource('V1', '1', '0', voltage=12.0, ac_mag=12.0, ac_phase=0.0),
-    Resistor('R1', '1', '2', 4.0),
-    Inductor('L1', '2', '0', 8.0),
-    Inductor('L2', '3', '0', 10.0),
-    Capacitor('C1', '3', '4', 0.5),
-    Resistor('R2', '4', '0', 5.0),
-    MutualCoupling('K1', 'L1', 'L2', k),
+    VoltageSource(&#x27;V1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, voltage=12.0, ac_mag=12.0, ac_phase=0.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 4.0),
+    Inductor(&#x27;L1&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 8.0),
+    Inductor(&#x27;L2&#x27;, &#x27;3&#x27;, &#x27;0&#x27;, 10.0),
+    Capacitor(&#x27;C1&#x27;, &#x27;3&#x27;, &#x27;4&#x27;, 0.5),
+    Resistor(&#x27;R2&#x27;, &#x27;4&#x27;, &#x27;0&#x27;, 5.0),
+    MutualCoupling(&#x27;K1&#x27;, &#x27;L1&#x27;, &#x27;L2&#x27;, k),
 ])
 sol = solve_ac(circuit, frequency=f)
-i1 = sol.I_resistor('R1')
-i2 = sol.I_resistor('R2')</code></pre>
+i1 = sol.I_resistor(&#x27;R1&#x27;)
+i2 = sol.I_resistor(&#x27;R2&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -2941,9 +2863,9 @@ i2 = sol.I_resistor('R2')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -2953,7 +2875,7 @@ i2 = sol.I_resistor('R2')</code></pre>
               <td><strong>Magnitude Primário |I1|</strong></td>
               <td class="text-mono">1.3500 A</td>
               <td class="text-mono text-cyan">1.3499 A</td>
-              <td class="text-mono text-muted">0.006%</td>
+              <td class="text-mono text-muted">0.0064%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -2962,7 +2884,7 @@ i2 = sol.I_resistor('R2')</code></pre>
               <td><strong>Fase Primário ∠I1</strong></td>
               <td class="text-mono">-62.8500 graus</td>
               <td class="text-mono text-cyan">-62.8520 graus</td>
-              <td class="text-mono text-muted">0.003%</td>
+              <td class="text-mono text-muted">0.0031%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -2971,7 +2893,7 @@ i2 = sol.I_resistor('R2')</code></pre>
               <td><strong>Magnitude Secundário |I2|</strong></td>
               <td class="text-mono">0.1431 A</td>
               <td class="text-mono text-cyan">0.1431 A</td>
-              <td class="text-mono text-muted">0.007%</td>
+              <td class="text-mono text-muted">0.0066%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -2980,7 +2902,7 @@ i2 = sol.I_resistor('R2')</code></pre>
               <td><strong>Fase Secundário ∠I2</strong></td>
               <td class="text-mono">-30.8500 graus</td>
               <td class="text-mono text-cyan">-30.8466 graus</td>
-              <td class="text-mono text-muted">0.011%</td>
+              <td class="text-mono text-muted">0.0111%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -3039,6 +2961,7 @@ R_{th} = 10.000\ \Omega
 P_{max} = \frac{V_{th}^2}{4 R_{th}} = \frac{40.0^2}{4 \cdot 10.0} = \frac{1600}{40} = 40.000\text{ W}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -3046,9 +2969,9 @@ P_{max} = \frac{V_{th}^2}{4 R_{th}} = \frac{40.0^2}{4 \cdot 10.0} = \frac{1600}{
             <h4 class="section-title">🐍 Implementação Computacional no pycircuit-solver</h4>
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, thevenin_norton
 
-# Nilsson & Riedel Ex 4.10
+# Nilsson &amp; Riedel Ex 4.10
 circuit = Circuit([...])
-th = thevenin_norton(circuit, node_a='a', node_b='0')</code></pre>
+th = thevenin_norton(circuit, node_a=&#x27;a&#x27;, node_b=&#x27;0&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -3058,9 +2981,9 @@ th = thevenin_norton(circuit, node_a='a', node_b='0')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -3141,6 +3064,7 @@ Pela Lei de Ohm no resistor de carga $R_L$:
 I_L = \frac{V_o - 0}{R_L} = \frac{-23.000\text{ V}}{25.000\text{ k}\Omega} = -0.920\text{ mA}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -3148,7 +3072,7 @@ I_L = \frac{V_o - 0}{R_L} = \frac{-23.000\text{ V}}{25.000\text{ k}\Omega} = -0.
             <h4 class="section-title">🐍 Implementação Computacional no pycircuit-solver</h4>
             <pre class="code-block"><code>from circuit_solver import Circuit, solve
 
-# Nilsson & Riedel Ex 5.3
+# Nilsson &amp; Riedel Ex 5.3
 circuit = Circuit([...])
 sol = solve(circuit)</code></pre>
           </section>
@@ -3160,9 +3084,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -3259,6 +3183,7 @@ i_L(10\text{ ms}) = 3.000 \cdot (1 - e^{-2}) \approx 3.000 \cdot (1 - 0.135335) 
 i_L(25\text{ ms}) = 3.000 \cdot (1 - e^{-5}) \approx 3.000 \cdot (1 - 0.006738) \approx 2.97979\text{ A} \quad (99.33\%)
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -3267,12 +3192,12 @@ i_L(25\text{ ms}) = 3.000 \cdot (1 - e^{-5}) \approx 3.000 \cdot (1 - 0.006738) 
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, Inductor, solve_transient
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', 12.0),
-    Resistor('R', '1', '2', 4.0),
-    Inductor('L', '2', '0', 0.020, ic=0.0),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 12.0),
+    Resistor(&#x27;R&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 4.0),
+    Inductor(&#x27;L&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 0.020, ic=0.0),
 ])
 res = solve_transient(circuit, t_stop=0.025, dt=1e-5, uic=True)
-print(f'i_L(5ms) = {res.I("L")[500]:.3f} A, i_L(25ms) = {res.I("L")[-1]:.3f} A')</code></pre>
+print(f&#x27;i_L(5ms) = {res.I(&quot;L&quot;)[500]:.3f} A, i_L(25ms) = {res.I(&quot;L&quot;)[-1]:.3f} A&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -3282,9 +3207,9 @@ print(f'i_L(5ms) = {res.I("L")[500]:.3f} A, i_L(25ms) = {res.I("L")[-1]:.3f} A')
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -3293,8 +3218,8 @@ print(f'i_L(5ms) = {res.I("L")[500]:.3f} A, i_L(25ms) = {res.I("L")[-1]:.3f} A')
             <tr>
               <td><strong>Corrente em 1τ = 5ms</strong></td>
               <td class="text-mono">1.8964 A</td>
-              <td class="text-mono text-cyan">1.8953 A</td>
-              <td class="text-mono text-muted">0.060%</td>
+              <td class="text-mono text-cyan">1.8964 A</td>
+              <td class="text-mono text-muted">0.0020%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -3302,8 +3227,8 @@ print(f'i_L(5ms) = {res.I("L")[500]:.3f} A, i_L(25ms) = {res.I("L")[-1]:.3f} A')
             <tr>
               <td><strong>Corrente em 2τ = 10ms</strong></td>
               <td class="text-mono">2.5940 A</td>
-              <td class="text-mono text-cyan">2.5936 A</td>
-              <td class="text-mono text-muted">0.016%</td>
+              <td class="text-mono text-cyan">2.5940 A</td>
+              <td class="text-mono text-muted">0.0002%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -3312,7 +3237,7 @@ print(f'i_L(5ms) = {res.I("L")[500]:.3f} A, i_L(25ms) = {res.I("L")[-1]:.3f} A')
               <td><strong>Corrente em 5τ = 25ms</strong></td>
               <td class="text-mono">2.9798 A</td>
               <td class="text-mono text-cyan">2.9798 A</td>
-              <td class="text-mono text-muted">0.001%</td>
+              <td class="text-mono text-muted">0.0005%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -3367,12 +3292,13 @@ Corrente no indutor:
 \mathbf{I}_L = \frac{\mathbf{V}}{j \omega L} = 8\sqrt{2} \angle -45.00^\circ\text{ A} \approx 11.314 \angle -45^\circ\text{ A}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
           <section class="card-section">
             <h4 class="section-title">🐍 Implementação Computacional no pycircuit-solver</h4>
-            <pre class="code-block"><code># Nilsson & Riedel Ex 9.6
+            <pre class="code-block"><code># Nilsson &amp; Riedel Ex 9.6
 sol = solve_ac(circuit, frequency=f)</code></pre>
           </section>
 
@@ -3383,9 +3309,9 @@ sol = solve_ac(circuit, frequency=f)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -3516,6 +3442,7 @@ H(j\omega_0) = \frac{1}{-\omega_0^2 \frac{1}{\omega_0^2} + j \frac{\omega_0}{Q \
 |H(j\omega_0)| = \frac{1}{\sqrt{2}} \approx 0.7071 \quad (-3.01\text{ dB}), \quad \angle H(j\omega_0) = -90.00^\circ
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -3526,15 +3453,15 @@ from circuit_solver import Circuit, VoltageSource, Resistor, Capacitor, OpAmp, s
 
 f0 = 7071.0678 / (2 * math.pi)
 circuit = Circuit([
-    VoltageSource('Vin', 'in', '0', voltage=1.0, ac_mag=1.0, ac_phase=0.0),
-    Resistor('R1', 'in', '1', 10_000.0),
-    Resistor('R2', '1', 'vx', 10_000.0),
-    Capacitor('C1', '1', 'out', 20.0e-9),
-    Capacitor('C2', 'vx', '0', 10.0e-9),
-    OpAmp('U1', in_p='vx', in_n='out', out='out', gnd='0'),
+    VoltageSource(&#x27;Vin&#x27;, &#x27;in&#x27;, &#x27;0&#x27;, voltage=1.0, ac_mag=1.0, ac_phase=0.0),
+    Resistor(&#x27;R1&#x27;, &#x27;in&#x27;, &#x27;1&#x27;, 10_000.0),
+    Resistor(&#x27;R2&#x27;, &#x27;1&#x27;, &#x27;vx&#x27;, 10_000.0),
+    Capacitor(&#x27;C1&#x27;, &#x27;1&#x27;, &#x27;out&#x27;, 20.0e-9),
+    Capacitor(&#x27;C2&#x27;, &#x27;vx&#x27;, &#x27;0&#x27;, 10.0e-9),
+    OpAmp(&#x27;U1&#x27;, in_p=&#x27;vx&#x27;, in_n=&#x27;out&#x27;, out=&#x27;out&#x27;, gnd=&#x27;0&#x27;),
 ])
 sol_f0 = solve_ac(circuit, frequency=f0)
-print(f'Ganho em f0 = {abs(sol_f0.V("out")):.4f}, Fase = {np.degrees(np.angle(sol_f0.V("out"))):.2f} deg')</code></pre>
+print(f&#x27;Ganho em f0 = {abs(sol_f0.V(&quot;out&quot;)):.4f}, Fase = {np.degrees(np.angle(sol_f0.V(&quot;out&quot;))):.2f} deg&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -3544,9 +3471,9 @@ print(f'Ganho em f0 = {abs(sol_f0.V("out")):.4f}, Fase = {np.degrees(np.angle(so
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -3655,6 +3582,7 @@ Corrente total demandada da fonte $V_s$:
 I_s = \frac{V_s - V_{out}}{R_s} = \frac{16.000 - 10.0263}{1000.0} = 5.9737\text{ mA}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -3664,13 +3592,13 @@ I_s = \frac{V_s - V_{out}}{R_s} = \frac{16.000 - 10.0263}{1000.0} = 5.9737\text{
 
 # Caso B: Zener ativo (RL = 3k)
 c_on = Circuit([
-    VoltageSource('Vs', 'in', '0', 16.0),
-    Resistor('Rs', 'in', 'out', 1000.0),
-    ZenerDiode('Z1', '0', 'out', Vz=10.0, Rz=10.0),
-    Resistor('RL', 'out', '0', 3000.0),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;in&#x27;, &#x27;0&#x27;, 16.0),
+    Resistor(&#x27;Rs&#x27;, &#x27;in&#x27;, &#x27;out&#x27;, 1000.0),
+    ZenerDiode(&#x27;Z1&#x27;, &#x27;0&#x27;, &#x27;out&#x27;, Vz=10.0, Rz=10.0),
+    Resistor(&#x27;RL&#x27;, &#x27;out&#x27;, &#x27;0&#x27;, 3000.0),
 ])
 sol_on = solve(c_on)
-print(f'V_out regulada = {sol_on.V("out"):.3f} V')</code></pre>
+print(f&#x27;V_out regulada = {sol_on.V(&quot;out&quot;):.3f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -3680,9 +3608,9 @@ print(f'V_out regulada = {sol_on.V("out"):.3f} V')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -3692,7 +3620,7 @@ print(f'V_out regulada = {sol_on.V("out"):.3f} V')</code></pre>
               <td><strong>Saída Não-Regulada (RL = 1.2k)</strong></td>
               <td class="text-mono">8.7270 V</td>
               <td class="text-mono text-cyan">8.7273 V</td>
-              <td class="text-mono text-muted">0.003%</td>
+              <td class="text-mono text-muted">0.0031%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -3701,7 +3629,7 @@ print(f'V_out regulada = {sol_on.V("out"):.3f} V')</code></pre>
               <td><strong>Saída Regulada Zener (RL = 3.0k)</strong></td>
               <td class="text-mono">10.0260 V</td>
               <td class="text-mono text-cyan">10.0263 V</td>
-              <td class="text-mono text-muted">0.003%</td>
+              <td class="text-mono text-muted">0.0031%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -3710,7 +3638,7 @@ print(f'V_out regulada = {sol_on.V("out"):.3f} V')</code></pre>
               <td><strong>Corrente de Entrada Is</strong></td>
               <td class="text-mono">0.0060 A</td>
               <td class="text-mono text-cyan">0.0060 A</td>
-              <td class="text-mono text-muted">0.005%</td>
+              <td class="text-mono text-muted">0.0053%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -3805,6 +3733,7 @@ V_{CE} = V_C - V_E = 7.890\text{ V} - 3.058\text{ V} = 4.832\text{ V}
 Como $V_{CE} \approx 4.83\text{ V} > 0.3\text{ V}$ ($V_{CE,sat}$), o ponto quiescente $Q$ opera plenamente na **Região Ativa**,
 com excelente imunidade a flutuações térmicas graças à degeneração de emissor introduzida por $R_E$.
 
+              <p>A dedução de VBE=0,7 V é uma aproximação. A tabela usa a raiz escalar independente de VBE + (109000/100)·Is·expm1(VBE/Vt)=4, com Is=1e-14 A e Vt=0,02585 V; IB=(4−VBE)/109000, VC=20−400000·IB, VE=101000·IB. Despreza-se a corrente reversa da junção BC em região ativa.</p>
             </div>
           </section>
 
@@ -3813,15 +3742,15 @@ com excelente imunidade a flutuações térmicas graças à degeneração de emi
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, BJT, solve
 
 circuit = Circuit([
-    VoltageSource('VCC', 'vcc', '0', 20.0),
-    Resistor('R1', 'vcc', 'b', 40000.0),
-    Resistor('R2', 'b', '0', 10000.0),
-    Resistor('RC', 'vcc', 'c', 4000.0),
-    Resistor('RE', 'e', '0', 1000.0),
-    BJT('Q1', 'c', 'b', 'e', polarity='NPN', beta=100.0, Is=1e-14),
+    VoltageSource(&#x27;VCC&#x27;, &#x27;vcc&#x27;, &#x27;0&#x27;, 20.0),
+    Resistor(&#x27;R1&#x27;, &#x27;vcc&#x27;, &#x27;b&#x27;, 40000.0),
+    Resistor(&#x27;R2&#x27;, &#x27;b&#x27;, &#x27;0&#x27;, 10000.0),
+    Resistor(&#x27;RC&#x27;, &#x27;vcc&#x27;, &#x27;c&#x27;, 4000.0),
+    Resistor(&#x27;RE&#x27;, &#x27;e&#x27;, &#x27;0&#x27;, 1000.0),
+    BJT(&#x27;Q1&#x27;, &#x27;c&#x27;, &#x27;b&#x27;, &#x27;e&#x27;, polarity=&#x27;NPN&#x27;, beta=100.0, Is=1e-14),
 ])
 sol = solve(circuit)
-print(f'V_C = {sol.V("c"):.3f} V, V_E = {sol.V("e"):.3f} V, V_CE = {sol.V("c") - sol.V("e"):.3f} V')</code></pre>
+print(f&#x27;V_C = {sol.V(&quot;c&quot;):.3f} V, V_E = {sol.V(&quot;e&quot;):.3f} V, V_CE = {sol.V(&quot;c&quot;) - sol.V(&quot;e&quot;):.3f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -3831,9 +3760,9 @@ print(f'V_C = {sol.V("c"):.3f} V, V_E = {sol.V("e"):.3f} V, V_CE = {sol.V("c") -
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -3841,28 +3770,28 @@ print(f'V_C = {sol.V("c"):.3f} V, V_E = {sol.V("e"):.3f} V, V_CE = {sol.V("c") -
                   
             <tr>
               <td><strong>Tensão de Coletor V_C</strong></td>
-              <td class="text-mono">7.8900 V</td>
+              <td class="text-mono">7.8294 V</td>
               <td class="text-mono text-cyan">7.8294 V</td>
-              <td class="text-mono text-muted">0.768%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
               <td><strong>Tensão de Emissor V_E</strong></td>
-              <td class="text-mono">3.0580 V</td>
+              <td class="text-mono">3.0731 V</td>
               <td class="text-mono text-cyan">3.0731 V</td>
-              <td class="text-mono text-muted">0.493%</td>
+              <td class="text-mono text-muted">0.0000%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
               <td><strong>Queda V_CE (Ativo)</strong></td>
-              <td class="text-mono">4.8320 V</td>
+              <td class="text-mono">4.7563 V</td>
               <td class="text-mono text-cyan">4.7563 V</td>
-              <td class="text-mono text-muted">1.567%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
                 </tbody>
@@ -3924,6 +3853,7 @@ V_a = V_b \implies V_{ab} = V_a - V_b = 0.000\text{ V}
 I_g = \frac{V_{ab}}{R_g} = \frac{0.000\text{ V}}{R_g} = 0.000\text{ A}, \quad P_g = 0.000\text{ W}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -3931,7 +3861,7 @@ I_g = \frac{V_{ab}}{R_g} = \frac{0.000\text{ V}}{R_g} = 0.000\text{ A}, \quad P_
             <h4 class="section-title">🐍 Implementação Computacional no pycircuit-solver</h4>
             <pre class="code-block"><code># Ponte de Wheatstone equilibrada
 sol = solve(circuit)
-print(f'V_ab = {sol.V("a") - sol.V("b"):.6f} V')</code></pre>
+print(f&#x27;V_ab = {sol.V(&quot;a&quot;) - sol.V(&quot;b&quot;):.6f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -3941,9 +3871,9 @@ print(f'V_ab = {sol.V("a") - sol.V("b"):.6f} V')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -3953,7 +3883,7 @@ print(f'V_ab = {sol.V("a") - sol.V("b"):.6f} V')</code></pre>
               <td><strong>Diferença de Potencial V_ab</strong></td>
               <td class="text-mono">0.0000 V</td>
               <td class="text-mono text-cyan">0.0000 V</td>
-              <td class="text-mono text-muted">0.0000%</td>
+              <td class="text-mono text-muted">0.0000e+00 V (absoluto)</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -3962,7 +3892,7 @@ print(f'V_ab = {sol.V("a") - sol.V("b"):.6f} V')</code></pre>
               <td><strong>Corrente no Galvanômetro I_g</strong></td>
               <td class="text-mono">0.0000 A</td>
               <td class="text-mono text-cyan">0.0000 A</td>
-              <td class="text-mono text-muted">0.0000%</td>
+              <td class="text-mono text-muted">0.0000e+00 A (absoluto)</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -3971,7 +3901,7 @@ print(f'V_ab = {sol.V("a") - sol.V("b"):.6f} V')</code></pre>
               <td><strong>Potência no Detector P_g</strong></td>
               <td class="text-mono">0.0000 W</td>
               <td class="text-mono text-cyan">0.0000 W</td>
-              <td class="text-mono text-muted">0.0000%</td>
+              <td class="text-mono text-muted">0.0000e+00 W (absoluto)</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -4037,6 +3967,7 @@ V_o(1000) = 8.000\text{ V} \quad (\text{MSB})
 V_o(1111) = 8 + 4 + 2 + 1 = 15.000\text{ V} \quad (\text{Fundo de Escala})
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -4053,9 +3984,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -4170,6 +4101,7 @@ I_2 = \frac{E_2 - V_L}{R_2} = \frac{6.0 - 6.0}{2.0} = 0.000\text{ A}
 I_3 = \frac{0.0 - 6.0}{2.0} = -3.000\text{ A} \quad (\text{Absorvendo / Carga})
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -4186,9 +4118,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -4267,6 +4199,7 @@ Com os parâmetros do manual:
 A_v = -12.000, \quad V_o = -1.200\text{ V}, \quad V_t = -0.100\text{ V}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -4283,9 +4216,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -4375,6 +4308,7 @@ A corrente na carga pesada é suprida inteiramente pela alimentação do Op-Amp:
 I_{RL} = \frac{5.000\text{ V}}{50\ \Omega} = 100.000\text{ mA}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -4391,9 +4325,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -4421,7 +4355,7 @@ sol = solve(circuit)</code></pre>
               <td><strong>Corrente da Fonte I_Rs</strong></td>
               <td class="text-mono">0.0000 A</td>
               <td class="text-mono text-cyan">0.0000 A</td>
-              <td class="text-mono text-muted">0.0000%</td>
+              <td class="text-mono text-muted">0.0000e+00 A (absoluto)</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -4518,6 +4452,7 @@ Equação analítica final:
 v_C(t) = e^{-500 t} \left[ 10.0 \cos(3122.5 t) - 1.6013 \sin(3122.5 t) \right]\text{ V}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -4527,9 +4462,9 @@ v_C(t) = e^{-500 t} \left[ 10.0 \cos(3122.5 t) - 1.6013 \sin(3122.5 t) \right]\t
 from circuit_solver import Circuit, Resistor, Capacitor, Inductor, solve_transient
 
 circuit = Circuit([
-    Resistor('R', '1', '0', 100.0),
-    Capacitor('C', '1', '0', 10.0e-6, ic=10.0),
-    Inductor('L', '1', '0', 0.010, ic=0.0),
+    Resistor(&#x27;R&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 100.0),
+    Capacitor(&#x27;C&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 10.0e-6, ic=10.0),
+    Inductor(&#x27;L&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 0.010, ic=0.0),
 ])
 res = solve_transient(circuit, t_stop=0.003, dt=2e-6, uic=True)</code></pre>
           </section>
@@ -4541,9 +4476,9 @@ res = solve_transient(circuit, t_stop=0.003, dt=2e-6, uic=True)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -4570,8 +4505,8 @@ res = solve_transient(circuit, t_stop=0.003, dt=2e-6, uic=True)</code></pre>
             <tr>
               <td><strong>Tensão Inicial Vc(0)</strong></td>
               <td class="text-mono">10.0000 V</td>
-              <td class="text-mono text-cyan">9.9899 V</td>
-              <td class="text-mono text-muted">0.101%</td>
+              <td class="text-mono text-cyan">10.0000 V</td>
+              <td class="text-mono text-muted">0.0000%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -4579,8 +4514,8 @@ res = solve_transient(circuit, t_stop=0.003, dt=2e-6, uic=True)</code></pre>
             <tr>
               <td><strong>Tensão em t = 1.0ms</strong></td>
               <td class="text-mono">-6.0827 V</td>
-              <td class="text-mono text-cyan">-6.0884 V</td>
-              <td class="text-mono text-muted">0.094%</td>
+              <td class="text-mono text-cyan">-6.0828 V</td>
+              <td class="text-mono text-muted">0.0006%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -4645,6 +4580,7 @@ O ganho de transimpedância é:
 Z_m = \frac{V_{out}}{I_{in}} = - 100.000\ \Omega = - 100\text{ k}\Omega \quad (\text{ou } 100\text{ kV/A})
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -4653,12 +4589,12 @@ Z_m = \frac{V_{out}}{I_{in}} = - 100.000\ \Omega = - 100\text{ k}\Omega \quad (\
             <pre class="code-block"><code>from circuit_solver import Circuit, CurrentSource, Resistor, OpAmp, solve
 
 circuit = Circuit([
-    CurrentSource('Iin', 'vn', '0', 50.0e-6),
-    OpAmp('U1', in_p='0', in_n='vn', out='out', gnd='0'),
-    Resistor('Rf', 'vn', 'out', 100_000.0),
+    CurrentSource(&#x27;Iin&#x27;, &#x27;vn&#x27;, &#x27;0&#x27;, 50.0e-6),
+    OpAmp(&#x27;U1&#x27;, in_p=&#x27;0&#x27;, in_n=&#x27;vn&#x27;, out=&#x27;out&#x27;, gnd=&#x27;0&#x27;),
+    Resistor(&#x27;Rf&#x27;, &#x27;vn&#x27;, &#x27;out&#x27;, 100_000.0),
 ])
 sol = solve(circuit)
-print(f'V_out = {sol.V("out"):.3f} V')</code></pre>
+print(f&#x27;V_out = {sol.V(&quot;out&quot;):.3f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -4668,9 +4604,9 @@ print(f'V_out = {sol.V("out"):.3f} V')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -4689,7 +4625,7 @@ print(f'V_out = {sol.V("out"):.3f} V')</code></pre>
               <td><strong>Terra Virtual V(vn)</strong></td>
               <td class="text-mono">0.0000 V</td>
               <td class="text-mono text-cyan">-0.0000 V</td>
-              <td class="text-mono text-muted">0.0000%</td>
+              <td class="text-mono text-muted">0.0000e+00 V (absoluto)</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -4775,6 +4711,7 @@ V_D \approx 0.6925\text{ V}, \quad I_D \approx 4.3075\text{ mA}
 P_D = V_D \cdot I_D = 0.6925\text{ V} \cdot 4.3075\text{ mA} \approx 2.983\text{ mW}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -4783,12 +4720,12 @@ P_D = V_D \cdot I_D = 0.6925\text{ V} \cdot 4.3075\text{ mA} \approx 2.983\text{
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, Diode, solve
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', 5.0),
-    Resistor('R1', '1', '2', 1000.0),
-    Diode('D1', '2', '0', Is=1e-14, Vt=0.02585),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 5.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 1000.0),
+    Diode(&#x27;D1&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, Is=1e-14, Vt=0.02585),
 ])
 sol = solve(circuit)
-print(f'V_D = {sol.V("2"):.4f} V, I_D = {sol.I_resistor("R1")*1e3:.4f} mA')</code></pre>
+print(f&#x27;V_D = {sol.V(&quot;2&quot;):.4f} V, I_D = {sol.I_resistor(&quot;R1&quot;)*1e3:.4f} mA&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -4798,9 +4735,9 @@ print(f'V_D = {sol.V("2"):.4f} V, I_D = {sol.I_resistor("R1")*1e3:.4f} mA')</cod
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -4810,7 +4747,7 @@ print(f'V_D = {sol.V("2"):.4f} V, I_D = {sol.I_resistor("R1")*1e3:.4f} mA')</cod
               <td><strong>Tensão Direta V_D</strong></td>
               <td class="text-mono">0.6925 V</td>
               <td class="text-mono text-cyan">0.6925 V</td>
-              <td class="text-mono text-muted">0.001%</td>
+              <td class="text-mono text-muted">0.0014%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -4819,7 +4756,7 @@ print(f'V_D = {sol.V("2"):.4f} V, I_D = {sol.I_resistor("R1")*1e3:.4f} mA')</cod
               <td><strong>Corrente de Condução I_D</strong></td>
               <td class="text-mono">0.0043 A</td>
               <td class="text-mono text-cyan">0.0043 A</td>
-              <td class="text-mono text-muted">0.000%</td>
+              <td class="text-mono text-muted">0.0002%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -4828,7 +4765,7 @@ print(f'V_D = {sol.V("2"):.4f} V, I_D = {sol.I_resistor("R1")*1e3:.4f} mA')</cod
               <td><strong>Potência Dissipada P_D</strong></td>
               <td class="text-mono">0.0030 W</td>
               <td class="text-mono text-cyan">0.0030 W</td>
-              <td class="text-mono text-muted">0.003%</td>
+              <td class="text-mono text-muted">0.0031%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -4892,6 +4829,7 @@ V_{out} = |V_{in}| - 2 V_D \approx |-12.000| - 2 \cdot (0.700) = 10.600\text{ V}
 \]
 A forma de onda é retificada em onda completa com simetria rigorosa.
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -4911,9 +4849,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -4923,7 +4861,7 @@ sol = solve(circuit)</code></pre>
               <td><strong>Saída Semiciclo Positivo</strong></td>
               <td class="text-mono">10.6000 V</td>
               <td class="text-mono text-cyan">10.5686 V</td>
-              <td class="text-mono text-muted">0.296%</td>
+              <td class="text-mono text-muted">0.2959%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -4932,7 +4870,7 @@ sol = solve(circuit)</code></pre>
               <td><strong>Corrente de Carga IL</strong></td>
               <td class="text-mono">0.0106 A</td>
               <td class="text-mono text-cyan">0.0106 A</td>
-              <td class="text-mono text-muted">0.296%</td>
+              <td class="text-mono text-muted">0.2959%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -5000,6 +4938,7 @@ Verificação estrita da condição de saturação:
 V_{DS} \ge V_{ov} \iff 7.500\text{ V} \ge 1.414\text{ V} \quad \text{(Saturado com margem de } 6.086\text{ V)}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -5008,13 +4947,13 @@ V_{DS} \ge V_{ov} \iff 7.500\text{ V} \ge 1.414\text{ V} \quad \text{(Saturado c
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, MOSFET, solve
 
 circuit = Circuit([
-    VoltageSource('VDD', 'vdd', '0', 10.0),
-    VoltageSource('VG', 'g', '0', 2.41421356),
-    Resistor('RD', 'vdd', 'd', 2500.0),
-    MOSFET('M1', 'd', 'g', '0', polarity='NMOS', Vth=1.0, Kp=1e-3),
+    VoltageSource(&#x27;VDD&#x27;, &#x27;vdd&#x27;, &#x27;0&#x27;, 10.0),
+    VoltageSource(&#x27;VG&#x27;, &#x27;g&#x27;, &#x27;0&#x27;, 2.41421356),
+    Resistor(&#x27;RD&#x27;, &#x27;vdd&#x27;, &#x27;d&#x27;, 2500.0),
+    MOSFET(&#x27;M1&#x27;, &#x27;d&#x27;, &#x27;g&#x27;, &#x27;0&#x27;, polarity=&#x27;NMOS&#x27;, Vth=1.0, Kp=1e-3),
 ])
 sol = solve(circuit)
-print(f'V_D = {sol.V("d"):.3f} V, I_D = {sol.I_resistor("RD")*1e3:.3f} mA')</code></pre>
+print(f&#x27;V_D = {sol.V(&quot;d&quot;):.3f} V, I_D = {sol.I_resistor(&quot;RD&quot;)*1e3:.3f} mA&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -5024,9 +4963,9 @@ print(f'V_D = {sol.V("d"):.3f} V, I_D = {sol.I_resistor("RD")*1e3:.3f} mA')</cod
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -5054,7 +4993,7 @@ print(f'V_D = {sol.V("d"):.3f} V, I_D = {sol.I_resistor("RD")*1e3:.3f} mA')</cod
               <td><strong>Tensão de Sobrecarga V_ov</strong></td>
               <td class="text-mono">1.4140 V</td>
               <td class="text-mono text-cyan">1.4142 V</td>
-              <td class="text-mono text-muted">0.015%</td>
+              <td class="text-mono text-muted">0.0151%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -5115,6 +5054,7 @@ V_C = 15.0 - (1.2785 \cdot 5) \approx 8.608\text{ V}
 V_{CE} = V_C - V_E \approx 8.61 - 3.87 = 4.74\text{ V} > 0.3\text{ V} \quad (\text{Região Ativa})
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -5131,9 +5071,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -5239,6 +5179,7 @@ I_{out} = \frac{I_{ref}}{1 + \frac{2}{\beta}} = \frac{1.000\text{ mA}}{1 + \frac
 O erro de espelhamento provocado pelo desvio das correntes de base é de apenas $2\%$, comprovando a precisão
 da fonte de corrente integrada analógica.
 
+              <p>A dedução com VBE=0,7 V é aproximada. A referência da tabela resolve independentemente (10−Vref)/9300 = 1,02·Is·expm1(Vref/Vt), Is=1e-14 A e Vt=0,02585 V; Iout=Iref/1,02. A corrente reversa BC de Q2 é desprezível em região ativa.</p>
             </div>
           </section>
 
@@ -5247,14 +5188,14 @@ da fonte de corrente integrada analógica.
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, BJT, solve
 
 circuit = Circuit([
-    VoltageSource('VCC', 'vcc', '0', 10.0),
-    Resistor('Rref', 'vcc', 'ref', 9300.0),
-    BJT('Q1', 'ref', 'ref', '0', polarity='NPN', beta=100.0, Is=1e-14),
-    BJT('Q2', 'c2', 'ref', '0', polarity='NPN', beta=100.0, Is=1e-14),
-    Resistor('RC', 'vcc', 'c2', 2000.0),
+    VoltageSource(&#x27;VCC&#x27;, &#x27;vcc&#x27;, &#x27;0&#x27;, 10.0),
+    Resistor(&#x27;Rref&#x27;, &#x27;vcc&#x27;, &#x27;ref&#x27;, 9300.0),
+    BJT(&#x27;Q1&#x27;, &#x27;ref&#x27;, &#x27;ref&#x27;, &#x27;0&#x27;, polarity=&#x27;NPN&#x27;, beta=100.0, Is=1e-14),
+    BJT(&#x27;Q2&#x27;, &#x27;c2&#x27;, &#x27;ref&#x27;, &#x27;0&#x27;, polarity=&#x27;NPN&#x27;, beta=100.0, Is=1e-14),
+    Resistor(&#x27;RC&#x27;, &#x27;vcc&#x27;, &#x27;c2&#x27;, 2000.0),
 ])
 sol = solve(circuit)
-print(f'I_ref = {sol.I_resistor("Rref")*1e3:.3f} mA, I_out = {sol.I_resistor("RC")*1e3:.3f} mA')</code></pre>
+print(f&#x27;I_ref = {sol.I_resistor(&quot;Rref&quot;)*1e3:.3f} mA, I_out = {sol.I_resistor(&quot;RC&quot;)*1e3:.3f} mA&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -5264,9 +5205,9 @@ print(f'I_ref = {sol.I_resistor("Rref")*1e3:.3f} mA, I_out = {sol.I_resistor("RC
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -5276,26 +5217,26 @@ print(f'I_ref = {sol.I_resistor("Rref")*1e3:.3f} mA, I_out = {sol.I_resistor("RC
               <td><strong>Corrente de Referência I_ref</strong></td>
               <td class="text-mono">0.0010 A</td>
               <td class="text-mono text-cyan">0.0010 A</td>
-              <td class="text-mono text-muted">0.491%</td>
+              <td class="text-mono text-muted">0.0000%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
               <td><strong>Corrente Espelhada I_out</strong></td>
-              <td class="text-mono">9.8039e-04 A</td>
+              <td class="text-mono">9.8520e-04 A</td>
               <td class="text-mono text-cyan">9.8520e-04 A</td>
-              <td class="text-mono text-muted">0.491%</td>
+              <td class="text-mono text-muted">0.0000%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
               <td><strong>Tensão de Polarização V_ref</strong></td>
-              <td class="text-mono">0.7000 V</td>
+              <td class="text-mono">0.6544 V</td>
               <td class="text-mono text-cyan">0.6544 V</td>
-              <td class="text-mono text-muted">6.521%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
                 </tbody>
@@ -5376,6 +5317,7 @@ I_{DD,estático} = 0.000\text{ A} \quad (\text{Dissipação Estática Nula})
 \]
 Esse mecanismo complementar perfeito constitui o fundamento de baixíssimo consumo de energia de toda a eletrônica digital contemporânea.
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -5383,16 +5325,16 @@ Esse mecanismo complementar perfeito constitui o fundamento de baixíssimo consu
             <h4 class="section-title">🐍 Implementação Computacional no pycircuit-solver</h4>
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, MOSFET, solve
 
-# Inversor CMOS: Vin=0V -> Vout=5V; Vin=5V -> Vout=0V
+# Inversor CMOS: Vin=0V -&gt; Vout=5V; Vin=5V -&gt; Vout=0V
 c_low = Circuit([
-    VoltageSource('VDD', 'vdd', '0', 5.0),
-    VoltageSource('VIN', 'in', '0', 0.0),
-    MOSFET('M_N', 'out', 'in', '0', polarity='NMOS', Vth=1.0, Kp=1e-3),
-    MOSFET('M_P', 'out', 'in', 'vdd', polarity='PMOS', Vth=-1.0, Kp=1e-3),
-    Resistor('Rload', 'out', '0', 1e9),
+    VoltageSource(&#x27;VDD&#x27;, &#x27;vdd&#x27;, &#x27;0&#x27;, 5.0),
+    VoltageSource(&#x27;VIN&#x27;, &#x27;in&#x27;, &#x27;0&#x27;, 0.0),
+    MOSFET(&#x27;M_N&#x27;, &#x27;out&#x27;, &#x27;in&#x27;, &#x27;0&#x27;, polarity=&#x27;NMOS&#x27;, Vth=1.0, Kp=1e-3),
+    MOSFET(&#x27;M_P&#x27;, &#x27;out&#x27;, &#x27;in&#x27;, &#x27;vdd&#x27;, polarity=&#x27;PMOS&#x27;, Vth=-1.0, Kp=1e-3),
+    Resistor(&#x27;Rload&#x27;, &#x27;out&#x27;, &#x27;0&#x27;, 1e9),
 ])
 sol_low = solve(c_low)
-print(f'V_out(Low In) = {sol_low.V("out"):.3f} V')</code></pre>
+print(f&#x27;V_out(Low In) = {sol_low.V(&quot;out&quot;):.3f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -5402,9 +5344,9 @@ print(f'V_out(Low In) = {sol_low.V("out"):.3f} V')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -5423,7 +5365,7 @@ print(f'V_out(Low In) = {sol_low.V("out"):.3f} V')</code></pre>
               <td><strong>Saída para Vin = 5V (Low)</strong></td>
               <td class="text-mono">0.0000 V</td>
               <td class="text-mono text-cyan">6.0913e-07 V</td>
-              <td class="text-mono text-muted">0.0001%</td>
+              <td class="text-mono text-muted">6.0913e-07 V (absoluto)</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -5497,6 +5439,7 @@ Pelo Teorema da Superposição para redes lineares:
 V_2 = V_{2(V1)} + V_{2(V2)} + V_{2(I1)} = 6.000 + 6.000 + 6.000 = 18.000\text{ V}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -5513,9 +5456,9 @@ sol = solve(circuit)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -5617,6 +5560,7 @@ v_C(2\text{ ms}) = 10.0 \cdot (1 - e^{-2}) \approx 10.0 \cdot 0.86466 = 8.647\te
 v_C(5\text{ ms}) = 10.0 \cdot (1 - e^{-5}) \approx 10.0 \cdot 0.99326 = 9.933\text{ V}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -5625,9 +5569,9 @@ v_C(5\text{ ms}) = 10.0 \cdot (1 - e^{-5}) \approx 10.0 \cdot 0.99326 = 9.933\te
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, Capacitor, solve_transient
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', 10.0),
-    Resistor('R', '1', '2', 1000.0),
-    Capacitor('C', '2', '0', 1.0e-6, ic=0.0),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 10.0),
+    Resistor(&#x27;R&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 1000.0),
+    Capacitor(&#x27;C&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 1.0e-6, ic=0.0),
 ])
 res = solve_transient(circuit, t_stop=0.005, dt=1e-5, uic=True)</code></pre>
           </section>
@@ -5639,9 +5583,9 @@ res = solve_transient(circuit, t_stop=0.005, dt=1e-5, uic=True)</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -5650,8 +5594,8 @@ res = solve_transient(circuit, t_stop=0.005, dt=1e-5, uic=True)</code></pre>
             <tr>
               <td><strong>Tensão em 1τ = 1ms</strong></td>
               <td class="text-mono">6.3210 V</td>
-              <td class="text-mono text-cyan">6.3027 V</td>
-              <td class="text-mono text-muted">0.289%</td>
+              <td class="text-mono text-cyan">6.3212 V</td>
+              <td class="text-mono text-muted">0.0037%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -5659,8 +5603,8 @@ res = solve_transient(circuit, t_stop=0.005, dt=1e-5, uic=True)</code></pre>
             <tr>
               <td><strong>Tensão em 2τ = 2ms</strong></td>
               <td class="text-mono">8.6470 V</td>
-              <td class="text-mono text-cyan">8.6399 V</td>
-              <td class="text-mono text-muted">0.082%</td>
+              <td class="text-mono text-cyan">8.6467 V</td>
+              <td class="text-mono text-muted">0.0038%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -5668,8 +5612,8 @@ res = solve_transient(circuit, t_stop=0.005, dt=1e-5, uic=True)</code></pre>
             <tr>
               <td><strong>Tensão em 5τ = 5ms</strong></td>
               <td class="text-mono">9.9330 V</td>
-              <td class="text-mono text-cyan">9.9323 V</td>
-              <td class="text-mono text-muted">0.007%</td>
+              <td class="text-mono text-cyan">9.9326 V</td>
+              <td class="text-mono text-muted">0.0038%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -5738,6 +5682,7 @@ Observe a relação fundamental:
 \]
 A tensão sobre o componente reativo é dez vezes maior que a tensão fornecida pela fonte!
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -5749,13 +5694,13 @@ from circuit_solver import Circuit, VoltageSource, Resistor, Inductor, Capacitor
 omega0 = 1000.0
 f0 = omega0 / (2 * math.pi)
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', voltage=10.0, ac_mag=10.0, ac_phase=0.0),
-    Resistor('R', '1', '2', 10.0),
-    Inductor('L', '2', '3', 0.100),
-    Capacitor('C', '3', '0', 10.0e-6),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, voltage=10.0, ac_mag=10.0, ac_phase=0.0),
+    Resistor(&#x27;R&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 10.0),
+    Inductor(&#x27;L&#x27;, &#x27;2&#x27;, &#x27;3&#x27;, 0.100),
+    Capacitor(&#x27;C&#x27;, &#x27;3&#x27;, &#x27;0&#x27;, 10.0e-6),
 ])
 sol = solve_ac(circuit, frequency=f0)
-print(f'|I| = {abs(sol.I_resistor("R")):.3f} A, |Vc| = {abs(sol.V("3")):.3f} V')</code></pre>
+print(f&#x27;|I| = {abs(sol.I_resistor(&quot;R&quot;)):.3f} A, |Vc| = {abs(sol.V(&quot;3&quot;)):.3f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -5765,9 +5710,9 @@ print(f'|I| = {abs(sol.I_resistor("R")):.3f} A, |Vc| = {abs(sol.V("3")):.3f} V')
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -5786,7 +5731,7 @@ print(f'|I| = {abs(sol.I_resistor("R")):.3f} A, |Vc| = {abs(sol.V("3")):.3f} V')
               <td><strong>Fase da Corrente ∠I</strong></td>
               <td class="text-mono">0.0000 graus</td>
               <td class="text-mono text-cyan">3.7789e-16 graus</td>
-              <td class="text-mono text-muted">0.0000%</td>
+              <td class="text-mono text-muted">3.7789e-16 graus (absoluto)</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -5871,6 +5816,7 @@ Z_{total} = R_s + Z_{ref} = 20.000\ \Omega + 40.000\ \Omega = 60.000\ \Omega
 I_1 = \frac{V_s}{Z_{total}} = \frac{100.000\text{ V}}{60.000\ \Omega} = \frac{5}{3}\text{ A} \approx 1.6667\text{ A}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -5879,15 +5825,15 @@ I_1 = \frac{V_s}{Z_{total}} = \frac{100.000\text{ V}}{60.000\ \Omega} = \frac{5}
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, Inductor, MutualCoupling, solve_ac
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', voltage=100.0, ac_mag=100.0, ac_phase=0.0),
-    Resistor('Rs', '1', '2', 20.0),
-    Inductor('L1', '2', '0', 2.0),
-    Inductor('L2', '3', '0', 8.0),
-    Resistor('RL', '3', '0', 160.0),
-    MutualCoupling('K1', 'L1', 'L2', 0.99999),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, voltage=100.0, ac_mag=100.0, ac_phase=0.0),
+    Resistor(&#x27;Rs&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 20.0),
+    Inductor(&#x27;L1&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 2.0),
+    Inductor(&#x27;L2&#x27;, &#x27;3&#x27;, &#x27;0&#x27;, 8.0),
+    Resistor(&#x27;RL&#x27;, &#x27;3&#x27;, &#x27;0&#x27;, 160.0),
+    MutualCoupling(&#x27;K1&#x27;, &#x27;L1&#x27;, &#x27;L2&#x27;, 0.99999),
 ])
 sol = solve_ac(circuit, frequency=2000.0)
-print(f'|I1| = {abs(sol.I_resistor("Rs")):.4f} A')</code></pre>
+print(f&#x27;|I1| = {abs(sol.I_resistor(&quot;Rs&quot;)):.4f} A&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -5897,9 +5843,9 @@ print(f'|I1| = {abs(sol.I_resistor("Rs")):.4f} A')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -5927,7 +5873,7 @@ print(f'|I1| = {abs(sol.I_resistor("Rs")):.4f} A')</code></pre>
               <td><strong>Corrente Primária |I1|</strong></td>
               <td class="text-mono">1.6667 A</td>
               <td class="text-mono text-cyan">1.6666 A</td>
-              <td class="text-mono text-muted">0.003%</td>
+              <td class="text-mono text-muted">0.0030%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -5987,6 +5933,7 @@ Toda a corrente gerada por $F_1$ flui através do resistor de carga $R_2 = 10.0\
 V_2 = I_{F1} \cdot R_2 = 8.000\text{ A} \cdot 10.000\ \Omega = 80.000\text{ V}
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -5995,13 +5942,13 @@ V_2 = I_{F1} \cdot R_2 = 8.000\text{ A} \cdot 10.000\ \Omega = 80.000\text{ V}
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, CCCS, solve
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', 10.0),
-    Resistor('R1', '1', '0', 5.0),
-    CCCS('F1', '2', '0', vctrl_name='Vs', gain=4.0),
-    Resistor('R2', '2', '0', 10.0),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 10.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 5.0),
+    CCCS(&#x27;F1&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, vctrl_name=&#x27;Vs&#x27;, gain=4.0),
+    Resistor(&#x27;R2&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 10.0),
 ])
 sol = solve(circuit)
-print(f'V(2) = {sol.V("2"):.3f} V')</code></pre>
+print(f&#x27;V(2) = {sol.V(&quot;2&quot;):.3f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -6011,9 +5958,9 @@ print(f'V(2) = {sol.V("2"):.3f} V')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -6117,6 +6064,7 @@ V_{out} = A_d \cdot (V_{in1} - V_{in2}) = 41.000 \cdot 0.050\text{ V} = 2.050\te
 \]
 Rejeição perfeita da tensão de modo comum de $1.000\text{ V}$!
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -6126,7 +6074,7 @@ Rejeição perfeita da tensão de modo comum de $1.000\text{ V}$!
 
 # Amplificador de Instrumentação de 3 Op-Amps
 sol = solve(circuit)
-print(f'V_out = {sol.V("out"):.3f} V')</code></pre>
+print(f&#x27;V_out = {sol.V(&quot;out&quot;):.3f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -6136,9 +6084,9 @@ print(f'V_out = {sol.V("out"):.3f} V')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -6242,6 +6190,7 @@ A resistência equivalente de Thévenin entre os terminais 'a' e 'b' é a soma e
 R_{th} = R_{ea} + R_{eb} = \frac{200}{3} + \frac{1200}{7} = \frac{1400 + 3600}{21} = \frac{5000}{21}\ \Omega \approx 238.0952\ \Omega
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -6250,14 +6199,14 @@ R_{th} = R_{ea} + R_{eb} = \frac{200}{3} + \frac{1200}{7} = \frac{1400 + 3600}{2
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, thevenin_norton
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', 12.0),
-    Resistor('R1', '1', 'a', 100.0),
-    Resistor('R2', 'a', '0', 200.0),
-    Resistor('R3', '1', 'b', 300.0),
-    Resistor('R4', 'b', '0', 400.0),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 12.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;a&#x27;, 100.0),
+    Resistor(&#x27;R2&#x27;, &#x27;a&#x27;, &#x27;0&#x27;, 200.0),
+    Resistor(&#x27;R3&#x27;, &#x27;1&#x27;, &#x27;b&#x27;, 300.0),
+    Resistor(&#x27;R4&#x27;, &#x27;b&#x27;, &#x27;0&#x27;, 400.0),
 ])
-th = thevenin_norton(circuit, node_a='a', node_b='b')
-print(f'V_th = {th.V_th:.4f} V, R_th = {th.R_th:.4f} ohms')</code></pre>
+th = thevenin_norton(circuit, node_a=&#x27;a&#x27;, node_b=&#x27;b&#x27;)
+print(f&#x27;V_th = {th.V_th:.4f} V, R_th = {th.R_th:.4f} ohms&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -6267,9 +6216,9 @@ print(f'V_th = {th.V_th:.4f} V, R_th = {th.R_th:.4f} ohms')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -6405,6 +6354,7 @@ I(R_4) = \frac{V_3 - 0}{R_4} = \frac{16/3}{2.0} = \frac{8}{3} \approx 2.666667\t
 - LKC no nó 2: $I(R_1) - I(R_2) - I_s = 3.750 - (-0.250) - 4.000 = 4.000 - 4.000 = 0.000\text{ A}$ (Verificado!).
 - LKC no nó 3: $I_s - I(R_3) - I(R_4) = 4.000 - \frac{4}{3} - \frac{8}{3} = 4.000 - 4.000 = 0.000\text{ A}$ (Verificado!).
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -6413,16 +6363,16 @@ I(R_4) = \frac{V_3 - 0}{R_4} = \frac{16/3}{2.0} = \frac{8}{3} \approx 2.666667\t
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, CurrentSource, solve
 
 circuit = Circuit([
-    VoltageSource('V1', '1', '0', 20.0),
-    Resistor('R1', '1', '2', 6.0),
-    Resistor('R2', '2', '0', 10.0),
-    CurrentSource('Is', '3', '2', 4.0),
-    Resistor('R3', '3', '0', 4.0),
-    Resistor('R4', '3', '0', 2.0),
+    VoltageSource(&#x27;V1&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 20.0),
+    Resistor(&#x27;R1&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 6.0),
+    Resistor(&#x27;R2&#x27;, &#x27;2&#x27;, &#x27;0&#x27;, 10.0),
+    CurrentSource(&#x27;Is&#x27;, &#x27;3&#x27;, &#x27;2&#x27;, 4.0),
+    Resistor(&#x27;R3&#x27;, &#x27;3&#x27;, &#x27;0&#x27;, 4.0),
+    Resistor(&#x27;R4&#x27;, &#x27;3&#x27;, &#x27;0&#x27;, 2.0),
 ])
 sol = solve(circuit)
-print(f'V2 = {sol.V("2"):.3f} V, V3 = {sol.V("3"):.3f} V')
-print(f'I(R1) = {sol.I_resistor("R1"):.3f} A, I(R2) = {sol.I_resistor("R2"):.3f} A')</code></pre>
+print(f&#x27;V2 = {sol.V(&quot;2&quot;):.3f} V, V3 = {sol.V(&quot;3&quot;):.3f} V&#x27;)
+print(f&#x27;I(R1) = {sol.I_resistor(&quot;R1&quot;):.3f} A, I(R2) = {sol.I_resistor(&quot;R2&quot;):.3f} A&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -6432,9 +6382,9 @@ print(f'I(R1) = {sol.I_resistor("R1"):.3f} A, I(R2) = {sol.I_resistor("R2"):.3f}
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -6605,6 +6555,7 @@ Valores analíticos instantâneos de referência:
 - Em $t = 1.0\text{ s}$: $v_C(1.0) = 24.0 - 120 e^{-4.0} + 96 e^{-5.0} \approx 24.0 - 2.1979 + 0.6468 = 22.4489\text{ V}$.
 - Em $t \to \infty$: $v_C(\infty) = 24.000\text{ V}$.
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -6613,13 +6564,13 @@ Valores analíticos instantâneos de referência:
             <pre class="code-block"><code>from circuit_solver import Circuit, VoltageSource, Resistor, Inductor, Capacitor, solve_transient
 
 circuit = Circuit([
-    VoltageSource('Vs', '1', '0', 24.0),
-    Resistor('R', '1', '2', 9.0),
-    Inductor('L', '2', '3', 1.0, ic=0.0),
-    Capacitor('C', '3', '0', 0.05, ic=0.0),
+    VoltageSource(&#x27;Vs&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 24.0),
+    Resistor(&#x27;R&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, 9.0),
+    Inductor(&#x27;L&#x27;, &#x27;2&#x27;, &#x27;3&#x27;, 1.0, ic=0.0),
+    Capacitor(&#x27;C&#x27;, &#x27;3&#x27;, &#x27;0&#x27;, 0.05, ic=0.0),
 ])
 res = solve_transient(circuit, t_stop=2.0, dt=1e-3, uic=True)
-print(f'v_C(0.5s) = {res.V("3")[500]:.3f} V, v_C(2.0s) = {res.V("3")[-1]:.3f} V')</code></pre>
+print(f&#x27;v_C(0.5s) = {res.V(&quot;3&quot;)[500]:.3f} V, v_C(2.0s) = {res.V(&quot;3&quot;)[-1]:.3f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -6629,9 +6580,9 @@ print(f'v_C(0.5s) = {res.V("3")[500]:.3f} V, v_C(2.0s) = {res.V("3")[-1]:.3f} V'
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -6640,8 +6591,8 @@ print(f'v_C(0.5s) = {res.V("3")[500]:.3f} V, v_C(2.0s) = {res.V("3")[-1]:.3f} V'
             <tr>
               <td><strong>Tensão v_C(0.5 s)</strong></td>
               <td class="text-mono">15.6399 V</td>
-              <td class="text-mono text-cyan">15.6271 V</td>
-              <td class="text-mono text-muted">0.082%</td>
+              <td class="text-mono text-cyan">15.6399 V</td>
+              <td class="text-mono text-muted">0.0000%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -6649,17 +6600,17 @@ print(f'v_C(0.5s) = {res.V("3")[500]:.3f} V, v_C(2.0s) = {res.V("3")[-1]:.3f} V'
             <tr>
               <td><strong>Tensão v_C(1.0 s)</strong></td>
               <td class="text-mono">22.4490 V</td>
-              <td class="text-mono text-cyan">22.4462 V</td>
-              <td class="text-mono text-muted">0.012%</td>
+              <td class="text-mono text-cyan">22.4490 V</td>
+              <td class="text-mono text-muted">0.0000%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
-              <td><strong>Tensão v_C em Regime (2.0 s)</strong></td>
-              <td class="text-mono">24.0000 V</td>
-              <td class="text-mono text-cyan">23.9640 V</td>
-              <td class="text-mono text-muted">0.150%</td>
+              <td><strong>Tensão v_C(2.0 s), antes do regime</strong></td>
+              <td class="text-mono">23.9641 V</td>
+              <td class="text-mono text-cyan">23.9641 V</td>
+              <td class="text-mono text-muted">0.0000%</td>
               <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
@@ -6765,6 +6716,7 @@ Propriedade fundamental do amortecimento crítico com condições iniciais de po
 \]
 A forma de onda cruza o zero exatamente em $t = 0.200\text{ ms}$, atinge um mínimo negativo e decai assintoticamente para zero sem qualquer oscilação periódica.
 
+              <p>Comparação transitória: atol=0,0002 V e rtol=0,5%, incluindo erro de discretização trapezoidal com dt=2 µs. No cruzamento por zero usa-se erro absoluto, pois erro relativo não está definido.</p>
             </div>
           </section>
 
@@ -6773,12 +6725,12 @@ A forma de onda cruza o zero exatamente em $t = 0.200\text{ ms}$, atinge um mín
             <pre class="code-block"><code>from circuit_solver import Circuit, Resistor, Inductor, Capacitor, solve_transient
 
 circuit = Circuit([
-    Resistor('R', '1', '0', 50.0),
-    Capacitor('C', '1', '0', 2.0e-6, ic=12.0),
-    Inductor('L', '1', '0', 0.020, ic=0.0),
+    Resistor(&#x27;R&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 50.0),
+    Capacitor(&#x27;C&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 2.0e-6, ic=12.0),
+    Inductor(&#x27;L&#x27;, &#x27;1&#x27;, &#x27;0&#x27;, 0.020, ic=0.0),
 ])
 res = solve_transient(circuit, t_stop=0.0015, dt=2e-6, uic=True)
-print(f'v(0.1ms) = {res.V("1")[50]:.3f} V, v(0.2ms zero) = {res.V("1")[100]:.3f} V')</code></pre>
+print(f&#x27;v(0.1ms) = {res.V(&quot;1&quot;)[50]:.3f} V, v(0.2ms zero) = {res.V(&quot;1&quot;)[100]:.3f} V&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -6788,9 +6740,9 @@ print(f'v(0.1ms) = {res.V("1")[50]:.3f} V, v(0.2ms zero) = {res.V("1")[100]:.3f}
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -6799,18 +6751,18 @@ print(f'v(0.1ms) = {res.V("1")[50]:.3f} V, v(0.2ms zero) = {res.V("1")[100]:.3f}
             <tr>
               <td><strong>Tensão v(0.1 ms)</strong></td>
               <td class="text-mono">3.6392 V</td>
-              <td class="text-mono text-cyan">3.6941 V</td>
-              <td class="text-mono text-muted">1.510%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-cyan">3.6391 V</td>
+              <td class="text-mono text-muted">0.0029%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
               <td><strong>Tensão v no Zero (0.2 ms)</strong></td>
               <td class="text-mono">0.0000 V</td>
-              <td class="text-mono text-cyan">0.0222 V</td>
-              <td class="text-mono text-muted">2.218%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-cyan">-1.1037e-04 V</td>
+              <td class="text-mono text-muted">1.1037e-04 V (absoluto)</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
                 </tbody>
@@ -6938,6 +6890,7 @@ S_{3\phi} = \sqrt{P_{3\phi}^2 + Q_{3\phi}^2} = \sqrt{3456^2 + 2592^2} = 4320.000
 \text{FP} = \frac{P_{3\phi}}{S_{3\phi}} = \frac{3456.0}{4320.0} = 0.8000\quad (\text{indutivo})
 \]
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -6948,12 +6901,12 @@ S_{3\phi} = \sqrt{P_{3\phi}^2 + Q_{3\phi}^2} = \sqrt{3456^2 + 2592^2} = 4320.000
     solve_ac, analyze_two_wattmeters
 )
 
-sources = build_three_phase_source('Y', V_rms=120.0, sequence='ABC', node_a='s_a', node_b='s_b', node_c='s_c', node_neutral='0')
-load = build_delta_load(R=24.0, L=18.0/(2*3.14159*60), node_a='s_a', node_b='s_b', node_c='s_c')
+sources = build_three_phase_source(&#x27;Y&#x27;, V_rms=120.0, sequence=&#x27;ABC&#x27;, node_a=&#x27;s_a&#x27;, node_b=&#x27;s_b&#x27;, node_c=&#x27;s_c&#x27;, node_neutral=&#x27;0&#x27;)
+load = build_delta_load(R=24.0, L=18.0/(2*3.14159*60), node_a=&#x27;s_a&#x27;, node_b=&#x27;s_b&#x27;, node_c=&#x27;s_c&#x27;)
 circuit = Circuit(sources + load)
 sol = solve_ac(circuit, frequency=60.0)
-wm = analyze_two_wattmeters(sol.V('s_a')-sol.V('s_c'), sol.V('s_b')-sol.V('s_c'), (sol.V('s_a')-sol.V('s_b'))/(24+18j), (sol.V('s_b')-sol.V('s_c'))/(24+18j))
-print(f'P_tot = {wm.P_total:.1f} W, Q_tot = {wm.Q_total:.1f} VAR, FP = {wm.power_factor:.3f}')</code></pre>
+wm = analyze_two_wattmeters(sol.V(&#x27;s_a&#x27;)-sol.V(&#x27;s_c&#x27;), sol.V(&#x27;s_b&#x27;)-sol.V(&#x27;s_c&#x27;), (sol.V(&#x27;s_a&#x27;)-sol.V(&#x27;s_b&#x27;))/(24+18j), (sol.V(&#x27;s_b&#x27;)-sol.V(&#x27;s_c&#x27;))/(24+18j))
+print(f&#x27;P_tot = {wm.P_total:.1f} W, Q_tot = {wm.Q_total:.1f} VAR, FP = {wm.power_factor:.3f}&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -6963,9 +6916,9 @@ print(f'P_tot = {wm.P_total:.1f} W, Q_tot = {wm.Q_total:.1f} VAR, FP = {wm.power
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -6982,19 +6935,19 @@ print(f'P_tot = {wm.P_total:.1f} W, Q_tot = {wm.Q_total:.1f} VAR, FP = {wm.power
 
             <tr>
               <td><strong>Leitura Wattímetro 1 (W1)</strong></td>
-              <td class="text-mono">979.7000 W</td>
+              <td class="text-mono">2476.2459 W</td>
               <td class="text-mono text-cyan">2476.2459 W</td>
-              <td class="text-mono text-muted">152.756%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
             <tr>
               <td><strong>Leitura Wattímetro 2 (W2)</strong></td>
-              <td class="text-mono">2476.3000 W</td>
+              <td class="text-mono">979.7541 W</td>
               <td class="text-mono text-cyan">979.7541 W</td>
-              <td class="text-mono text-muted">60.435%</td>
-              <td><span class="badge-status badge-warn">✓ Validado</span></td>
+              <td class="text-mono text-muted">0.0000%</td>
+              <td><span class="badge-status badge-pass">✓ Validado</span></td>
             </tr>
             
 
@@ -7154,6 +7107,7 @@ Z_{in} = R_1 + [R_3 \parallel (R_2 + R_L)] = 20.0 + [30.0 \parallel (40.0 + 50.0
 \]
 A equivalência analítica e computacional é exata até a última casa decimal.
 
+              <p>Referência conforme as equações e o modelo acima.</p>
             </div>
           </section>
 
@@ -7162,14 +7116,14 @@ A equivalência analítica e computacional é exata até a última casa decimal.
             <pre class="code-block"><code>from circuit_solver import Circuit, Resistor, analyze_two_port
 
 circuit = Circuit([
-    Resistor('R1', 'n1', 'mid', 20.0),
-    Resistor('R2', 'n2', 'mid', 40.0),
-    Resistor('R3', 'mid', '0', 30.0),
-], allowed_open_nodes=['n1', 'n2'])
-res = analyze_two_port(circuit, port1=('n1', '0'), port2=('n2', '0'))
-print(f'Z = {res.Z}')
-print(f'ABCD = {res.ABCD}')
-print(f'Zin(RL=50) = {res.input_impedance(Z_load=50.0):.3f} ohms')</code></pre>
+    Resistor(&#x27;R1&#x27;, &#x27;n1&#x27;, &#x27;mid&#x27;, 20.0),
+    Resistor(&#x27;R2&#x27;, &#x27;n2&#x27;, &#x27;mid&#x27;, 40.0),
+    Resistor(&#x27;R3&#x27;, &#x27;mid&#x27;, &#x27;0&#x27;, 30.0),
+], allowed_open_nodes=[&#x27;n1&#x27;, &#x27;n2&#x27;])
+res = analyze_two_port(circuit, port1=(&#x27;n1&#x27;, &#x27;0&#x27;), port2=(&#x27;n2&#x27;, &#x27;0&#x27;))
+print(f&#x27;Z = {res.Z}&#x27;)
+print(f&#x27;ABCD = {res.ABCD}&#x27;)
+print(f&#x27;Zin(RL=50) = {res.input_impedance(Z_load=50.0):.3f} ohms&#x27;)</code></pre>
           </section>
 
           <section class="card-section">
@@ -7179,9 +7133,9 @@ print(f'Zin(RL=50) = {res.input_impedance(Z_load=50.0):.3f} ohms')</code></pre>
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -7278,7 +7232,7 @@ print(f'Zin(RL=50) = {res.input_impedance(Z_load=50.0):.3f} ohms')</code></pre>
     <!-- Rodapé Técnico -->
     <footer class="site-footer">
       <p><strong>pycircuit-solver</strong> — Motor Computacional de Análise Nodal Modificada para Engenharia Elétrica</p>
-      <p>Gerado automaticamente em 21/10/2026 às 15:23:32 | Auditoria Analítica Rigorosa Multi-Livros</p>
+      <p>Gerado automaticamente em 21/10/2026 às 18:52:56 | Auditoria Analítica Rigorosa Multi-Livros</p>
       <p>Licenciado sob a Licença MIT | Desenvolvido com Python 3.10+, NumPy e PyO3/Rust</p>
     </footer>
 

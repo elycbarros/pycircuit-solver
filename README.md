@@ -37,7 +37,7 @@ O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contr
 * **Semicondutores & Solver de Newton-Raphson:** Resolução iterativa de circuitos não-lineares ($Q$-point) com Diodos de Junção (Equação de Shockley), Diodos Zener (regulação de tensão reversa), Transistores BJT (Ebers-Moll ativo e saturado) e MOSFETs (modelo quadrático de corte, triodo e saturação), amortecimento numérico SPICE (`pnjlim`, `fetlim`) e convergência estrita de resíduos ($\epsilon < 10^{-6}$).
 * **Análise Transitória no Domínio do Tempo (`.tran`):** Simulação dinâmica de carga e descarga em capacitores e indutores (circuitos RC, RL e RLC de 2ª ordem) via modelos companheiros de integração implícita (**Trapezoidal Rule** e **Backward Euler**) com formas de onda `PULSE`, `SIN` e `STEP`.
 * **Fontes Dependentes Completas:** Suporte integral aos elementos SPICE $E$ (VCVS), $G$ (VCCS), $F$ (CCCS) e $H$ (CCVS).
-* **Análise de Sensibilidade Analítica via Rede Adjunta e Pior Caso (Worst-Case / EVA):** Cálculo exato das derivadas parciais $\partial V_k / \partial p_i$ e sensibilidades relativas normalizadas $S_{p_i}^{V_k}$ (%/%) para todos os componentes simultaneamente com custo $O(1)$ adicional via Teorema de Tellegen e Método da Rede Adjunta. Determinação automática dos cantos de pior caso com simulação não-linear exata dos extremos (EVA), estimativa linear de Taylor e dispersão estatística RSS ($3\sigma$), acompanhado de relatório White-Box com **Ranking de Pareto de Sensibilidade**.
+* **Análise de Sensibilidade Analítica via Rede Adjunta e Pior Caso (Worst-Case / EVA):** Cálculo exato das derivadas parciais $\partial V_k / \partial p_i$ e sensibilidades relativas normalizadas $S_{p_i}^{V_k}$ (%/%) para todos os componentes simultaneamente com custo $O(1)$ adicional via Teorema de Tellegen e Método da Rede Adjunta. Seleção local de dois cantos pelas derivadas nominais, com nova resolução MNA (sem garantia de extremos globais), estimativa linear de Taylor e combinação RSS das tolerâncias (sem cobertura probabilística automática), acompanhado de relatório White-Box com **Ranking de Pareto de Sensibilidade**.
 * **Motor Transiente de Alta Performance em Rust (>1.000.000 passos/s):** Simulação ultra-rápida no domínio do tempo com modelos companion (Trapezoidal Rule e Backward Euler). A matriz MNA é fatorada uma única vez via LU ($O(N^3)$) e cada passo temporal é resolvido em $O(N^2)$ por substituição em código Rust compilado. Inclui auditoria em tempo real de conservação de energia ($E_{\text{stored}}(t) = \frac{1}{2}\sum C v_c^2 + \frac{1}{2}\sum L i_l^2$ e $P_{\text{diss}}(t) = \sum v_r^2/R$) e despacho transparente com fallback automático.
 * **Subcircuitos SPICE Hierárquicos (.subckt / .ends):** Suporte nativo a subcircuitos com hierarquia aninhada arbitrária, avaliação paramétrica (`PARAMS:`) com expressões matemáticas `{...}`, biblioteca pedagógica embutida (LM741, inversor CMOS, Sallen-Key), introspecção White-Box e comandos `pycircuit explain` e `pycircuit hierarchy`.
 * **Análise CA de Pequenos Sinais com Semicondutores:** Ponto de operação DC ($Q$-point) com Newton-Raphson e linearização analítica automática para Diodos ($r_d$), BJTs (modelo híbrido-$\pi$: $g_m, r_\pi, r_o$) e MOSFETs ($g_m, r_{ds}$), permitindo traçar diagramas de Bode de amplificadores transistorizados.
@@ -209,8 +209,8 @@ pip install -e .[dev]
 O `pycircuit-solver` opera em Python puro com NumPy por padrão. Para habilitar aceleração em Rust com paralelismo nativo multi-thread via `rayon`:
 ```bash
 cd rust_core
-maturin build --release --interpreter python3
-pip install target/wheels/*.whl
+maturin build --release --features extension-module --interpreter python3
+pip install --force-reinstall target/wheels/*.whl
 ```
 
 ### Exemplo em Python (Divisor com Carga e Op-Amp)

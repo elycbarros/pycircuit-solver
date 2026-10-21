@@ -13,6 +13,7 @@ Supports:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
 
 import numpy as np
 
@@ -125,6 +126,8 @@ def _set_element_param(circuit: Circuit, param_name: str, value: float) -> None:
                 el.Vth = float(value)
             elif hasattr(el, "value"):
                 setattr(el, "value", float(value))
+            else:
+                raise ValueError(f"Component {el.name!r} has no supported sweep parameter.")
             break
 
     if not found:
@@ -185,24 +188,25 @@ def dc_sweep(
     >>> res.V("1")
     array([0., 1., 2., 3., 4., 5.])
     """
-    if step == 0:
-        raise ValueError("Sweep step must be non-zero.")
-    num_points = int(round(abs(stop - start) / abs(step))) + 1
-    sweep_values = np.linspace(start, stop, num_points)
+    def grid(first, last, increment):
+        if not np.all(np.isfinite([first, last, increment])) or increment == 0:
+            raise ValueError("Sweep bounds and non-zero step must be finite.")
+        span = (last - first) / increment
+        if span < 0:
+            raise ValueError("Sweep step must point from start toward stop.")
+        count = int(np.floor(span + 1e-12 * max(1.0, abs(span)))) + 1
+        return first + increment * np.arange(count, dtype=float)
 
-    has_secondary = (
-        param2_name is not None
-        and start2 is not None
-        and stop2 is not None
-        and step2 is not None
-        and step2 != 0
-    )
-
-    if has_secondary:
-        num2_points = int(round(abs(stop2 - start2) / abs(step2))) + 1
-        sweep2_values = np.linspace(start2, stop2, num2_points)
-    else:
-        sweep2_values = None
+    sweep_values = grid(start, stop, step)
+    secondary_args = (param2_name, start2, stop2, step2)
+    has_secondary = any(value is not None for value in secondary_args)
+    if has_secondary and not all(value is not None for value in secondary_args):
+        raise ValueError("Secondary sweep requires name, start, stop and step.")
+    if has_secondary and param_name.strip().lower() == param2_name.strip().lower():
+        raise ValueError("Nested sweeps must use distinct components.")
+    sweep2_values = grid(start2, stop2, step2) if has_secondary else None
+    # Isolate every mutable element, including when a solver raises mid-sweep.
+    circuit = deepcopy(circuit)
 
     # Track all nodes
     all_nodes = [k for k in circuit.node_map.keys()]

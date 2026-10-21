@@ -3,6 +3,7 @@ data_part3.py — Memória de Cálculo: Exercícios 31 a 43
 (Sedra & Smith, Hayt, Kemmerly & Durbin, Irwin & Nelms)
 """
 import math
+from scipy.optimize import brentq
 import numpy as np
 
 from circuit_solver.core.circuit import Circuit
@@ -14,6 +15,10 @@ from circuit_solver.engine.mna import solve
 from circuit_solver.engine.thevenin import thevenin_norton
 from circuit_solver.engine.ac import solve_ac
 from circuit_solver.engine.transient import solve_transient
+
+# Independent reference: scalar KCL for the active-region matched mirror.
+_VREF35 = brentq(lambda v: (10 - v) / 9300 - 1.02 * 1e-14 * math.expm1(v / 0.02585), 0.1, 0.9)
+_IREF35 = (10 - _VREF35) / 9300
 
 EXERCISES_PART3 = [
     {
@@ -273,6 +278,7 @@ V_{CE} = V_C - V_E \approx 8.61 - 3.87 = 4.74\text{ V} > 0.3\text{ V} \quad (\te
     },
     {
         "id": 35,
+        "model_note": "A dedução com VBE=0,7 V é aproximada. A referência da tabela resolve independentemente (10−Vref)/9300 = 1,02·Is·expm1(Vref/Vt), Is=1e-14 A e Vt=0,02585 V; Iout=Iref/1,02. A corrente reversa BC de Q2 é desprezível em região ativa.",
         "book": "Sedra & Smith",
         "book_title": "Microelectronic Circuits (7ª/8ª Edição)",
         "chapter": "Capítulo 7 — Circuitos Integrados Analógicos",
@@ -346,9 +352,9 @@ da fonte de corrente integrada analógica.
                 Resistor("RC", "vcc", "c2", 2000.0),
             ]): (
                 lambda s=solve(c): [
-                    ("Corrente de Referência I_ref", 1.000e-3, s.I_resistor("Rref"), "A"),
-                    ("Corrente Espelhada I_out", 1.000e-3 / 1.02, s.I_resistor("RC"), "A"),
-                    ("Tensão de Polarização V_ref", 0.700, s.V("ref"), "V"),
+                    ("Corrente de Referência I_ref", _IREF35, s.I_resistor("Rref"), "A"),
+                    ("Corrente Espelhada I_out", _IREF35 / 1.02, s.I_resistor("RC"), "A"),
+                    ("Tensão de Polarização V_ref", _VREF35, s.V("ref"), "V"),
                 ]
             )()
         )()

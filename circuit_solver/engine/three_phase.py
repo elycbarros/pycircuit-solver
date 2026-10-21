@@ -40,7 +40,7 @@ class TwoWattmeterResult:
     P_total : float
         Total 3-phase active power in Watts (W1 + W2).
     Q_total : float
-        Total 3-phase reactive power in VAR (sqrt(3) * (W1 - W2) for balanced ABC).
+        Total 3-phase reactive power in VAR (Im(Vac*conj(Ia) + Vbc*conj(Ib))).
     S_total : float
         Total 3-phase apparent power in VA (sqrt(P^2 + Q^2)).
     power_factor : float
@@ -90,6 +90,8 @@ def build_three_phase_source(
     list[VoltageSource]
         Three phase-shifted voltage sources.
     """
+    if connection not in ("Y", "DELTA") or sequence not in ("ABC", "ACB"):
+        raise ValueError("Expected connection Y/DELTA and sequence ABC/ACB.")
     if sequence == "ABC":
         phase_b = -120.0
         phase_c = 120.0
@@ -213,13 +215,18 @@ def analyze_two_wattmeters(
       W1 = Re(Vac * conj(Ia))
       W2 = Re(Vbc * conj(Ib))
       P_tot = W1 + W2
-      Q_tot = sqrt(3) * (W1 - W2) (for balanced ABC)
+      Q_tot = Im(Vac * conj(Ia) + Vbc * conj(Ib))
+
+    RMS phasors and a three-wire system (Ia + Ib + Ic = 0) are required.
+    For four-wire loads with neutral current, use all three phase powers.
     """
     w1 = float(np.real(V_line_ac * np.conj(I_line_a)))
     w2 = float(np.real(V_line_bc * np.conj(I_line_b)))
 
     p_tot = w1 + w2
-    q_tot = math.sqrt(3.0) * (w1 - w2)
+    # RMS phasors, three-wire system: Ic = -(Ia + Ib).
+    # S = Vac*conj(Ia) + Vbc*conj(Ib), independent of balance/sequence.
+    q_tot = float(np.imag(V_line_ac * np.conj(I_line_a) + V_line_bc * np.conj(I_line_b)))
     s_tot = math.hypot(p_tot, q_tot)
 
     pf = (p_tot / s_tot) if s_tot > 1e-12 else 1.0

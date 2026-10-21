@@ -5,6 +5,8 @@ Gera o relatório estático formal MEMORIA_DE_CALCULO.html na raiz do projeto.
 import os
 import sys
 import datetime
+import math
+from html import escape
 
 # Adicionar a raiz do projeto ao path de importação
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -23,6 +25,7 @@ def build_calculation_memory_html():
     results_data = []
     total_comparisons = 0
     max_rel_error = 0.0
+    passed = 0
 
     for ex in all_exercises:
         comparisons = ex["run"]()
@@ -33,7 +36,10 @@ def build_calculation_memory_html():
                 rel_err = abs((actual - expected) / expected) * 100.0
             else:
                 rel_err = abs(actual - expected) * 100.0
-            max_rel_error = max(max_rel_error, rel_err)
+            finite = math.isfinite(expected) and math.isfinite(actual)
+            valid = finite and abs(actual - expected) <= ex.get("atol", 1e-6) + ex.get("rtol", 0.005) * abs(expected)
+            passed += int(valid)
+            max_rel_error = max(max_rel_error, rel_err) if finite else math.inf
 
             # Formatação numérica científica inteligente
             def fmt_num(v):
@@ -48,8 +54,8 @@ def build_calculation_memory_html():
                 "expected": fmt_num(expected),
                 "actual": fmt_num(actual),
                 "unit": unit,
-                "rel_err": f"{rel_err:.4f}%" if rel_err < 0.0001 else f"{rel_err:.3f}%",
-                "status": "PASS" if rel_err < 0.5 else "WARN"
+                "rel_err": (f"{rel_err:.4f}%" if expected != 0 else f"{abs(actual - expected):.4e} {unit} (absoluto)"),
+                "status": "PASS" if valid else "WARN"
             })
         
         results_data.append({
@@ -87,7 +93,7 @@ def build_calculation_memory_html():
               <td class="text-mono">{r['expected']} {r['unit']}</td>
               <td class="text-mono text-cyan">{r['actual']} {r['unit']}</td>
               <td class="text-mono text-muted">{r['rel_err']}</td>
-              <td><span class="badge-status {badge_class}">✓ Validado</span></td>
+              <td><span class="badge-status {badge_class}">{"✓ Validado" if r["status"] == "PASS" else "⚠ Divergente"}</span></td>
             </tr>
             """)
         
@@ -126,12 +132,13 @@ def build_calculation_memory_html():
             <h4 class="section-title">📐 Memória de Cálculo Analítica Passo a Passo (Sem Atalhos)</h4>
             <div class="math-derivation">
               {ex['deducao']}
+              <p>{ex.get("model_note", "Referência conforme as equações e o modelo acima.")}</p>
             </div>
           </section>
 
           <section class="card-section">
             <h4 class="section-title">🐍 Implementação Computacional no pycircuit-solver</h4>
-            <pre class="code-block"><code>{ex['python_code']}</code></pre>
+            <pre class="code-block"><code>{escape(ex['python_code'])}</code></pre>
           </section>
 
           <section class="card-section">
@@ -141,9 +148,9 @@ def build_calculation_memory_html():
                 <thead>
                   <tr>
                     <th>Grandeza Físico-Elétrica</th>
-                    <th>Solução Analítica Exata</th>
+                    <th>Referência analítica (modelo indicado)</th>
                     <th>Simulação pycircuit-solver</th>
-                    <th>Resíduo Relativo</th>
+                    <th>Erro relativo / absoluto</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -167,7 +174,7 @@ def build_calculation_memory_html():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📑 Memória de Cálculo — 43 Exercícios Canônicos (pycircuit-solver)</title>
+  <title>📑 Memória de Cálculo — {total_exercises} Exercícios Canônicos (pycircuit-solver)</title>
   
   <!-- Tipografia Moderna: Inter & Fira Code -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -773,7 +780,7 @@ def build_calculation_memory_html():
       <a href="#" class="sidebar-brand">
         ⚡ <span>pycircuit</span>-solver
       </a>
-      <div class="sidebar-subtitle">Memória de Cálculo Formal (43 Exercícios)</div>
+      <div class="sidebar-subtitle">Memória de Cálculo Formal ({total_exercises} Exercícios)</div>
     </div>
 
     <div class="search-box-wrap">
@@ -781,7 +788,7 @@ def build_calculation_memory_html():
     </div>
 
     <div class="category-filter-bar">
-      <button class="filter-btn active" data-filter="all">Todos (43)</button>
+      <button class="filter-btn active" data-filter="all">Todos ({total_exercises})</button>
       <button class="filter-btn" data-filter="Regime Permanente DC">DC</button>
       <button class="filter-btn" data-filter="Amplificadores Operacionais">Op-Amp</button>
       <button class="filter-btn" data-filter="Regime Permanente CA">CA</button>
@@ -802,8 +809,8 @@ def build_calculation_memory_html():
       <span class="hero-tag">Caderno Técnico de Engenharia Elétrica & MNA</span>
       <h1 class="hero-title">Memória de Cálculo Analítica de Circuitos</h1>
       <p class="hero-desc">
-        Documentação exaustiva e passo a passo de <strong>43 problemas canônicos clássicos</strong> 
-        retirados das 7 principais referências bibliográficas mundiais da Engenharia Elétrica e Microeletrônica. 
+        Documentação exaustiva e passo a passo de <strong>{total_exercises} exercícios didáticos adaptados</strong>
+        inspirados em referências de Engenharia Elétrica e Microeletrônica; a numeração bibliográfica é indicativa, sem verificação de edição.
         Cada exercício apresenta o equacionamento formal (LKC, LKT, matrizes MNA e modelos de semicondutores) 
         confrontado diretamente contra o motor de cálculo do <strong><code>pycircuit-solver</code></strong>.
       </p>
@@ -822,7 +829,7 @@ def build_calculation_memory_html():
           <div class="stat-lbl">Grandezas Confrontadas</div>
         </div>
         <div class="stat-card">
-          <div class="stat-val">100%</div>
+          <div class="stat-val">{100 * passed / total_comparisons:.2f}%</div>
           <div class="stat-lbl">Conformidade e Aprovação</div>
         </div>
       </div>
@@ -836,6 +843,7 @@ def build_calculation_memory_html():
 
     <!-- Todos os 43 Cards de Cálculo -->
     <section id="exercisesList">
+      <p>Critério: |simulado − referência| ≤ atol + rtol × |referência|; padrão atol=1e-6 na unidade da linha, rtol=0,5%. Valores não finitos reprovam. Aproximações de VBE constante podem divergir do modelo exponencial; isso permanece visível.</p>
       {all_cards_str}
     </section>
 
@@ -916,7 +924,8 @@ def build_calculation_memory_html():
     print(f"Sucesso! Memória de Cálculo gerada com {total_exercises} exercícios em:")
     print(f"-> {output_path}")
     print(f"Total de grandezas conferidas: {total_comparisons}")
-    print("Status: 100% aprovado.")
+    print(f"Status: {passed}/{total_comparisons} comparações aprovadas; {total_comparisons - passed} divergentes.")
+    return results_data
 
 
 if __name__ == "__main__":

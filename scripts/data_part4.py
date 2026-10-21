@@ -62,7 +62,7 @@ def run_ex45():
     return [
         ("Tensão v_C(0.5 s)", vc_ana_05, float(vc[idx_05]), "V"),
         ("Tensão v_C(1.0 s)", vc_ana_10, float(vc[idx_10]), "V"),
-        ("Tensão v_C em Regime (2.0 s)", 24.0, float(vc[-1]), "V"),
+        ("Tensão v_C(2.0 s), antes do regime", 24.0 - 120.0 * np.exp(-8.0) + 96.0 * np.exp(-10.0), float(vc[-1]), "V"),
     ]
 
 def run_ex46():
@@ -75,10 +75,10 @@ def run_ex46():
     res = solve_transient(c, t_stop=0.0015, dt=dt, uic=True)
     v = res.V("1")
     # Ponto t = 0.1 ms (0.0001 s)
-    idx_01ms = int(0.0001 / dt)
+    idx_01ms = round(0.0001 / dt)
     v_ana_01ms = (12.0 - 60000.0 * 0.0001) * np.exp(-5000.0 * 0.0001)
     # Ponto de cruzamento por zero t = 0.2 ms (0.0002 s)
-    idx_zero = int(0.0002 / dt)
+    idx_zero = round(0.0002 / dt)
     return [
         ("Tensão v(0.1 ms)", v_ana_01ms, float(v[idx_01ms]), "V"),
         ("Tensão v no Zero (0.2 ms)", 0.0, float(v[idx_zero]), "V"),
@@ -119,8 +119,8 @@ def run_ex47():
     )
     return [
         ("Corrente de Linha |I_L|", 12.0, float(abs(i_a)), "A"),
-        ("Leitura Wattímetro 1 (W1)", 979.7, float(wm.W1), "W"),
-        ("Leitura Wattímetro 2 (W2)", 2476.3, float(wm.W2), "W"),
+        ("Leitura Wattímetro 1 (W1)", 2476.24594887, float(wm.W1), "W"),
+        ("Leitura Wattímetro 2 (W2)", 979.75405113, float(wm.W2), "W"),
         ("Potência Ativa Total P_3φ", 3456.0, float(wm.P_total), "W"),
         ("Potência Reativa Total Q_3φ", 2592.0, float(wm.Q_total), "VAR"),
         ("Potência Aparente Total S_3φ", 4320.0, float(wm.S_total), "VA"),
@@ -341,6 +341,8 @@ Valores analíticos instantâneos de referência:
     },
     {
         "id": 46,
+        "atol": 2e-4,
+        "model_note": "Comparação transitória: atol=0,0002 V e rtol=0,5%, incluindo erro de discretização trapezoidal com dt=2 µs. No cruzamento por zero usa-se erro absoluto, pois erro relativo não está definido.",
         "book": "Alexander & Sadiku",
         "book_title": "Fundamentos de Circuitos Elétricos (5ª/6ª Edição)",
         "chapter": "Capítulo 8 — Circuitos de Segunda Ordem",

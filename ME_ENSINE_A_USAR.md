@@ -93,8 +93,8 @@ print(solucao.summary())
 Você também pode acessar qualquer valor diretamente no seu código:
 ```python
 v2 = solucao.V("2")         # 7.2 Volts
-i_r1 = solucao.I("R1")      # 1.2 Amperes
-p_r1 = solucao.P("R1")      # 5.76 Watts
+i_r1 = solucao.I_resistor("R1")      # 1.2 Amperes
+p_r1 = solucao.P_resistor("R1")      # -5.76 W (potência entregue; resistor absorve 5.76 W)
 ```
 
 ---
@@ -104,7 +104,7 @@ p_r1 = solucao.P("R1")      # 5.76 Watts
 Na vida real, ninguém escreve `4700` ou `0.000010`. O `pycircuit-solver` entende sufixos de engenharia nativamente:
 
 ```python
-from circuit_solver import parse_value
+from circuit_solver.core.validator import parse_value
 
 r_base = parse_value("4k7")    # 4700.0 Ohms
 c_filtro = parse_value("100u") # 0.0001 Farads
@@ -151,10 +151,10 @@ from circuit_solver.engine.thevenin import thevenin_norton
 
 th = thevenin_norton(circuito, node_a="2", node_b="0")
 
-print(f"Vth:  {th.v_th:.3f} V")
-print(f"Rth:  {th.r_th:.3f} Ω")
-print(f"In:   {th.i_norton:.3f} A")
-print(f"Pmax: {th.p_max:.3f} W (quando R_load = {th.r_th:.3f} Ω)")
+print(f"Vth:  {th.V_th:.3f} V")
+print(f"Rth:  {th.R_th:.3f} Ω")
+print(f"In:   {th.I_N:.3f} A")
+print(f"Pmax: {th.P_max:.3f} W (quando R_load = {th.R_th:.3f} Ω)")
 ```
 
 ---
@@ -253,7 +253,7 @@ circuito_rc = Circuit([
 ])
 
 # Simula 5 milissegundos (5 constantes de tempo tau)
-sol_tran = solve_transient(circuito_rc, t_stop=0.005, dt=1e-5)
+sol_tran = solve_transient(circuito_rc, t_stop=0.005, dt=1e-5, uic=True)
 
 print(sol_tran.summary())
 print(f"Tensão em 1 ms (1 tau): {sol_tran.V('2')[100]:.3f} V  (≈ 63.2% de 10V)")
@@ -275,7 +275,7 @@ pycircuit monte-carlo divisor.cir -n 10000 -t 0.05 --plot
 
 No Python (usando o acelerador em Rust multi-thread):
 ```python
-from circuit_solver.engine.monte_carlo_rust import monte_carlo
+from circuit_solver import monte_carlo
 
 # Roda 50.000 simulações em poucos milissegundos
 resultado = monte_carlo(circuito, n_samples=50_000, seed=42)
@@ -294,7 +294,7 @@ print(resultado.summary())
        2      7.199412    0.165241   6.521840   7.842105   6.928190   7.471830
 ========================================================================
 ```
-* **P5 e P95:** Em $90\%$ dos circuitos fabricados, a tensão no nó 2 ficará garantidamente entre $6.92\text{ V}$ e $7.47\text{ V}$.
+* **P5 e P95:** Na amostra simulada, cerca de $90\%$ dos valores ficam entre $6.92\text{ V}$ e $7.47\text{ V}$.
 
 ---
 
@@ -483,8 +483,8 @@ Na bancada real, nenhum resistor de $10\text{ k}\Omega$ tem exatamente $10.000\ 
 
 Como saber:
 * **Qual componente tem maior impacto na tensão de saída?** (Sensibilidade Relativa Normalizada $S_p^{V}$ em %/%).
-* **Qual é a tensão mínima e máxima absoluta possível?** (Worst-Case / EVA — *Extreme Value Analysis*).
-* **Qual é a dispersão estatística realista a $3\sigma$?** (Fórmula RSS — *Root-Sum-Square*).
+* **Qual é a tensão nos cantos indicados pela derivada nominal?** (Worst-Case / EVA — *Extreme Value Analysis*).
+* **Qual é a combinação RSS das tolerâncias?** (Fórmula RSS — *Root-Sum-Square*).
 
 ### No Terminal (CLI):
 ```bash
@@ -505,7 +505,7 @@ circuito = Circuit([
     Resistor("R2", "2", "0", 1000.0, tolerance=0.05),
 ])
 
-res = analyze_sensitivity(circuito, target_node="2")
+res = analyze_sensitivity(circuito, target_node="2", default_source_tolerance=0.0)
 print(res.summary())
 ```
 
@@ -523,9 +523,9 @@ print(res.summary())
   V1           +0.50000 V/V  +1.0000 %/%                       ±0.0 %
 
 2. EXCURSÃO DE PIOR CASO (WORST-CASE):
-  * EVA Exato (Extreme Value):  4.7619 V a 5.2381 V (Δ = ±0.2381 V)
+  * Cantos selecionados pela sensibilidade:  4.7500 V a 5.2500 V (Δ = ±0.2500 V)
   * Taylor Linear (1ª Ordem):   4.7500 V a 5.2500 V (Δ = ±0.2500 V)
-  * Dispersão Estatística RSS:  4.8232 V a 5.1768 V (Δ = ±0.1768 V)
+  * Combinação Linear RSS:  4.8232 V a 5.1768 V (Δ = ±0.1768 V)
 ======================================================================
 ```
 
@@ -559,9 +559,9 @@ circuito = Circuit([
 ])
 
 # Simula com backend 'rust' (ou 'auto' para detecção transparente)
-res = solve_transient(circuito, t_stop=5e-3, dt=1e-5, backend="rust")
-print(f"Passos resolvidos: {len(res.t)}")
-print(f"Energia final armazenada no capacitor: {res.stored_energy[-1] * 1e6:.2f} µJ")
+res = solve_transient(circuito, t_stop=5e-3, dt=1e-5, backend="rust", uic=True)
+print(f"Passos resolvidos: {len(res.time)}")
+print(f"Energia final armazenada no capacitor: {res.E_stored()[-1] * 1e6:.2f} µJ")
 ```
 
 ---
@@ -674,3 +674,14 @@ print(f"P_total = {wm.P_total:.1f} W, Q_total = {wm.Q_total:.1f} VAR, FP = {wm.p
 Agora você está pronto para simular qualquer circuito com precisão acadêmica e performance profissional! 🚀
 
 
+
+
+### Hipóteses para interpretar os resultados
+
+O transitório aceita apenas elementos lineares; diodos, Zener, BJT e MOSFET são rejeitados explicitamente. Use `solve` para o ponto DC não linear. `uic=True` aplica as condições iniciais de capacitores e indutores; sem UIC o transitório começa no ponto de operação DC.
+
+Na varredura DC, os pontos são `start + k*step` até o limite, sem alterar o circuito recebido. Um limite não divisível pelo passo não é incluído.
+
+A sensibilidade é local. Os dois cantos escolhidos pelas derivadas nominais são resolvidos novamente, mas não constituem prova de extremos globais. RSS = √Σ(∂V/∂p · Δp)² combina contribuições de primeira ordem. Só representa 3σ se cada Δp for 3σ e as variações forem independentes. Para tolerâncias uniformes independentes ±Δp, σ(V) ≈ RSS/√3. Correlações exigem covariâncias. O Pareto exibido mede a fração de impacto absoluto linear, não a fração de variância.
+
+O método dos dois wattímetros usa fasores RMS e três fios (Ia+Ib+Ic=0): S=Vac·conj(Ia)+Vbc·conj(Ib). P=Re(S), Q=Im(S), inclusive com desequilíbrio e sequência inversa. Em quatro fios com corrente de neutro, some as três potências fase–neutro. A relação √3(W1−W2) exige equilíbrio e sequência ABC.

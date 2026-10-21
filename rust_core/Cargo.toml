@@ -11,9 +11,12 @@ name = "pycircuit_core"
 # rlib   = native Rust tests
 crate-type = ["cdylib", "rlib"]
 
+[features]
+extension-module = ["pyo3/extension-module"]
+
 [dependencies]
 # PyO3: Python ↔ Rust bindings (abi3 = stable ABI, works with all CPython 3.10+)
-pyo3 = { version = "0.23", features = ["extension-module", "abi3-py310"] }
+pyo3 = { version = "0.23", features = ["abi3-py310"] }
 
 # rayon: data-parallelism (thread pool, par_iter) — no GIL constraint in Rust
 rayon = "1.10"

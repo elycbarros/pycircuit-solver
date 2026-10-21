@@ -3,6 +3,7 @@ data_part2.py — Memória de Cálculo: Exercícios 16 a 30
 (Alexander & Sadiku, Nilsson & Riedel, Boylestad, Dorf & Svoboda, Sedra & Smith)
 """
 import math
+from scipy.optimize import brentq
 import numpy as np
 
 from circuit_solver.core.circuit import Circuit
@@ -13,6 +14,12 @@ from circuit_solver.core.elements import (
 from circuit_solver.engine.mna import solve
 from circuit_solver.engine.ac import solve_ac
 from circuit_solver.engine.transient import solve_transient
+
+# Independent scalar base-loop reference, active-region exponential BJT model.
+_VBE23 = brentq(lambda v: v + 109000 * 1e-14 * math.expm1(v / 0.02585) / 100 - 4, 0.1, 0.9)
+_IB23 = (4 - _VBE23) / 109000
+_VC23 = 20 - 4000 * 100 * _IB23
+_VE23 = 1000 * 101 * _IB23
 
 EXERCISES_PART2 = [
     {
@@ -543,6 +550,7 @@ I_s = \frac{V_s - V_{out}}{R_s} = \frac{16.000 - 10.0263}{1000.0} = 5.9737\text{
     },
     {
         "id": 23,
+        "model_note": "A dedução de VBE=0,7 V é uma aproximação. A tabela usa a raiz escalar independente de VBE + (109000/100)·Is·expm1(VBE/Vt)=4, com Is=1e-14 A e Vt=0,02585 V; IB=(4−VBE)/109000, VC=20−400000·IB, VE=101000·IB. Despreza-se a corrente reversa da junção BC em região ativa.",
         "book": "Boylestad / Sedra",
         "book_title": "Dispositivos Eletrônicos / Microeletrônica",
         "chapter": "Capítulo 5 / 6 — Polarização de BJT",
@@ -635,9 +643,9 @@ com excelente imunidade a flutuações térmicas graças à degeneração de emi
                 BJT("Q1", "c", "b", "e", polarity="NPN", beta=100.0, Is=1e-14),
             ]): (
                 lambda s=solve(c): [
-                    ("Tensão de Coletor V_C", 7.89, s.V("c"), "V"),
-                    ("Tensão de Emissor V_E", 3.058, s.V("e"), "V"),
-                    ("Queda V_CE (Ativo)", 4.832, s.V("c") - s.V("e"), "V"),
+                    ("Tensão de Coletor V_C", _VC23, s.V("c"), "V"),
+                    ("Tensão de Emissor V_E", _VE23, s.V("e"), "V"),
+                    ("Queda V_CE (Ativo)", _VC23 - _VE23, s.V("c") - s.V("e"), "V"),
                 ]
             )()
         )()

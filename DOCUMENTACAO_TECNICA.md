@@ -199,8 +199,8 @@ A análise de ponto de operação estático (.op) calcula as grandezas elétrica
    Avalia a regulação de fontes e máxima transferência de potência sobre resistores de carga variáveis.
 3. **Varredura Aninhada 2D (Família de Curvas Características):**
    Permite variar um parâmetro primário (ex: $V_{CE}$ de 0 a 5V) para múltiplos patamares discretos de um parâmetro secundário (ex: $I_B \in [10, 20, 30, 40, 50]\ \mu\text{A}$), gerando matrizes de resultados $\mathbf{V} \in \mathbb{R}^{N_2 \times N_1}$ e $\mathbf{I} \in \mathbb{R}^{N_2 \times N_1}$ e traçando diretamente as curvas características de dispositivos semicondutores ($I_C \times V_{CE}$, $I_D \times V_{DS}$).
-4. **Continuação de Solução Homotópica:**
-   Em circuitos não-lineares, a solução $\mathbf{x}^{(k)}$ do passo anterior é utilizada como aproximação inicial (*initial guess*) para o passo subsequente $\mathbf{x}^{(k+1)}$, garantindo convergência ultrarrápida do Newton-Raphson (tipicamente 2 a 4 iterações por ponto).
+4. **Resolução por ponto:**
+   Cada ponto não linear é resolvido pelo Newton-Raphson; a varredura atual não reutiliza a solução anterior. Os pontos são start+k·step até o limite, sem alterar o circuito original.
 
 ---
 
@@ -465,7 +465,7 @@ pycircuit-solver/
 
 ## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (447 Testes)
 
-A biblioteca é auditada de ponta a ponta por uma suíte de **447 testes automatizados** (437 aprovados, 10 skips singulares estocásticos esperados) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com soluções analíticas exatas publicadas em 7 das maiores referências bibliográficas mundiais da Engenharia Elétrica e Microeletrônica:
+A biblioteca é auditada de ponta a ponta por uma suíte de **478 testes automatizados** (468 aprovados, 10 skips singulares estocásticos esperados) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
 
 1. **Alexander & Sadiku (*Fundamentos de Circuitos Elétricos*):**
    * Divisores e reduções série-paralelo (Cap. 2, Ex. 2.8).
@@ -756,8 +756,8 @@ pycircuit tran netlist.cir --tstop 10m --dt 10u --backend rust --plot
 
 Em projetos de engenharia eletrônica de alta confiabilidade (aeroespacial, médica, automotiva ISO 26262 e certificações militares), a análise nominal é insuficiente. O projetista e o pesquisador acadêmico necessitam quantificar:
 1. **Sensibilidade Paramétrica:** O quanto uma variação em cada componente altera a tensão do nó crítico.
-2. **Pior Caso Extremo (Worst-Case / EVA - Extreme Value Analysis):** Qual a excursão máxima e mínima de tensão considerando as tolerâncias de fabricação.
-3. **Pior Caso Estatístico (RSS - Root-Sum-Square):** A dispersão realista a $3\sigma$ assumindo independência estatística dos componentes.
+2. **Pior Caso Extremo (Worst-Case / EVA - Extreme Value Analysis):** Resolução dos dois cantos indicados pelas derivadas nominais; não prova extremos globais.
+3. **Pior Caso Estatístico (RSS - Root-Sum-Square):** Combinação de primeira ordem das tolerâncias; não implica automaticamente 3σ.
 
 ### 11.1 Formulação Matemática do Método da Rede Adjunta (*Adjoint Network Method*)
 
@@ -781,7 +781,7 @@ $$\frac{\partial V_k}{\partial p} = \mathbf{y}_k^T \left( \frac{\partial \mathbf
   onde $(x_p - x_n)$ é a tensão nominal no resistor e $(y_p - y_n)$ é a tensão no elemento no circuito adjunto.
 * **Fonte de Tensão Independente $V_s$:**
   $$\frac{\partial V_k}{\partial V_s} = y_{aux}$$
-* **Fonte de Corrente Independente $I_s$ (sai de $p$, entra em $n$):**
+* **Fonte de Corrente Independente $I_s$ (API: injeta em $p$, retira de $n$):**
   $$\frac{\partial V_k}{\partial I_s} = y_p - y_n$$
 * **Fonte Controlada VCVS ($E$, ganho $\mu$):**
   $$\frac{\partial V_k}{\partial \mu} = y_{aux} \cdot (x_{cp} - x_{cn})$$
@@ -797,21 +797,21 @@ $$S_p^{V_k} = \frac{p}{V_k} \frac{\partial V_k}{\partial p} = \frac{\partial \ln
 Com a derivada $\frac{\partial V_k}{\partial p}$ e a tolerância de fabricação $\tau_i$ de cada componente:
 
 1. **Determinação dos Cantos de Pior Caso (Extreme Value Analysis - EVA):**
-   * Se $\frac{\partial V_k}{\partial p_i} > 0 \implies$ Para maximizar $V_k$, toma-se $p_i^{\max} = p_i (1 + \tau_i)$; para minimizar, $p_i^{\min} = p_i (1 - \tau_i)$.
-   * Se $\frac{\partial V_k}{\partial p_i} < 0 \implies$ Para maximizar $V_k$, toma-se $p_i^{\min} = p_i (1 - \tau_i)$; para minimizar, $p_i^{\max} = p_i (1 + \tau_i)$.
+   * Se $\frac{\partial V_k}{\partial p_i} > 0 \implies$ Para maximizar $V_k$, toma-se $p_i^{\max} = p_i + |p_i|\tau_i$; para minimizar, $p_i^{\min} = p_i - |p_i|\tau_i$.
+   * Se $\frac{\partial V_k}{\partial p_i} < 0 \implies$ Para maximizar $V_k$, toma-se $p_i^{\min} = p_i - |p_i|\tau_i$; para minimizar, $p_i^{\max} = p_i + |p_i|\tau_i$.
    * **Re-solve Não-Linear Exato:** O `pycircuit` monta os circuitos nos cantos calculados e os resolve via MNA, capturando não-linearidades de curvatura reais da rede elétrica.
 
 2. **Aproximação Linear de Taylor de 1ª Ordem:**
-   $$\Delta V_{\text{linear}} = \sum_i \left| \frac{\partial V_k}{\partial p_i} \right| \cdot (\tau_i p_i)$$
+   $$\Delta V_{\text{linear}} = \sum_i \left| \frac{\partial V_k}{\partial p_i} \right| \cdot (\tau_i |p_i|)$$
    $$V_k^{\text{lin}} \in [V_{\text{nom}} - \Delta V_{\text{linear}}, \ V_{\text{nom}} + \Delta V_{\text{linear}}]$$
 
-3. **Pior Caso Estatístico RSS ($3\sigma$):**
+3. **Combinação Linear RSS (sem cobertura probabilística implícita):**
    $$\Delta V_{\text{RSS}} = \sqrt{\sum_i \left( \frac{\partial V_k}{\partial p_i} \cdot \tau_i p_i \right)^2}$$
    $$V_k^{\text{RSS}} \in [V_{\text{nom}} - \Delta V_{\text{RSS}}, \ V_{\text{nom}} + \Delta V_{\text{RSS}}]$$
 
 ### 11.4 Relatório Pedagógico e Pareto de Sensibilidade
 
-O método `res.summary()` e o ranking `res.pareto_ranking()` decompõem a variância total da saída, identificando quais componentes são os "vilões da tolerância" que mais afetam a especificação do circuito.
+O método `res.summary()` e o ranking `res.pareto_ranking()` decompõem o impacto absoluto linear total na saída, identificando quais componentes são os "vilões da tolerância" que mais afetam a especificação do circuito.
 
 #### Exemplo via Python:
 ```python
@@ -836,3 +836,10 @@ pycircuit wca netlist.cir -t out --tol 0.01
 
 
 
+
+
+### Interpretação para estudo
+
+RSS = √Σ(∂V/∂p · Δp)² só corresponde a 3σ quando cada Δp é 3σ e as variações são independentes no modelo linear. Para distribuições uniformes independentes em ±Δp, σ(V) ≈ RSS/√3; correlações exigem covariâncias. O Pareto é a fração do impacto absoluto linear. Falhas ao resolver um canto são propagadas, sem substituição silenciosa por Taylor.
+
+No transitório Python, semicondutores não são simulados: são rejeitados explicitamente. Indutores acoplados usam a matriz de indutâncias e energia E=½L1·i1²+M·i1·i2+½L2·i2². No método dos dois wattímetros, para fasores RMS e três fios, S=Vac·conj(Ia)+Vbc·conj(Ib), inclusive com cargas desequilibradas e sequência inversa. Com neutro conduzindo, use as três potências fase–neutro.

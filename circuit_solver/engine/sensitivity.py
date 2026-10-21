@@ -7,11 +7,11 @@ Implements:
    components in O(1) back-solves after a single LU factorization of A^T.
 2. Normalized relative sensitivity S = (p / V) * (dV / dp) [% variation per % tolerance].
 3. Extreme Value Analysis (EVA / Worst-Case Analysis):
-   Determines the exact parameter corner directions (+ or -) that maximize and
+   Estimates parameter corner directions from nominal derivatives (+ or -) that maximize and
    minimize the target node voltage. Evaluates both:
      - Exact non-linear corner simulation via MNA re-solve.
      - First-order linear Taylor worst-case estimate.
-4. Root-Sum-Square (RSS) statistical 3-sigma tolerance bound:
+4. Root-Sum-Square (RSS) first-order tolerance combination (no probability coverage implied):
      Delta_V_RSS = sqrt(sum( (dV/dp_i * delta_p_i)^2 ))
 5. Pedagogical Pareto ranking and White-Box formatted reporting.
 """
@@ -31,6 +31,7 @@ from circuit_solver.core.elements import (
     VCCS,
     CCCS,
     CCVS,
+    OpAmp,
 )
 from circuit_solver.engine.mna import build_mna, solve
 
@@ -56,7 +57,7 @@ class ComponentSensitivity:
     param_wc_max: float      # Component value that maximizes target
     param_wc_min: float      # Component value that minimizes target
     linear_delta: float      # |dV/dp| * (tolerance * nominal)
-    percent_contribution: float = 0.0  # Fraction of total linear variance (Pareto)
+    percent_contribution: float = 0.0  # Fraction of total absolute linear impact (Pareto)
 
 
 @dataclass
@@ -66,8 +67,8 @@ class SensitivityResult:
     target_node: str
     nominal_value: float
     components: dict[str, ComponentSensitivity]
-    worst_case_max: float        # Exact MNA solve at maximum corner
-    worst_case_min: float        # Exact MNA solve at minimum corner
+    worst_case_max: float        # MNA solve at sensitivity-selected upper corner
+    worst_case_min: float        # MNA solve at sensitivity-selected lower corner
     linear_worst_case_max: float # Nominal + sum(linear_delta)
     linear_worst_case_min: float # Nominal - sum(linear_delta)
     rss_max: float               # Nominal + sqrt(sum(linear_delta^2))
@@ -88,9 +89,9 @@ class SensitivityResult:
             f"  Worst-Case (EVA) & Sensitivity Analysis Report: Node '{self.target_node}'",
             "=" * 82,
             f"  Nominal Voltage:         {self.nominal_value:>12.6f} V",
-            f"  Worst-Case EVA Bounds:   [{self.worst_case_min:>11.6f} V, {self.worst_case_max:>11.6f} V]  (Exact Re-solve)",
+            f"  Selected Corner Range:   [{self.worst_case_min:>11.6f} V, {self.worst_case_max:>11.6f} V]  (Corner re-solve; no global bound)",
             f"  Linear Taylor Bounds:    [{self.linear_worst_case_min:>11.6f} V, {self.linear_worst_case_max:>11.6f} V]  (ΔV_wc = ±{self.linear_worst_case_max - self.nominal_value:.6f} V)",
-            f"  Statistical RSS Bounds:  [{self.rss_min:>11.6f} V, {self.rss_max:>11.6f} V]  (ΔV_rss = ±{self.rss_max - self.nominal_value:.6f} V)",
+            f"  Linear RSS Range:  [{self.rss_min:>11.6f} V, {self.rss_max:>11.6f} V]  (ΔV_rss = ±{self.rss_max - self.nominal_value:.6f} V)",
             "-" * 82,
             f"  {'Component':<10} {'Nominal':>12} {'Tol (%)':>8} {'∂V/∂p (V/u)':>14} {'S (%/%)':>10} {'Dir':>5} {'Impact (mV)':>12} {'Pareto':>8}",
             "-" * 82,
@@ -112,6 +113,8 @@ class SensitivityResult:
 
         lines.extend([
             "=" * 82,
+            "  * RSS assumes independent variations; it is not automatically a 3-sigma interval.",
+            "    Uniform ±tolerances give sigma(V) ≈ RSS/sqrt(3) in the linear model.",
             "  * Legend: S (%/%) = (p/V)*(∂V/∂p). Dir indicates whether increasing the parameter",
             "    increases (▲) or decreases (▼) the target voltage V(node).",
             "=" * 82,
@@ -174,6 +177,9 @@ def analyze_sensitivity(
     SensitivityResult
         Complete analytical sensitivities, Pareto rankings, and EVA bounds.
     """
+    supported = (Resistor, VoltageSource, CurrentSource, VCVS, VCCS, CCCS, CCVS, OpAmp)
+    if any(not isinstance(el, supported) for el in circuit.elements):
+        raise ValueError("Sensitivity requires a linear DC circuit of supported elements.")
     target = str(target_node).strip()
     if target == "0":
         raise ValueError("Target node cannot be ground ('0').")
@@ -289,6 +295,9 @@ def analyze_sensitivity(
             # Multi-terminal elements without variable parameters skipped
             continue
 
+        if not np.isfinite(tol) or tol < 0 or (isinstance(el, Resistor) and tol >= 1):
+            raise ValueError(f"Invalid tolerance for {el.name}: {tol}")
+
         # Relative / Normalized sensitivity S = (p / V) * (dV/dp)
         rel_sens = (nom_val / v_target_nom * d_v_d_p) if abs(v_target_nom) > 1e-15 else 0.0
 
@@ -299,12 +308,12 @@ def analyze_sensitivity(
             p_min = nom_val
         elif d_v_d_p > 0:
             wc_dir = 1
-            p_max = nom_val * (1.0 + tol)
-            p_min = nom_val * (1.0 - tol)
+            p_max = nom_val + abs(nom_val) * tol
+            p_min = nom_val - abs(nom_val) * tol
         else:
             wc_dir = -1
-            p_max = nom_val * (1.0 - tol)
-            p_min = nom_val * (1.0 + tol)
+            p_max = nom_val - abs(nom_val) * tol
+            p_min = nom_val + abs(nom_val) * tol
 
         # First-order linear Taylor contribution
         linear_delta = abs(d_v_d_p) * (tol * abs(nom_val))
@@ -346,17 +355,9 @@ def analyze_sensitivity(
     circ_max = _clone_circuit_with_overrides(circuit, overrides_max)
     circ_min = _clone_circuit_with_overrides(circuit, overrides_min)
 
-    try:
-        sol_max = solve(circ_max)
-        exact_wc_max = float(sol_max.V(target))
-    except Exception:
-        exact_wc_max = lin_max
-
-    try:
-        sol_min = solve(circ_min)
-        exact_wc_min = float(sol_min.V(target))
-    except Exception:
-        exact_wc_min = lin_min
+    # Failed corner solves must propagate; a Taylor estimate is not a solved corner.
+    exact_wc_max = float(solve(circ_max).V(target))
+    exact_wc_min = float(solve(circ_min).V(target))
 
     # Ensure max >= min even in severe non-linear curvature
     if exact_wc_min > exact_wc_max:

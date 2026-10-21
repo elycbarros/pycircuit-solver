@@ -30,6 +30,8 @@ from circuit_solver.core.elements import (
     OpAmp,
     Capacitor,
     Inductor,
+    MutualCoupling,
+    Transformer,
 )
 from circuit_solver.core.transient_solution import TransientSolution
 from circuit_solver.engine.mna import solve as solve_dc
@@ -100,6 +102,15 @@ def solve_transient(
     TransientSolution
         Solution object containing time vector and waveform dictionaries.
     """
+    if method not in ("trapezoidal", "euler") or backend not in ("auto", "rust", "python"):
+        raise ValueError("Invalid transient method or backend.")
+    for el in circuit.elements:
+        if not isinstance(el, (Resistor, VoltageSource, CurrentSource, VCVS, VCCS,
+                               CCCS, CCVS, OpAmp, Capacitor, Inductor, MutualCoupling, Transformer)):
+            label = "Circuit cannot be simulated with Rust transient engine" if backend == "rust" else "Transient analysis supports linear elements only"
+            raise ValueError(f"{label}: {el.name} ({type(el).__name__})")
+    if not np.isfinite(t_stop) or not np.isfinite(dt):
+        raise ValueError("Transient times must be finite.")
     if t_stop <= 0:
         raise ValueError(f"t_stop must be positive, got {t_stop}")
     if dt <= 0 or dt > t_stop:
@@ -233,7 +244,7 @@ def solve_transient(
                 A[n_node, p] -= g
 
         # Inductor companion conductance
-        elif isinstance(el, Inductor):
+        elif isinstance(el, Inductor) and el.name not in coupled_ind_names:
             g = g_l[el.name]
             p, n_node = idx(el.node_p), idx(el.node_n)
             if p is not None: A[p, p] += g
@@ -327,8 +338,13 @@ def solve_transient(
                 sub_elements.append(VoltageSource(el.name, el.node_p, el.node_n, el.value_at(0.0)))
             elif isinstance(el, CurrentSource):
                 sub_elements.append(CurrentSource(el.name, el.node_p, el.node_n, el.value_at(0.0)))
-            else:
+            elif not isinstance(el, (MutualCoupling, Transformer)):
                 sub_elements.append(el)
+        # A Transformer carries its windings internally.
+        for pair in coupled_pairs:
+            if pair["is_transformer"]:
+                for j in (1, 2):
+                    sub_elements.append(CurrentSource(pair[f"ind{j}_name"], pair[f"n{j}"], pair[f"p{j}"], 0.0))
         sol0 = solve_dc(Circuit(sub_elements, validate=False))
 
         def _v0(node: str) -> float:
@@ -553,6 +569,11 @@ def solve_transient(
         e_stored += 0.5 * c.capacitance * ((vp - vn) ** 2)
     for ind in inductors:
         e_stored += 0.5 * ind.inductance * (branch_currents[ind.name] ** 2)
+
+    for pair in coupled_pairs:
+        i1 = branch_currents[pair["ind1_name"]]
+        i2 = branch_currents[pair["ind2_name"]]
+        e_stored += 0.5 * pair["L1"] * i1**2 + pair["M"] * i1 * i2 + 0.5 * pair["L2"] * i2**2
 
     p_diss = np.zeros(n_steps, dtype=float)
     for el in circuit.elements:
