@@ -147,6 +147,9 @@ pycircuit explain circuito.cir
 
 # Árvore ASCII de hierarquia de subcircuitos
 pycircuit hierarchy circuito.cir
+
+# Ponto de operação DC (.op) e parâmetros de pequenos sinais para semicondutores
+pycircuit op amplificador.cir
 ```
 
 ---

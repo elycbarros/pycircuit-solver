@@ -513,3 +513,43 @@ O módulo `circuit_solver.core.builtin_library` disponibiliza macromodelos de li
 * `CMOS_INVERTER`: Célula lógica digital inversora CMOS com par complementar NMOS/PMOS.
 * `BJT_DIFF_PAIR`: Par diferencial básico a transistor bipolar com resistores de cauda e carga.
 
+---
+
+## 9. 🔬 Análise CA de Pequenos Sinais com Semicondutores e Ponto de Operação (.op)
+
+A análise fasorial em regime permanente senoidal clássica aplica-se a redes estritamente lineares ($R, L, C$). Para amplificadores de áudio, rádio-frequência (RF) e circuitos com transistores, o `pycircuit` implementa a metodologia rigorosa em duas etapas utilizada nos simuladores industriais e nos livros de Microeletrônica (Sedra & Smith, Neamen, Boylestad):
+
+### 9.1 Algoritmo em Duas Etapas (Ponto Q DC + Linearização Incremental)
+
+1. **Passo 1: Ponto de Operação DC Estático ($Q$-Point — Newton-Raphson):**
+   * Fontes de sinal CA são desativadas temporariamente ($V_{ac} = 0, I_{ac} = 0$).
+   * Capacitores comportam-se como circuitos abertos ($g = 0$) e indutores como curto-circuitos ($g = 10^6\ \Omega^{-1}$).
+   * O solver de Newton-Raphson com amortecimento `pnjlim` e `fetlim` converge para as tensões dos nós $\mathbf{V}_{DC}$ e as correntes estáticas de cada semicondutor ($I_D, I_C, I_B, I_D$).
+
+2. **Passo 2: Modelagem Incremental de Pequenos Sinais (Jacobiano Analítico):**
+   No ponto $Q$, cada semicondutor é substituído pelo seu circuito equivalente linear:
+   * **Diodo / Zener:**
+     $$r_d = \frac{n V_T}{I_{D0} + I_S}, \quad g_d = \frac{1}{r_d}$$
+   * **Transistor Bipolar (BJT — Modelo Híbrido-$\pi$ de Giacoleto):**
+     * Transcondutância: $g_m = \frac{|I_{C0}|}{V_T}$
+     * Resistência de entrada base-emissor: $r_\pi = \frac{\beta}{g_m} = \frac{V_T}{|I_{B0}|}$
+     * Resistência de saída de coletor: $r_o = \frac{V_A + |V_{CE0}|}{|I_{C0}|}$
+     * Estampa CA: Resistor $r_\pi$ entre base e emissor, resistor $r_o$ entre coletor e emissor, e fonte de corrente controlada por tensão (VCCS) $g_m \cdot v_{be}$ fluindo do coletor para o emissor.
+   * **Transistor de Efeito de Campo (MOSFET):**
+     * Na saturação ($V_{DS} \ge V_{GS} - V_{th}$):
+       $$g_m = K_p (V_{GS} - V_{th}) (1 + \lambda V_{DS}) = \sqrt{2 K_p I_D (1 + \lambda V_{DS})}, \quad r_{ds} = \frac{1}{\lambda I_D}$$
+     * No triodo ($V_{DS} < V_{GS} - V_{th}$):
+       $$g_m = K_p V_{DS} (1 + \lambda V_{DS}), \quad r_{ds} = \frac{1}{g_{ds}}$$
+     * Estampa CA: Fonte VCCS $g_m \cdot v_{gs}$ do dreno para a fonte e resistor de saída $r_{ds}$.
+
+3. **Passo 3: Superposição de Fontes e Resolução Fasorial AC:**
+   * Fontes CC puras de polarização ($V_{CC}, V_{DD}$) tornam-se terra CA ($V_{ac} = 0$).
+   * Fontes CA independentes fornecem a excitação senoidal complexa $V_{ac} e^{j\theta}$.
+   * O sistema complexo $\mathbf{A}_{AC}(j\omega) \mathbf{X}(j\omega) = \mathbf{Z}_{AC}$ é montado e resolvido diretamente para cada frequência da varredura (`ac_sweep`), traçando diagramas de Bode de amplificadores Emissor Comum, Coletor Comum e Fonte Comum.
+
+### 9.2 Relatório Pedagógico do Ponto de Operação (`pycircuit op`)
+Permite ao estudante ou pesquisador inspecionar instantaneamente:
+* Tensão nos terminais e polarização de junção ($V_D, V_{BE}, V_{CE}, V_{GS}, V_{DS}$).
+* Identificação automática da região de operação: **Corte**, **Saturação** ou **Ativa Direta / Triodo**.
+* Parâmetros calculados do modelo equivalente ($g_m, r_\pi, r_o, r_d, r_{ds}$).
+

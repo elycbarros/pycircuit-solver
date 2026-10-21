@@ -72,6 +72,7 @@ class ACSolution:
     x: np.ndarray
     frequency: float
     omega: float
+    operating_point: Any | None = None
 
     # ------------------------------------------------------------------
     # Voltages
@@ -249,19 +250,32 @@ class ACSolution:
         raise KeyError(f"No {kind.__name__} named '{name}' in circuit.")
 
 
-def solve_ac(circuit: Circuit, frequency: float) -> ACSolution:
+def solve_ac(circuit: Circuit, frequency: float, *, op: Any | None = None) -> ACSolution:
     """Solve the circuit for sinusoidal steady state at a given frequency.
+
+    If the circuit contains non-linear semiconductor elements (Diodes, BJTs, MOSFETs),
+    it is automatically linearized around its DC operating point (Q-point) using
+    their small-signal hybrid-pi / conductances models.
 
     Parameters
     ----------
     circuit : Circuit
     frequency : float
         Frequency in Hz (frequency > 0).
+    op : OperatingPoint | None, optional
+        Pre-computed operating point to use for linearization.
 
     Returns
     -------
     ACSolution
     """
+    if circuit.has_nonlinear:
+        from circuit_solver.engine.small_signal import build_small_signal_circuit
+        lin_circuit, op_calc = build_small_signal_circuit(circuit, op=op)
+        sol = solve_ac(lin_circuit, frequency)
+        sol.operating_point = op_calc
+        return sol
+
     if frequency <= 0:
         raise ValueError(f"Frequency must be > 0 Hz, got {frequency}")
 
@@ -467,8 +481,13 @@ def ac_sweep(
     circuit: Circuit,
     frequencies: np.ndarray,
     target_node: str,
+    *,
+    op: Any | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Perform a frequency sweep and return (freqs, magnitude_dB, phase_deg).
+
+    Automatically linearizes non-linear semiconductor models once around the
+    DC Q-point prior to the sweep for high execution performance.
 
     Parameters
     ----------
@@ -477,11 +496,17 @@ def ac_sweep(
         Array of frequencies in Hz.
     target_node : str
         Node to measure.
+    op : OperatingPoint | None, optional
+        Pre-computed operating point to use for linearization.
 
     Returns
     -------
     tuple of (frequencies, mag_dB, phase_deg)
     """
+    if circuit.has_nonlinear:
+        from circuit_solver.engine.small_signal import build_small_signal_circuit
+        circuit, _ = build_small_signal_circuit(circuit, op=op)
+
     mags_db = []
     phases_deg = []
 

@@ -53,6 +53,14 @@ def _cmd_hierarchy(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_op(args: argparse.Namespace) -> int:
+    from circuit_solver.engine.small_signal import compute_operating_point
+    circuit = Circuit.from_netlist(args.netlist)
+    op = compute_operating_point(circuit)
+    print(op.summary())
+    return 0
+
+
 def _cmd_thevenin(args: argparse.Namespace) -> int:
     elements = parse_netlist(args.netlist)
     circuit = Circuit(elements, allowed_open_nodes=[args.node_a, args.node_b])
@@ -300,6 +308,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_hier = subparsers.add_parser("hierarchy", help="Exibe a árvore ASCII de instâncias e subcircuitos")
     p_hier.add_argument("netlist", type=str, help="Caminho do arquivo netlist SPICE (.cir)")
 
+    # op
+    p_op = subparsers.add_parser("op", help="Ponto de operação DC (.op) e parâmetros de pequenos sinais para semicondutores")
+    p_op.add_argument("netlist", type=str, help="Caminho do arquivo netlist SPICE (.cir)")
+
     return parser
 
 
@@ -314,6 +326,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "solve":
             return _cmd_solve(args)
+        elif args.command == "op":
+            return _cmd_op(args)
         elif args.command == "explain":
             return _cmd_explain(args)
         elif args.command == "hierarchy":
