@@ -128,6 +128,57 @@ def _extract_waveform(line: str) -> object | None:
     return None
 
 
+def _waveform_t0_value(waveform: object | None) -> float | None:
+    """Valor da forma de onda em t = 0, usado como DC quando não há DC explícito (SPICE)."""
+    if isinstance(waveform, PulseWaveform):
+        return waveform.v1
+    if isinstance(waveform, SineWaveform):
+        return waveform.vo
+    return None
+
+
+def _parse_source_fields(tokens: list[str], line: str):
+    """Interpreta os campos de uma fonte V ou I a partir do 4º token.
+
+    Lê DC, AC e número solto (que o SPICE também aceita como DC). Para ao encontrar
+    PULSE ou SIN, cujos argumentos ficam entre parênteses e não são campos da fonte.
+    Sem DC explícito, o ponto de operação usa o valor da forma de onda em t = 0.
+
+    Retorna (dc_val, ac_mag, ac_phase, waveform).
+    """
+    waveform = _extract_waveform(line)
+    dc_val: float | None = None
+    ac_mag = 0.0
+    ac_phase = 0.0
+
+    idx_t = 3
+    while idx_t < len(tokens):
+        tok = tokens[idx_t]
+        tok_u = tok.upper()
+        if tok_u.startswith(("PULSE", "SIN")) or "(" in tok or ")" in tok:
+            break
+        if tok_u == "DC":
+            idx_t += 1
+            dc_val = parse_value(tokens[idx_t])
+        elif tok_u == "AC":
+            idx_t += 1
+            ac_mag = parse_value(tokens[idx_t])
+            if idx_t + 1 < len(tokens) and not tokens[idx_t + 1].isalpha() and "(" not in tokens[idx_t + 1]:
+                idx_t += 1
+                ac_phase = parse_value(tokens[idx_t])
+        else:
+            try:
+                dc_val = parse_value(tok)
+            except Exception:
+                pass
+        idx_t += 1
+
+    if dc_val is None:
+        t0 = _waveform_t0_value(waveform)
+        dc_val = t0 if t0 is not None else 0.0
+    return dc_val, ac_mag, ac_phase, waveform
+
+
 def _parse_line(line: str, lineno: int) -> _Element | None:
     """Parse a single netlist element line.  Returns ``None`` for empty/directive lines."""
     line = _strip_comment(line)
@@ -166,33 +217,7 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
         elif prefix == "V":
             # V<name>  n+  n-  [DC val]  [AC mag [phase]]  [PULSE(...)] [SIN(...)]
             name, np, nn = tokens[0], tokens[1], tokens[2]
-            dc_val = 0.0
-            ac_mag = 0.0
-            ac_phase = 0.0
-            waveform = _extract_waveform(line)
-
-            idx_t = 3
-            while idx_t < len(tokens):
-                tok_u = tokens[idx_t].upper()
-                if tok_u == "DC":
-                    idx_t += 1
-                    dc_val = parse_value(tokens[idx_t])
-                elif tok_u == "AC":
-                    idx_t += 1
-                    ac_mag = parse_value(tokens[idx_t])
-                    if idx_t + 1 < len(tokens) and not tokens[idx_t + 1].isalpha() and "(" not in tokens[idx_t + 1]:
-                        idx_t += 1
-                        ac_phase = parse_value(tokens[idx_t])
-                elif not tok_u.startswith("PULSE") and not tok_u.startswith("SIN") and "(" not in tok_u and ")" not in tok_u:
-                    try:
-                        dc_val = parse_value(tokens[idx_t])
-                    except Exception:
-                        pass
-                idx_t += 1
-
-            if waveform is not None and isinstance(waveform, PulseWaveform) and dc_val == 0.0:
-                dc_val = waveform.v1
-
+            dc_val, ac_mag, ac_phase, waveform = _parse_source_fields(tokens, line)
             return VoltageSource(
                 name.upper(), np.lower(), nn.lower(), dc_val,
                 ac_mag=ac_mag, ac_phase=ac_phase, waveform=waveform
@@ -200,33 +225,12 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
 
         elif prefix == "I":
             # I<name>  n+  n-  [DC val]  [AC mag [phase]]  [PULSE(...)] [SIN(...)]
+            # SPICE: a corrente sai de n+, passa pela fonte e entra em n-.
+            # No pycircuit, CurrentSource injeta a corrente em node_p, então n- vai para node_p.
             name, np, nn = tokens[0], tokens[1], tokens[2]
-            dc_val = 0.0
-            ac_mag = 0.0
-            ac_phase = 0.0
-            waveform = _extract_waveform(line)
-
-            idx_t = 3
-            while idx_t < len(tokens):
-                tok_u = tokens[idx_t].upper()
-                if tok_u == "DC":
-                    idx_t += 1
-                    dc_val = parse_value(tokens[idx_t])
-                elif tok_u == "AC":
-                    idx_t += 1
-                    ac_mag = parse_value(tokens[idx_t])
-                    if idx_t + 1 < len(tokens) and not tokens[idx_t + 1].isalpha() and "(" not in tokens[idx_t + 1]:
-                        idx_t += 1
-                        ac_phase = parse_value(tokens[idx_t])
-                elif not tok_u.startswith("PULSE") and not tok_u.startswith("SIN") and "(" not in tok_u and ")" not in tok_u:
-                    try:
-                        dc_val = parse_value(tokens[idx_t])
-                    except Exception:
-                        pass
-                idx_t += 1
-
+            dc_val, ac_mag, ac_phase, waveform = _parse_source_fields(tokens, line)
             return CurrentSource(
-                name.upper(), np.lower(), nn.lower(), dc_val,
+                name.upper(), nn.lower(), np.lower(), dc_val,
                 ac_mag=ac_mag, ac_phase=ac_phase, waveform=waveform
             )
 
@@ -245,8 +249,10 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
             name, np, nn, cp, cn, gm_str = (
                 tokens[0], tokens[1], tokens[2], tokens[3], tokens[4], tokens[5]
             )
+            # SPICE: i = gm*(V(nc+)-V(nc-)) sai de n+ e entra em n-.
+            # No pycircuit, VCCS injeta a corrente em node_p, então n- vai para node_p.
             return VCCS(
-                name.upper(), np.lower(), nn.lower(),
+                name.upper(), nn.lower(), np.lower(),
                 cp.lower(), cn.lower(), parse_value(gm_str)
             )
 
