@@ -21,6 +21,7 @@ from circuit_solver.core.elements import (
     CurrentSource,
     Inductor,
     Resistor,
+    Transformer,
     VoltageSource,
 )
 from circuit_solver.engine.mna import build_mna, build_mna_sparse
@@ -32,7 +33,7 @@ ABS = 1e-8
 MAX_COND = 1e12
 
 
-def _random_circuit(seed: int):
+def _random_circuit(seed: int, transformers: bool = False):
     rng = random.Random(seed)
     n = rng.randint(3, 7)
     base = [str(k) for k in range(1, n + 1)]
@@ -59,7 +60,8 @@ def _random_circuit(seed: int):
         return a, b
 
     for c in range(rng.randint(2, 6)):
-        kind = rng.choice(["I", "G", "F", "E", "H", "L", "R"])
+        kinds = ["I", "G", "F", "E", "H", "L", "R"] + (["T"] if transformers else [])
+        kind = rng.choice(kinds)
         if kind == "I":
             a, b = pick_pair()
             els.append(CurrentSource(f"I{c}", a, b, rng.uniform(-1e-3, 1e-3)))
@@ -81,6 +83,12 @@ def _random_circuit(seed: int):
             els.append(CCVS(f"H{c}", out, "0", "V1", rng.uniform(-1e3, 1e3)))
             els.append(Resistor(f"RL{c}", out, "0", rng.uniform(1e3, 1e4)))
             extra.append(out)
+        elif kind == "T":
+            a, b = pick_pair()
+            c2a, c2b = pick_pair()
+            els.append(
+                Transformer(f"T{c}", a, b, c2a, c2b, L1=1.0, L2=1.0, coupling=0.9)
+            )
         elif kind == "L":
             a, b = pick_pair()
             els.append(Inductor(f"L{c}", a, b, rng.uniform(1e-3, 1e-1)))
@@ -135,3 +143,30 @@ def test_random_circuits_are_mostly_solvable():
         except Exception:
             pass
     assert solved >= int(0.8 * N_CASES), f"só {solved}/{N_CASES} resolvíveis"
+
+
+@pytest.mark.parametrize("seed", range(N_CASES))
+def test_transformer_stamps_match(seed):
+    circ, _ = _random_circuit(seed, transformers=True)
+    A, z = build_mna(circ)
+    As, zs = build_mna_sparse(circ)
+    scale_a = max(1.0, float(np.abs(A).max()))
+    scale_z = max(1.0, float(np.abs(z).max()))
+    assert np.allclose(As.toarray(), A, rtol=0.0, atol=1e-12 * scale_a)
+    assert np.allclose(zs, z, rtol=0.0, atol=1e-12 * scale_z)
+
+
+@pytest.mark.parametrize("seed", range(N_CASES))
+def test_transformer_dc_solvers_agree(seed):
+    circ, nodes = _random_circuit(seed, transformers=True)
+    try:
+        ref = solve(circ, solver="auto")
+    except Exception:
+        pytest.skip("circuito com transformador singular")
+    cond = np.linalg.cond(build_mna(circ)[0])
+    if cond > MAX_COND:
+        pytest.skip(f"mal condicionado (cond = {cond:.1e})")
+    rel = max(REL_MIN, 100 * np.finfo(float).eps * cond)
+    _assert_same(ref, solve(circ, solver="sparse"), nodes, "sparse", rel)
+    if RUST_AVAILABLE:
+        _assert_same(ref, solve(circ, solver="rust_sparse"), nodes, "rust_sparse", rel)

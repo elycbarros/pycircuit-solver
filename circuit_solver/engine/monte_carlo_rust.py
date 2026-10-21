@@ -189,6 +189,18 @@ def _build_rust_descriptors(circuit: Circuit) -> tuple:
                 )
             )
 
+        elif isinstance(el, Transformer):
+            # Enrolamentos ideais em DC: cada um vira condutância 1e6 (curto)
+            for w_p, w_n in ((el.p1, el.n1), (el.p2, el.n2)):
+                p = node_idx(w_p)
+                n = node_idx(w_n)
+                py_inductors.append(
+                    _rust.PyInductorDC(
+                        p if p is not None else -1,
+                        n if n is not None else -1,
+                    )
+                )
+
         elif isinstance(el, Inductor):
             p = node_idx(el.node_p)
             n = node_idx(el.node_n)
@@ -218,9 +230,6 @@ def _has_unsupported_elements(circuit: Circuit) -> bool:
     """Return True if the circuit contains elements not yet in the Rust core."""
     if circuit.has_nonlinear:
         return True
-    for el in circuit.elements:
-        if isinstance(el, Transformer):
-            return True
     return False
 
 
