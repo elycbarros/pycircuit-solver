@@ -1754,8 +1754,8 @@ def test_alexander_sadiku_cap12_three_phase_two_wattmeter_method():
       Potência reativa total: Q_tot = 3 * (6.9282²) * 18.0 = 2592.0 VAR.
       Potência aparente total: S_tot = sqrt(3456² + 2592²) = 4320.0 VA.
       Leituras dos Wattímetros (Referência fase C):
-        W1 = Re(Vac * conj(Ia)) = 207.846 * 12.0 * cos(30° + 36.87°) = 2494.15 * cos(66.87°) = 979.7 W.
-        W2 = Re(Vbc * conj(Ib)) = 207.846 * 12.0 * cos(30° - 36.87°) = 2494.15 * cos(-6.87°) = 2476.3 W.
+        W1 = Re(Vac * conj(Ia)) = 207.846 * 12.0 * cos(30° - 36.87°) ≈ 2476.3 W.
+        W2 = Re(Vbc * conj(Ib)) = 207.846 * 12.0 * cos(30° + 36.87°) ≈ 979.7 W.
         P_tot = W1 + W2 = 3456.0 W.
         Q_tot = sqrt(3) * (W1 - W2) [com sinal compatível de sequência] = 2592.0 VAR.
     """
@@ -1788,9 +1788,9 @@ def test_alexander_sadiku_cap12_three_phase_two_wattmeter_method():
     sol = solve_ac(c, frequency=freq)
 
     # Tensões de linha e correntes de linha
-    v_a = sol.V("s_a")
-    v_b = sol.V("s_b")
-    v_c = sol.V("s_c")
+    v_a = (sol.V("s_a") / math.sqrt(2.0))
+    v_b = (sol.V("s_b") / math.sqrt(2.0))
+    v_c = (sol.V("s_c") / math.sqrt(2.0))
 
     z_branch = r_branch + 1j * w * l_branch
     # Correntes nos ramos delta

@@ -57,3 +57,14 @@ A validação anterior usava Python 3.14 externo à `.venv`. A pendência foi en
 - Instalação reproduzida em outro ambiente Python 3.12 criado do zero, com as constraints e a wheel Rust recém-compilada. `pip check` também passou; suíte completa: **511 aprovados e os mesmos 10 descartes**.
 
 As execuções usaram `MPLBACKEND=Agg` para gráficos sem interface e diretórios temporários separados de configuração do Matplotlib. O README registra como reproduzir a instalação e executar os testes usando a `.venv` do projeto.
+
+
+## Complemento: cinco roteiros de estudo testados
+
+Executadas 19 configurações dos cinco roteiros: divisor nos solvers denso, esparso Python e esparso Rust; RC/RL em Euler e trapézio nos dois backends; transformador com acoplamento positivo/negativo nos dois backends; trifásico desequilibrado nas sequências ABC/ACB; tolerâncias com Monte Carlo Python/Rust. Acrescentadas quatro verificações de RMS/pico para fontes Y/DELTA em ambas as sequências: **23 novas regressões**.
+
+As referências são independentes: Ohm/Kirchhoff, exponenciais de primeira ordem, equações dos enrolamentos/exponencial matricial, deslocamento do neutro por admitâncias e quadratura de Gauss-Legendre da distribuição exata do divisor. O Monte Carlo usa 8.000 amostras por backend e semente 42. Os resultados e critérios constam em `RELATORIO_ROTEIROS_ESTUDO.md`.
+
+A validação integrada revelou e corrigiu duas inconsistências: `P_resistor` retorna dissipação positiva, embora a auditoria use absorção negativa; e `build_three_phase_source` deve converter a entrada RMS para pico, seguindo a convenção de `solve_ac`. Os consumidores trifásicos agora convertem os fasores resolvidos para RMS antes dos wattímetros; o exercício 47 também mostra corretamente a diferença entre correntes de ramo e linha em delta.
+
+Suíte completa na `.venv`: **534 aprovados e os mesmos 10 descartes numéricos diagnosticados**. Memória regenerada: **164/164 comparações aprovadas**. Ruff e `git diff --check` passaram.

@@ -88,10 +88,13 @@ def build_three_phase_source(
     Returns
     -------
     list[VoltageSource]
-        Three phase-shifted voltage sources.
+        Three phase-shifted voltage sources with peak AC amplitudes sqrt(2)*V_rms,
+        matching solve_ac. Convert solved voltage/current phasors to RMS before
+        calling analyze_two_wattmeters.
     """
     if connection not in ("Y", "DELTA") or sequence not in ("ABC", "ACB"):
         raise ValueError("Expected connection Y/DELTA and sequence ABC/ACB.")
+    V_peak = math.sqrt(2.0) * V_rms
     if sequence == "ABC":
         phase_b = -120.0
         phase_c = 120.0
@@ -102,16 +105,16 @@ def build_three_phase_source(
 
     if connection == "Y":
         return [
-            VoltageSource(f"{prefix}_a", node_a, node_neutral, voltage=0.0, ac_mag=V_rms, ac_phase=0.0),
-            VoltageSource(f"{prefix}_b", node_b, node_neutral, voltage=0.0, ac_mag=V_rms, ac_phase=phase_b),
-            VoltageSource(f"{prefix}_c", node_c, node_neutral, voltage=0.0, ac_mag=V_rms, ac_phase=phase_c),
+            VoltageSource(f"{prefix}_a", node_a, node_neutral, voltage=0.0, ac_mag=V_peak, ac_phase=0.0),
+            VoltageSource(f"{prefix}_b", node_b, node_neutral, voltage=0.0, ac_mag=V_peak, ac_phase=phase_b),
+            VoltageSource(f"{prefix}_c", node_c, node_neutral, voltage=0.0, ac_mag=V_peak, ac_phase=phase_c),
         ]
     else:
         # Delta connection (closed loop line-to-line sources)
         return [
-            VoltageSource(f"{prefix}_ab", node_a, node_b, voltage=0.0, ac_mag=V_rms, ac_phase=0.0),
-            VoltageSource(f"{prefix}_bc", node_b, node_c, voltage=0.0, ac_mag=V_rms, ac_phase=phase_b),
-            VoltageSource(f"{prefix}_ca", node_c, node_a, voltage=0.0, ac_mag=V_rms, ac_phase=phase_c),
+            VoltageSource(f"{prefix}_ab", node_a, node_b, voltage=0.0, ac_mag=V_peak, ac_phase=0.0),
+            VoltageSource(f"{prefix}_bc", node_b, node_c, voltage=0.0, ac_mag=V_peak, ac_phase=phase_b),
+            VoltageSource(f"{prefix}_ca", node_c, node_a, voltage=0.0, ac_mag=V_peak, ac_phase=phase_c),
         ]
 
 

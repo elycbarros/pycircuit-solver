@@ -94,7 +94,7 @@ Você também pode acessar qualquer valor diretamente no seu código:
 ```python
 v2 = solucao.V("2")         # 7.2 Volts
 i_r1 = solucao.I_resistor("R1")      # 1.2 Amperes
-p_r1 = solucao.P_resistor("R1")      # -5.76 W (potência entregue; resistor absorve 5.76 W)
+p_r1 = solucao.P_resistor("R1")      # +5.76 W dissipados (power_audit usa -5.76 W para absorção)
 ```
 
 ---
@@ -606,16 +606,19 @@ cargas = build_delta_load(R=24.0, L=18.0/(2*3.14159*60), node_a="s_a", node_b="s
 circuito = Circuit(fontes + cargas)
 
 sol = solve_ac(circuito, frequency=60.0)
+from math import sqrt
+# solve_ac retorna fasores de pico; wattímetros recebem fasores RMS.
+va, vb, vc = (sol.V(n) / sqrt(2) for n in ("s_a", "s_b", "s_c"))
 z_branch = 24.0 + 18.0j
-i_ab = (sol.V("s_a") - sol.V("s_b")) / z_branch
-i_bc = (sol.V("s_b") - sol.V("s_c")) / z_branch
-i_ca = (sol.V("s_c") - sol.V("s_a")) / z_branch
+i_ab = (va - vb) / z_branch
+i_bc = (vb - vc) / z_branch
+i_ca = (vc - va) / z_branch
 i_line_a = i_ab - i_ca
 i_line_b = i_bc - i_ab
 
 wm = analyze_two_wattmeters(
-    V_line_ac=sol.V("s_a") - sol.V("s_c"),
-    V_line_bc=sol.V("s_b") - sol.V("s_c"),
+    V_line_ac=va - vc,
+    V_line_bc=vb - vc,
     I_line_a=i_line_a,
     I_line_b=i_line_b,
 )

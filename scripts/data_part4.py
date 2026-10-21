@@ -101,9 +101,9 @@ def run_ex47():
     c = Circuit(sources + load)
     sol = solve_ac(c, frequency=freq)
 
-    v_a = sol.V("s_a")
-    v_b = sol.V("s_b")
-    v_c = sol.V("s_c")
+    v_a = (sol.V("s_a") / math.sqrt(2.0))
+    v_b = (sol.V("s_b") / math.sqrt(2.0))
+    v_c = (sol.V("s_c") / math.sqrt(2.0))
     z_branch = r_branch + 1j * w * l_branch
     i_ab = (v_a - v_b) / z_branch
     i_bc = (v_b - v_c) / z_branch
@@ -551,7 +551,10 @@ S_{3\phi} = \sqrt{P_{3\phi}^2 + Q_{3\phi}^2} = \sqrt{3456^2 + 2592^2} = 4320.000
             "load = build_delta_load(R=24.0, L=18.0/(2*3.14159*60), node_a='s_a', node_b='s_b', node_c='s_c')\n"
             "circuit = Circuit(sources + load)\n"
             "sol = solve_ac(circuit, frequency=60.0)\n"
-            "wm = analyze_two_wattmeters(sol.V('s_a')-sol.V('s_c'), sol.V('s_b')-sol.V('s_c'), (sol.V('s_a')-sol.V('s_b'))/(24+18j), (sol.V('s_b')-sol.V('s_c'))/(24+18j))\n"
+            "from math import sqrt\n"
+            "va, vb, vc = (sol.V(n)/sqrt(2) for n in ('s_a', 's_b', 's_c'))  # RMS\n"
+            "iab, ibc, ica = (va-vb)/(24+18j), (vb-vc)/(24+18j), (vc-va)/(24+18j)\n"
+            "wm = analyze_two_wattmeters(va-vc, vb-vc, iab-ica, ibc-iab)\n"
             "print(f'P_tot = {wm.P_total:.1f} W, Q_tot = {wm.Q_total:.1f} VAR, FP = {wm.power_factor:.3f}')"
         ),
         "run": run_ex47,

@@ -6905,7 +6905,10 @@ sources = build_three_phase_source(&#x27;Y&#x27;, V_rms=120.0, sequence=&#x27;AB
 load = build_delta_load(R=24.0, L=18.0/(2*3.14159*60), node_a=&#x27;s_a&#x27;, node_b=&#x27;s_b&#x27;, node_c=&#x27;s_c&#x27;)
 circuit = Circuit(sources + load)
 sol = solve_ac(circuit, frequency=60.0)
-wm = analyze_two_wattmeters(sol.V(&#x27;s_a&#x27;)-sol.V(&#x27;s_c&#x27;), sol.V(&#x27;s_b&#x27;)-sol.V(&#x27;s_c&#x27;), (sol.V(&#x27;s_a&#x27;)-sol.V(&#x27;s_b&#x27;))/(24+18j), (sol.V(&#x27;s_b&#x27;)-sol.V(&#x27;s_c&#x27;))/(24+18j))
+from math import sqrt
+va, vb, vc = (sol.V(n)/sqrt(2) for n in (&#x27;s_a&#x27;, &#x27;s_b&#x27;, &#x27;s_c&#x27;))  # RMS
+iab, ibc, ica = (va-vb)/(24+18j), (vb-vc)/(24+18j), (vc-va)/(24+18j)
+wm = analyze_two_wattmeters(va-vc, vb-vc, iab-ica, ibc-iab)
 print(f&#x27;P_tot = {wm.P_total:.1f} W, Q_tot = {wm.Q_total:.1f} VAR, FP = {wm.power_factor:.3f}&#x27;)</code></pre>
           </section>
 
@@ -7232,7 +7235,7 @@ print(f&#x27;Zin(RL=50) = {res.input_impedance(Z_load=50.0):.3f} ohms&#x27;)</co
     <!-- Rodapé Técnico -->
     <footer class="site-footer">
       <p><strong>pycircuit-solver</strong> — Motor Computacional de Análise Nodal Modificada para Engenharia Elétrica</p>
-      <p>Gerado automaticamente em 21/10/2026 às 18:52:56 | Auditoria Analítica Rigorosa Multi-Livros</p>
+      <p>Gerado automaticamente em 21/10/2026 às 19:15:42 | Auditoria Analítica Rigorosa Multi-Livros</p>
       <p>Licenciado sob a Licença MIT | Desenvolvido com Python 3.10+, NumPy e PyO3/Rust</p>
     </footer>
 

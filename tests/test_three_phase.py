@@ -61,9 +61,9 @@ def test_balanced_wye_wye_system():
     c = Circuit(sources + load + neutral_wire)
     sol = solve_ac(c, frequency=freq)
 
-    v_a = sol.V("s_a")
-    v_b = sol.V("s_b")
-    v_c = sol.V("s_c")
+    v_a = (sol.V("s_a") / np.sqrt(2.0))
+    v_b = (sol.V("s_b") / np.sqrt(2.0))
+    v_c = (sol.V("s_c") / np.sqrt(2.0))
 
     # Source amplitudes
     assert np.isclose(abs(v_a), 120.0, atol=1e-3)
@@ -75,11 +75,11 @@ def test_balanced_wye_wye_system():
     assert np.isclose(abs(v_ab), 120.0 * math.sqrt(3.0), atol=1e-3)
 
     # Phase current
-    i_a = (v_a - sol.V("load_n")) / (r_val + 1j * w * l_val)
+    i_a = (v_a - (sol.V("load_n") / np.sqrt(2.0))) / (r_val + 1j * w * l_val)
     assert np.isclose(abs(i_a), 120.0 / math.sqrt(100.0 + 225.0), atol=1e-3)
 
     # Neutral voltage should be approximately 0
-    assert abs(sol.V("load_n")) < 1e-4
+    assert abs((sol.V("load_n") / np.sqrt(2.0))) < 1e-4
 
 
 def test_two_wattmeter_method_blondel():
@@ -122,13 +122,13 @@ def test_two_wattmeter_method_blondel():
     c = Circuit(sources + load + gnd_res)
     sol = solve_ac(c, frequency=freq)
 
-    v_a = sol.V("s_a")
-    v_b = sol.V("s_b")
-    v_c = sol.V("s_c")
+    v_a = (sol.V("s_a") / np.sqrt(2.0))
+    v_b = (sol.V("s_b") / np.sqrt(2.0))
+    v_c = (sol.V("s_c") / np.sqrt(2.0))
 
     z_phase = r_val + 1j * w * l_val
-    i_a = (v_a - sol.V("load_n")) / z_phase
-    i_b = (v_b - sol.V("load_n")) / z_phase
+    i_a = (v_a - (sol.V("load_n") / np.sqrt(2.0))) / z_phase
+    i_b = (v_b - (sol.V("load_n") / np.sqrt(2.0))) / z_phase
 
     v_ac = v_a - v_c
     v_bc = v_b - v_c
@@ -186,7 +186,7 @@ def test_balanced_delta_load():
     c = Circuit(sources + load)
     sol = solve_ac(c, frequency=freq)
 
-    v_ab = sol.V("s_a") - sol.V("s_b")
+    v_ab = (sol.V("s_a") / np.sqrt(2.0)) - (sol.V("s_b") / np.sqrt(2.0))
     assert np.isclose(abs(v_ab), 208.0, atol=1e-3)
 
     z_phase = r_val + 1j * w * l_val

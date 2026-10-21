@@ -465,7 +465,7 @@ pycircuit-solver/
 
 ## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (447 Testes)
 
-A biblioteca é auditada de ponta a ponta por uma suíte de **521 testes automatizados** (511 aprovados, 10 casos numericamente mal condicionados ignorados com diagnóstico) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
+A biblioteca é auditada de ponta a ponta por uma suíte de **544 testes automatizados** (534 aprovados, 10 casos numericamente mal condicionados ignorados com diagnóstico) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
 
 1. **Alexander & Sadiku (*Fundamentos de Circuitos Elétricos*):**
    * Divisores e reduções série-paralelo (Cap. 2, Ex. 2.8).
@@ -850,3 +850,10 @@ No transitório Python, semicondutores não são simulados: são rejeitados expl
 Python e Rust propagam falhas do ponto DC inicial; iniciar com estado zero exige a escolha explícita de `uic=True` e condições iniciais compatíveis. O ponto inicial sem UIC usa os valores das formas de onda em t=0. O modelo DC atual aproxima cada enrolamento por 1 µΩ; não é um curto ideal exato. Em UIC, cada indutor conserva sua corrente inicial. Rust recebe as duas correntes do par acoplado e contabiliza E=½L1·i1²+M·i1·i2+½L2·i2² desde t=0.
 
 Para uma CCCS de ganho g, a estampa A[p,ctrl]+=g dá ∂V/∂g=−(y_p−y_n)·Ictrl. Para uma CCVS de transresistência r, A[aux,ctrl]+=r dá ∂V/∂r=−y_aux·Ictrl. A corrente de controle é a incógnita auxiliar da fonte de tensão de controle, com o sinal da MNA. Essas derivadas participam do RSS, Pareto e seleção de cantos quando há tolerância; o padrão das fontes dependentes é tolerância zero.
+
+
+### Convenção RMS e pico no estudo trifásico
+
+`solve_ac` usa fasores de pico; `V_rms` retorna a magnitude dividida por √2 e `complex_power` aplica ½·V·conj(I). `build_three_phase_source(V_rms=...)` converte a entrada RMS para amplitude de pico nas fontes. Antes de chamar `analyze_two_wattmeters`, divida os fasores complexos de tensão e corrente retornados pelo solver por √2. Isso mantém a soma das potências dos componentes igual à leitura dos wattímetros. A correção altera `ac_mag` das fontes geradas por esse construtor; código que usava seus fasores brutos como RMS precisa aplicar a conversão.
+
+O relatório `RELATORIO_ROTEIROS_ESTUDO.md` registra os cinco roteiros, em 19 configurações, com referências independentes e hipóteses explícitas. Reproduza com `.venv/bin/python scripts/validate_study_routes.py`.

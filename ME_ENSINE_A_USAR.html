@@ -422,7 +422,7 @@ print(solucao.summary())</code></pre>
       <p>Você pode acessar qualquer grandeza diretamente:</p>
       <pre><code>v2 = solucao.V("2")         # 7.2 Volts
 i_r1 = solucao.I_resistor("R1")      # 1.2 Amperes
-p_r1 = solucao.P_resistor("R1")      # -5.76 W (potência entregue; resistor absorve 5.76 W)</code></pre>
+p_r1 = solucao.P_resistor("R1")      # +5.76 W dissipados (power_audit usa -5.76 W para absorção)</code></pre>
     </section>
 
     <!-- 4. Notações de Bancada -->
@@ -863,7 +863,7 @@ print(f"Energia final armazenada: {res.E_stored()[-1] * 1e6:.2f} µJ")</code></p
         <strong>Solução:</strong> Use valores positivos (ex: <code>0.05</code> para 5%).
       </div>
     </section>
-  <section><h2>Hipóteses matemáticas</h2><p>Transitório: apenas elementos lineares; semicondutores geram erro explícito. UIC aplica condições iniciais; sem UIC o início é o ponto DC. Na varredura, os pontos são start+k·step até o limite, sem modificar o circuito recebido.</p><p>Os cantos da sensibilidade são estimativas locais, sem garantia de extremos globais. RSS não implica 3σ: para tolerâncias uniformes independentes, σ(V)≈RSS/√3; correlações exigem covariâncias. O Pareto representa impacto absoluto linear.</p><p>Dois wattímetros: fasores RMS e três fios, Ia+Ib+Ic=0. S=Vac·conj(Ia)+Vbc·conj(Ib), P=Re(S), Q=Im(S), inclusive com desequilíbrio e sequência inversa. Com neutro conduzindo, some as três potências fase–neutro.</p></section></main>
+  <section><h2>Hipóteses matemáticas</h2><p>Transitório: apenas elementos lineares; semicondutores geram erro explícito. UIC aplica condições iniciais; sem UIC o início é o ponto DC. Na varredura, os pontos são start+k·step até o limite, sem modificar o circuito recebido.</p><p>Os cantos da sensibilidade são estimativas locais, sem garantia de extremos globais. RSS não implica 3σ: para tolerâncias uniformes independentes, σ(V)≈RSS/√3; correlações exigem covariâncias. O Pareto representa impacto absoluto linear.</p><p>O solver AC retorna fasores de pico. O construtor trifásico converte V_rms para amplitude de pico; divida os fasores complexos de tensão e corrente por √2 antes de passá-los aos wattímetros.</p><p>Dois wattímetros: fasores RMS e três fios, Ia+Ib+Ic=0. S=Vac·conj(Ia)+Vbc·conj(Ib), P=Re(S), Q=Im(S), inclusive com desequilíbrio e sequência inversa. Com neutro conduzindo, some as três potências fase–neutro.</p></section></main>
 
 </body>
 </html>
