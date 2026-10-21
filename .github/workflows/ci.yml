@@ -30,6 +30,13 @@ jobs:
           pip install -e .[dev]
           cd rust_core && maturin build --release && pip install target/wheels/*.whl
 
+      - name: Require Rust core to load (no silent fallback)
+        run: |
+          python -c "import pycircuit_core
+          import circuit_solver.engine.monte_carlo_rust as m
+          assert m.RUST_AVAILABLE, 'pycircuit_core instalado, mas o backend Rust não foi habilitado'
+          print('backend Rust ok')"
+
       - name: Run test suite with pytest
         run: |
-          pytest --cov=circuit_solver --cov-report=term-missing
+          pytest --cov=circuit_solver --cov-report=term-missing -rs
