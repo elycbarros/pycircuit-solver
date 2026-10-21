@@ -291,6 +291,23 @@ def analyze_sensitivity(
             unit = "S"
             nom_val = float(el.transconductance)
 
+        elif isinstance(el, CCCS):
+            if tol is None:
+                tol = 0.0
+            control_current = float(x_nom[circuit.aux_index(el.vctrl_name)])
+            # A[p,ctrl] += gain; dV/dgain = -y.T (dA/dgain) x.
+            d_v_d_p = -(y_node(el.node_p) - y_node(el.node_n)) * control_current
+            unit = "A/A"
+            nom_val = float(el.gain)
+
+        elif isinstance(el, CCVS):
+            if tol is None:
+                tol = 0.0
+            control_current = float(x_nom[circuit.aux_index(el.vctrl_name)])
+            d_v_d_p = -float(y_adj[circuit.aux_index(el.name)]) * control_current
+            unit = "Ω"
+            nom_val = float(el.transresistance)
+
         else:
             # Multi-terminal elements without variable parameters skipped
             continue

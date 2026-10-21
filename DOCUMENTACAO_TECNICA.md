@@ -465,7 +465,7 @@ pycircuit-solver/
 
 ## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (447 Testes)
 
-A biblioteca é auditada de ponta a ponta por uma suíte de **478 testes automatizados** (468 aprovados, 10 skips singulares estocásticos esperados) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
+A biblioteca é auditada de ponta a ponta por uma suíte de **510 testes automatizados** (500 aprovados, 10 skips singulares estocásticos esperados) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
 
 1. **Alexander & Sadiku (*Fundamentos de Circuitos Elétricos*):**
    * Divisores e reduções série-paralelo (Cap. 2, Ex. 2.8).
@@ -843,3 +843,10 @@ pycircuit wca netlist.cir -t out --tol 0.01
 RSS = √Σ(∂V/∂p · Δp)² só corresponde a 3σ quando cada Δp é 3σ e as variações são independentes no modelo linear. Para distribuições uniformes independentes em ±Δp, σ(V) ≈ RSS/√3; correlações exigem covariâncias. O Pareto é a fração do impacto absoluto linear. Falhas ao resolver um canto são propagadas, sem substituição silenciosa por Taylor.
 
 No transitório Python, semicondutores não são simulados: são rejeitados explicitamente. Indutores acoplados usam a matriz de indutâncias e energia E=½L1·i1²+M·i1·i2+½L2·i2². No método dos dois wattímetros, para fasores RMS e três fios, S=Vac·conj(Ia)+Vbc·conj(Ib), inclusive com cargas desequilibradas e sequência inversa. Com neutro conduzindo, use as três potências fase–neutro.
+
+
+### Inicialização transitória e fontes controladas por corrente
+
+Python e Rust propagam falhas do ponto DC inicial; iniciar com estado zero exige a escolha explícita de `uic=True` e condições iniciais compatíveis. O ponto inicial sem UIC usa os valores das formas de onda em t=0. O modelo DC atual aproxima cada enrolamento por 1 µΩ; não é um curto ideal exato. Em UIC, cada indutor conserva sua corrente inicial. Rust recebe as duas correntes do par acoplado e contabiliza E=½L1·i1²+M·i1·i2+½L2·i2² desde t=0.
+
+Para uma CCCS de ganho g, a estampa A[p,ctrl]+=g dá ∂V/∂g=−(y_p−y_n)·Ictrl. Para uma CCVS de transresistência r, A[aux,ctrl]+=r dá ∂V/∂r=−y_aux·Ictrl. A corrente de controle é a incógnita auxiliar da fonte de tensão de controle, com o sinal da MNA. Essas derivadas participam do RSS, Pareto e seleção de cantos quando há tolerância; o padrão das fontes dependentes é tolerância zero.

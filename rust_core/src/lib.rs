@@ -233,6 +233,8 @@ impl PyInductor {
 #[pyclass]
 #[derive(Clone)]
 pub struct PyCoupledPair {
+    #[pyo3(get, set)] pub ic1: f64,
+    #[pyo3(get, set)] pub ic2: f64,
     #[pyo3(get, set)] pub l1: f64,
     #[pyo3(get, set)] pub l2: f64,
     #[pyo3(get, set)] pub k: f64,
@@ -245,8 +247,9 @@ pub struct PyCoupledPair {
 #[pymethods]
 impl PyCoupledPair {
     #[new]
-    fn new(l1: f64, l2: f64, k: f64, p1_idx: i64, n1_idx: i64, p2_idx: i64, n2_idx: i64) -> Self {
-        PyCoupledPair { l1, l2, k, p1_idx, n1_idx, p2_idx, n2_idx }
+    #[pyo3(signature = (l1, l2, k, p1_idx, n1_idx, p2_idx, n2_idx, ic1=0.0, ic2=0.0))]
+    fn new(l1: f64, l2: f64, k: f64, p1_idx: i64, n1_idx: i64, p2_idx: i64, n2_idx: i64, ic1: f64, ic2: f64) -> Self {
+        PyCoupledPair { l1, l2, k, p1_idx, n1_idx, p2_idx, n2_idx, ic1, ic2 }
     }
 }
 
@@ -642,6 +645,8 @@ fn to_rust_transient_circuit(
             node_n_idx: opt_idx(l.node_n_idx),
         }).collect(),
         coupled: coupled.unwrap_or(&[]).iter().map(|cp| crate::types::RustCoupledInductorPair {
+            ic1: cp.ic1,
+            ic2: cp.ic2,
             l1: cp.l1,
             l2: cp.l2,
             k: cp.k,

@@ -14,6 +14,7 @@ tens of thousands of time steps to be solved in milliseconds.
 from __future__ import annotations
 
 from typing import Literal
+from dataclasses import replace
 import numpy as np
 from scipy import linalg
 
@@ -378,7 +379,15 @@ def solve_transient(
     else:
         # Operating point DC solve at t = 0
         try:
-            dc_sol = solve_dc(circuit)
+            # Use the actual t=0 source values, as the Rust backend does.
+            dc_elements = [
+                replace(el, voltage=el.value_at(0.0), waveform=None) if isinstance(el, VoltageSource)
+                else replace(el, current=el.value_at(0.0), waveform=None) if isinstance(el, CurrentSource)
+                else el for el in circuit.elements
+            ]
+            dc_sol = solve_dc(Circuit(dc_elements, validate=False))
+            if not np.all(np.isfinite(dc_sol._x)):
+                raise ValueError("Non-finite DC operating point.")
             x0 = dc_sol._x
             for c in capacitors:
                 vp = dc_sol.V(c.node_p) if c.node_p != "0" else 0.0
@@ -402,14 +411,10 @@ def solve_transient(
                 v2 = vp2 - vn2
                 v_coupled_state[pair["name"]] = np.array([v1, v2], dtype=float)
                 i_coupled_state[pair["name"]] = np.array([v1 * 1e6, v2 * 1e6], dtype=float)
-        except Exception:
-            # Fallback to zero state if DC fails
-            x0 = np.zeros(n)
-            for c in capacitors: v_c_state[c.name] = 0.0; i_c_state[c.name] = 0.0
-            for ind in inductors: v_l_state[ind.name] = 0.0; i_l_state[ind.name] = 0.0
-            for pair in coupled_pairs:
-                v_coupled_state[pair["name"]] = np.zeros(2)
-                i_coupled_state[pair["name"]] = np.zeros(2)
+        except Exception as err:
+            raise RuntimeError(
+                "DC operating point initialization failed; specify uic=True to use explicit initial conditions."
+            ) from err
 
     # Record t=0 results
     for node in node_labels:

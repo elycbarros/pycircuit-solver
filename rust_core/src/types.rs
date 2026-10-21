@@ -186,6 +186,8 @@ pub struct RustInductor {
 
 #[derive(Debug, Clone)]
 pub struct RustCoupledInductorPair {
+    pub ic1: f64,
+    pub ic2: f64,
     pub l1: f64,
     pub l2: f64,
     pub k: f64,

@@ -8,10 +8,11 @@ Performance & Pedagogy:
   * Over 1,000,000 time-steps/second via compiled Rust LU + forward/backward substitution.
   * Rigorous numerical conservation tracking:
       E_stored(t) = 0.5 * sum(C * V_c^2) + 0.5 * sum(L * I_l^2)
+                    + sum(M * I_1 * I_2) for coupled winding pairs
       P_dissipated(t) = sum(V_r^2 / R)
   * Hardware-accurate profiling metrics (LU factorization vs stepping loop time).
-  * Transparent zero-overhead fallback to Python solver when non-linear elements or
-    custom Python wave callbacks are present.
+  * Custom Python wave callbacks use the Python solver in auto mode.
+    Non-linear elements are explicitly rejected by transient analysis.
 """
 
 from __future__ import annotations
@@ -287,6 +288,7 @@ def solve_transient_rust(
                 )
             )
 
+    inductors_by_name = {el.name: el for el in circuit.elements if isinstance(el, Inductor)}
     for pair in coupled_pairs:
         p1 = node_idx(pair["p1"])
         n1 = node_idx(pair["n1"])
@@ -301,6 +303,8 @@ def solve_transient_rust(
                 n1 if n1 is not None else -1,
                 p2 if p2 is not None else -1,
                 n2 if n2 is not None else -1,
+                float(getattr(inductors_by_name.get(pair["ind1_name"]), "ic", 0.0)),
+                float(getattr(inductors_by_name.get(pair["ind2_name"]), "ic", 0.0)),
             )
         )
 
@@ -367,10 +371,8 @@ def solve_transient_rust(
     for pair_idx, pair in enumerate(coupled_pairs):
         i1 = coupled_currents_arr[2 * pair_idx, :]
         i2 = coupled_currents_arr[2 * pair_idx + 1, :]
-        if pair["ind1_name"] in branch_currents:
-            branch_currents[pair["ind1_name"]] = i1
-        if pair["ind2_name"] in branch_currents:
-            branch_currents[pair["ind2_name"]] = i2
+        branch_currents[pair["ind1_name"]] = i1
+        branch_currents[pair["ind2_name"]] = i2
         if pair["name"] in branch_currents:
             branch_currents[pair["name"]] = i1
 

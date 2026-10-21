@@ -19,3 +19,13 @@ A potência trifásica usa fasores RMS e a identidade de três fios S=Vac·conj(
 A memória distingue aproximações de VBE constante das referências exponenciais, calculadas por equações escalares independentes. O cruzamento por zero do transitório usa tolerância absoluta explícita de 0,0002 V com dt=2 µs. A aprovação é calculada a partir das comparações; valores não finitos e divergências recebem indicação própria.
 
 RSS combina contribuições de primeira ordem; não é automaticamente 3σ. Os dois cantos selecionados pela sensibilidade nominal não garantem extremos globais. Falhas nas resoluções desses cantos não são substituídas silenciosamente por estimativas de Taylor.
+
+
+## Complemento: estados acoplados e fontes controladas
+
+- Adicionados 32 testes Python: condições iniciais não nulas, solução por exponencial matricial, balanço de energia, ambas as polaridades de acoplamento, início pelo ponto DC, comparação completa entre backends, falha DC com UIC explícito e derivadas/cantos de CCCS e CCVS conferidos por diferenças finitas.
+- Suíte final: 500 aprovados, 10 ignorados por circuitos aleatórios singulares.
+- Adicionados e executados 3 testes nativos Rust, cobrindo UIC/energia, corrente inicial DC dos enrolamentos e falha DC sem substituição por zero. A indicação anterior de zero testes nativos descreve a validação anterior.
+- Extensão Rust reconstruída em release e instalada novamente na `.venv`.
+
+Limite explícito: o ponto DC aproxima os enrolamentos por 1 µΩ em ambos os backends. Em falhas, o usuário precisa escolher UIC conscientemente; o solver não toma essa decisão silenciosamente.

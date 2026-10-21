@@ -88,6 +88,9 @@ pub fn run_transient(
     method: u8, // 0 = Trapezoidal, 1 = Euler
     uic: bool,
 ) -> Result<TransientRunOutput, String> {
+    if !t_stop.is_finite() || !dt.is_finite() || method > 1 {
+        return Err("Transient times must be finite and method must be 0 or 1.".to_string());
+    }
     if t_stop <= 0.0 {
         return Err(format!("t_stop must be positive, got {t_stop}"));
     }
@@ -120,8 +123,9 @@ pub fn run_transient(
     let mut coupled_geq: Vec<[[f64; 2]; 2]> = Vec::with_capacity(circuit.coupled.len());
 
     for cp in &circuit.coupled {
-        let det = cp.l1 * cp.l2 * (1.0 - cp.k * cp.k);
-        let m = cp.k * (cp.l1 * cp.l2).sqrt();
+        let k = cp.k.clamp(-0.9999999, 0.9999999);
+        let det = cp.l1 * cp.l2 * (1.0 - k * k);
+        let m = k * (cp.l1 * cp.l2).sqrt();
         let g11 = cp.l2 / det;
         let g12 = -m / det;
         let g21 = -m / det;
@@ -248,7 +252,8 @@ pub fn run_transient(
     let mut i_l_state: Vec<f64> = circuit.inductors.iter().map(|ind| if uic { ind.ic } else { 0.0 }).collect();
 
     let mut v_coupled_state: Vec<[f64; 2]> = vec![[0.0, 0.0]; circuit.coupled.len()];
-    let mut i_coupled_state: Vec<[f64; 2]> = vec![[0.0, 0.0]; circuit.coupled.len()];
+    let mut i_coupled_state: Vec<[f64; 2]> = circuit.coupled.iter()
+        .map(|cp| if uic { [cp.ic1, cp.ic2] } else { [0.0, 0.0] }).collect();
 
     // Output buffers: flattened (item, step) -> idx = item * n_steps + step
     let mut node_voltages = vec![0.0; n_nodes * n_steps];
@@ -267,7 +272,8 @@ pub fn run_transient(
         let val = is.waveform.eval(0.0);
         if let Some(p) = is.node_p_idx { z0[p] += val; }
         if let Some(ni) = is.node_n_idx { z0[ni] -= val; }
-    }    let x0 = if uic {
+    }
+    let x0 = if uic {
         // t = 0+ com condições iniciais (espelha transient.rs/Python).
         // Capacitor sem fonte forçada vira fonte de tensão de valor ic (uma incógnita extra);
         // indutor vira fonte de corrente de valor ic; fontes independentes entram em t = 0.
@@ -328,6 +334,12 @@ pub fn run_transient(
         for ind in &circuit.inductors {
             if let Some(ni) = ind.node_n_idx { z_aug[ni] += ind.ic; }
             if let Some(p) = ind.node_p_idx { z_aug[p] -= ind.ic; }
+        }
+        for cp in &circuit.coupled {
+            if let Some(p) = cp.p1_idx { z_aug[p] -= cp.ic1; }
+            if let Some(ni) = cp.n1_idx { z_aug[ni] += cp.ic1; }
+            if let Some(p) = cp.p2_idx { z_aug[p] -= cp.ic2; }
+            if let Some(ni) = cp.n2_idx { z_aug[ni] += cp.ic2; }
         }
         // Capacitor sem fonte forçada: fonte de tensão ic na incógnita extra n + j
         for (j, &ci) in sub_caps.iter().enumerate() {
@@ -415,6 +427,13 @@ pub fn run_transient(
             stamp_conductance(&mut a_dc, ind.node_p_idx, ind.node_n_idx, 1e6);
         }
 
+        // At DC, mutual voltage is zero and each winding is a short.
+        // Match the Python DC model: a 1 micro-ohm winding resistance.
+        for cp in &circuit.coupled {
+            stamp_conductance(&mut a_dc, cp.p1_idx, cp.n1_idx, 1e6);
+            stamp_conductance(&mut a_dc, cp.p2_idx, cp.n2_idx, 1e6);
+        }
+
         match a_dc.lu().solve(&z0) {
             Some(x_dc) => {
                 for (i, c) in circuit.capacitors.iter().enumerate() {
@@ -427,11 +446,22 @@ pub fn run_transient(
                     let vn = ind.node_n_idx.map(|ni| x_dc[ni]).unwrap_or(0.0);
                     i_l_state[i] = (vp - vn) * 1e6;
                 }
+                for (i, cp) in circuit.coupled.iter().enumerate() {
+                    let node_v = |idx: Option<usize>| idx.map(|j| x_dc[j]).unwrap_or(0.0);
+                    let v1 = node_v(cp.p1_idx) - node_v(cp.n1_idx);
+                    let v2 = node_v(cp.p2_idx) - node_v(cp.n2_idx);
+                    v_coupled_state[i] = [v1, v2];
+                    i_coupled_state[i] = [v1 * 1e6, v2 * 1e6];
+                }
                 x_dc
             }
-            None => DVector::<f64>::zeros(n),
+            None => return Err("DC operating point initialization failed (singular matrix); specify uic=True to use explicit initial conditions.".to_string()),
         }
     };
+
+    if !x0.iter().all(|v| v.is_finite()) {
+        return Err("Transient initialization produced non-finite values.".to_string());
+    }
 
     // Store t=0 node voltages & currents
     for i in 0..n_nodes {
@@ -446,6 +476,10 @@ pub fn run_transient(
     for (i, vs) in circuit.vsources.iter().enumerate() {
         vsource_currents[i * n_steps] = x0[vs.aux_idx];
     }
+    for (i, currents) in i_coupled_state.iter().enumerate() {
+        coupled_currents[(2 * i) * n_steps] = currents[0];
+        coupled_currents[(2 * i + 1) * n_steps] = currents[1];
+    }
 
     // Energy and power at t=0
     let mut e0_c = 0.0;
@@ -457,6 +491,11 @@ pub fn run_transient(
     for (i, ind) in circuit.inductors.iter().enumerate() {
         let il = i_l_state[i];
         e0_l += 0.5 * ind.inductance * il * il;
+    }
+    for (cp, currents) in circuit.coupled.iter().zip(&i_coupled_state) {
+        let [i1, i2] = *currents;
+        let m = cp.k * (cp.l1 * cp.l2).sqrt();
+        e0_l += 0.5 * cp.l1 * i1 * i1 + m * i1 * i2 + 0.5 * cp.l2 * i2 * i2;
     }
     energy_stored[0] = e0_c + e0_l;
 
@@ -592,6 +631,8 @@ pub fn run_transient(
             i_coupled_state[i] = [i1, i2];
             coupled_currents[(2 * i) * n_steps + k] = i1;
             coupled_currents[(2 * i + 1) * n_steps + k] = i2;
+            let m = cp.k * (cp.l1 * cp.l2).sqrt();
+            e_l_total += 0.5 * cp.l1 * i1 * i1 + m * i1 * i2 + 0.5 * cp.l2 * i2 * i2;
         }
 
         // Update vsource currents (aux variables)
@@ -628,3 +669,74 @@ pub fn run_transient(
     })
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{RustCapacitor, RustCoupledInductorPair, RustISourceTran,
+        RustResistorStamped, RustVSourceTran, RustWaveform};
+
+    fn coupled_fixture() -> RustTransientCircuit {
+        RustTransientCircuit {
+            n_nodes: 3, size: 4,
+            resistors: vec![
+                RustResistorStamped { resistance: 10.0, tolerance: 0.0,
+                    node_p_idx: Some(0), node_n_idx: Some(1) },
+                RustResistorStamped { resistance: 20.0, tolerance: 0.0,
+                    node_p_idx: Some(2), node_n_idx: None },
+            ],
+            vsources: vec![RustVSourceTran { waveform: RustWaveform::DC(10.0),
+                node_p_idx: Some(0), node_n_idx: None, aux_idx: 3 }],
+            coupled: vec![RustCoupledInductorPair {
+                l1: 0.02, l2: 0.005, k: 0.5, ic1: 0.2, ic2: -0.1,
+                p1_idx: Some(1), n1_idx: None, p2_idx: Some(2), n2_idx: None,
+            }],
+            isources: vec![], vcvs: vec![], vccs: vec![], cccs: vec![],
+            ccvs: vec![], opamps: vec![], capacitors: vec![], inductors: vec![],
+        }
+    }
+
+    #[test]
+    fn coupled_uic_preserves_currents_and_energy_at_zero() {
+        let circuit = coupled_fixture();
+        for method in [0, 1] {
+            let out = run_transient(&circuit, 1e-4, 1e-6, method, true).unwrap();
+            let steps = out.time_vec.len();
+            assert_eq!(out.coupled_currents[0], 0.2);
+            assert_eq!(out.coupled_currents[steps], -0.1);
+            assert!((out.node_voltages[steps] - 8.0).abs() < 1e-12);
+            assert!((out.node_voltages[2 * steps] - 2.0).abs() < 1e-12);
+            assert!((out.energy_stored[0] - 0.000325).abs() < 1e-15);
+            assert!(out.energy_stored.iter().all(|e| *e > 0.0));
+        }
+    }
+
+    #[test]
+    fn dc_coupled_windings_have_short_circuit_initial_currents() {
+        let out = run_transient(&coupled_fixture(), 1e-4, 1e-6, 0, false).unwrap();
+        let expected = 10.0 / (10.0 + 1e-6);
+        assert!((out.coupled_currents[0] - expected).abs() < 1e-12);
+        assert_eq!(out.coupled_currents[out.time_vec.len()], 0.0);
+        assert!((out.energy_stored[0] - 0.01 * expected * expected).abs() < 1e-14);
+    }
+
+    #[test]
+    fn failed_dc_requires_explicit_uic() {
+        let mut circuit = coupled_fixture();
+        circuit.n_nodes = 1;
+        circuit.size = 1;
+        circuit.resistors.clear();
+        circuit.vsources.clear();
+        circuit.coupled.clear();
+        circuit.capacitors.push(RustCapacitor { capacitance: 1e-6, ic: 1.0,
+            node_p_idx: Some(0), node_n_idx: None });
+        circuit.isources.push(RustISourceTran { waveform: RustWaveform::DC(0.001),
+            node_p_idx: Some(0), node_n_idx: None });
+        let error = run_transient(&circuit, 1e-3, 1e-5, 0, false).err().unwrap();
+        assert!(error.contains("DC operating point initialization failed"));
+        let out = run_transient(&circuit, 1e-3, 1e-5, 0, true).unwrap();
+        for (v, t) in out.node_voltages.iter().zip(&out.time_vec) {
+            assert!((v - (1.0 + 1000.0 * t)).abs() < 1e-12);
+        }
+    }
+}
