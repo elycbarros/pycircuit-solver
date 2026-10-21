@@ -83,6 +83,23 @@ def _strip_comment(line: str) -> str:
     return line.strip()
 
 
+def _as_existing_file(value: str | Path) -> Path | None:
+    """Return ``value`` as a Path if it names an existing file, else ``None``.
+
+    Netlist text can be arbitrarily long and contain newlines; ``Path.exists()``
+    raises ``OSError`` (ENAMETOOLONG) on such strings on Python < 3.14, so any
+    value containing a newline is treated as netlist content, never as a path.
+    """
+    text = str(value)
+    if "\n" in text or "\r" in text:
+        return None
+    try:
+        candidate = Path(text)
+        return candidate if candidate.is_file() else None
+    except (OSError, ValueError):
+        return None
+
+
 def _extract_waveform(line: str) -> object | None:
     """Extract SPICE PULSE(...) or SIN(...) waveform from a source line."""
     u = line.upper()
@@ -364,8 +381,8 @@ def parse_netlist_with_hierarchy(
     tuple[list[_Element], HierarchyTree]
         Flattened elements and the pedagogical hierarchy tree.
     """
-    path_candidate = Path(str(text_or_path))
-    if path_candidate.exists() and path_candidate.is_file():
+    path_candidate = _as_existing_file(text_or_path)
+    if path_candidate is not None:
         text = path_candidate.read_text(encoding="utf-8")
         if base_dir is None:
             base_dir = path_candidate.parent
@@ -469,8 +486,8 @@ def parse_dc_directive(text_or_path: str | Path) -> dict[str, object] | None:
         Parsed sweep parameters dictionary, or None if no .DC line was found.
     """
     text = str(text_or_path)
-    p = Path(text)
-    if p.exists() and p.is_file():
+    p = _as_existing_file(text)
+    if p is not None:
         text = p.read_text(encoding="utf-8")
 
     for line in text.splitlines():
