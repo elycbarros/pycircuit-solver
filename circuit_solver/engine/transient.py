@@ -42,6 +42,31 @@ from circuit_solver.engine.transient_rust import (
 __all__ = ["solve_transient", "RUST_AVAILABLE"]
 
 
+def _capacitors_forced_by_voltage_sources(circuit: Circuit, capacitors) -> set[str]:
+    """Nomes dos capacitores cujos terminais já estão ligados por fontes de tensão ideais.
+
+    Nesse caso a tensão do capacitor é fixada pela fonte e o ic não tem efeito sobre os nós.
+    Substituir o capacitor por uma fonte de tensão de valor ic criaria fontes em paralelo
+    e um sistema singular, por isso esses capacitores ficam fora da solução de t = 0.
+    """
+    parent: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for el in circuit.elements:
+        if isinstance(el, VoltageSource):
+            ra, rb = find(el.node_p), find(el.node_n)
+            if ra != rb:
+                parent[ra] = rb
+
+    return {c.name for c in capacitors if find(c.node_p) == find(c.node_n)}
+
+
 def solve_transient(
     circuit: Circuit,
     *,
@@ -268,56 +293,72 @@ def solve_transient(
             branch_currents[pair["ind2_name"]] = np.zeros(n_steps)
 
     if uic:
-        # Use explicit initial conditions
+        # Estado em t = 0+ a partir das condições iniciais. Cada capacitor vira uma fonte de
+        # tensão de valor ic e cada indutor vira uma fonte de corrente de valor ic. Resolver
+        # esse circuito resistivo dá v(0+) nos nós, i_C(0+) pela corrente da fonte que
+        # substitui o capacitor e v_L(0+) pela tensão nos terminais do indutor.
+        # O modelo companheiro não serve para t = 0: ele exigiria i_C(0) e v_L(0) já conhecidos.
+        forced_caps = _capacitors_forced_by_voltage_sources(circuit, capacitors)
         for c in capacitors:
-            v_c_state[c.name] = c.ic
-            i_c_state[c.name] = 0.0
+            if c.name not in forced_caps:
+                v_c_state[c.name] = c.ic
         for ind in inductors:
-            v_l_state[ind.name] = 0.0
             i_l_state[ind.name] = ind.ic
 
         ind_by_name = {el.name: el for el in circuit.elements if isinstance(el, Inductor)}
         for pair in coupled_pairs:
-            i1 = getattr(ind_by_name.get(pair["ind1_name"]), "ic", 0.0)
-            i2 = getattr(ind_by_name.get(pair["ind2_name"]), "ic", 0.0)
-            v_coupled_state[pair["name"]] = np.zeros(2)
-            i_coupled_state[pair["name"]] = np.array([i1, i2], dtype=float)
+            i_coupled_state[pair["name"]] = np.array(
+                [
+                    getattr(ind_by_name.get(pair["ind1_name"]), "ic", 0.0),
+                    getattr(ind_by_name.get(pair["ind2_name"]), "ic", 0.0),
+                ],
+                dtype=float,
+            )
 
-        # Solve t=0 state from companion model at t=0
-        z0 = np.zeros(n)
+        sub_elements = []
+        for el in circuit.elements:
+            if isinstance(el, Capacitor):
+                if el.name not in forced_caps:
+                    sub_elements.append(VoltageSource(el.name, el.node_p, el.node_n, el.ic))
+            elif isinstance(el, Inductor):
+                # corrente ic flui de node_p para node_n: injeta em node_n, drena de node_p
+                sub_elements.append(CurrentSource(el.name, el.node_n, el.node_p, el.ic))
+            elif isinstance(el, VoltageSource):
+                sub_elements.append(VoltageSource(el.name, el.node_p, el.node_n, el.value_at(0.0)))
+            elif isinstance(el, CurrentSource):
+                sub_elements.append(CurrentSource(el.name, el.node_p, el.node_n, el.value_at(0.0)))
+            else:
+                sub_elements.append(el)
+        sol0 = solve_dc(Circuit(sub_elements, validate=False))
+
+        def _v0(node: str) -> float:
+            return 0.0 if node == "0" else sol0.V(node)
+
+        x0 = np.zeros(n, dtype=float)
+        for node in node_labels:
+            x0[circuit.node_index(node)] = sol0.V(node)
         for el in circuit.elements:
             if isinstance(el, VoltageSource):
-                val = el.value_at(0.0) if hasattr(el, "value_at") else el.voltage
-                z0[aux(el.name)] = val
-            elif isinstance(el, CurrentSource):
-                val = el.value_at(0.0) if hasattr(el, "value_at") else el.current
-                p, n_node = idx(el.node_p), idx(el.node_n)
-                if p is not None: z0[p] += val
-                if n_node is not None: z0[n_node] -= val
+                x0[aux(el.name)] = sol0.I_vsource(el.name)
 
-        # Invert companion currents at t=0
         for c in capacitors:
-            ieq = g_c[c.name] * v_c_state[c.name]
-            p, n_node = idx(c.node_p), idx(c.node_n)
-            if p is not None: z0[p] += ieq
-            if n_node is not None: z0[n_node] -= ieq
-
+            if c.name in forced_caps:
+                # tensão forçada pela fonte; a corrente em t = 0 desse capacitor não é recuperada
+                # e fica em zero (os nós não dependem dela)
+                v_c_state[c.name] = _v0(c.node_p) - _v0(c.node_n)
+                i_c_state[c.name] = 0.0
+            else:
+                i_c_state[c.name] = sol0.I_vsource(c.name)
         for ind in inductors:
-            ieq = i_l_state[ind.name]
-            p, n_node = idx(ind.node_p), idx(ind.node_n)
-            if p is not None: z0[p] -= ieq
-            if n_node is not None: z0[n_node] += ieq
-
+            v_l_state[ind.name] = _v0(ind.node_p) - _v0(ind.node_n)
         for pair in coupled_pairs:
-            istate = i_coupled_state[pair["name"]]
-            p1, n1 = idx(pair["p1"]), idx(pair["n1"])
-            p2, n2 = idx(pair["p2"]), idx(pair["n2"])
-            if p1 is not None: z0[p1] -= istate[0]
-            if n1 is not None: z0[n1] += istate[0]
-            if p2 is not None: z0[p2] -= istate[1]
-            if n2 is not None: z0[n2] += istate[1]
-
-        x0 = linalg.lu_solve(lu_factor, z0)
+            v_coupled_state[pair["name"]] = np.array(
+                [
+                    _v0(pair["p1"]) - _v0(pair["n1"]),
+                    _v0(pair["p2"]) - _v0(pair["n2"]),
+                ],
+                dtype=float,
+            )
     else:
         # Operating point DC solve at t = 0
         try:
