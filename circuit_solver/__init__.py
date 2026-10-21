@@ -46,6 +46,17 @@ from circuit_solver.engine.sensitivity import (
     SensitivityResult,
     ComponentSensitivity,
 )
+from circuit_solver.engine.two_port import (
+    TwoPortResult,
+    analyze_two_port,
+)
+from circuit_solver.engine.three_phase import (
+    TwoWattmeterResult,
+    analyze_two_wattmeters,
+    build_three_phase_source,
+    build_wye_load,
+    build_delta_load,
+)
 from circuit_solver.core.subcircuit import (
     SubcircuitDefinition,
     SubcircuitInstance,
@@ -100,6 +111,7 @@ __all__ = [
     "parse_netlist",
     "parse_netlist_string",
     "parse_netlist_with_hierarchy",
+    "parse_dc_directive",
     "solve",
     "solve_nonlinear",
     "solve_ac",
@@ -112,6 +124,13 @@ __all__ = [
     "worst_case_analysis",
     "SensitivityResult",
     "ComponentSensitivity",
+    "TwoPortResult",
+    "analyze_two_port",
+    "TwoWattmeterResult",
+    "analyze_two_wattmeters",
+    "build_three_phase_source",
+    "build_wye_load",
+    "build_delta_load",
     "plot_power_transfer",
     "plot_monte_carlo",
     "plot_monte_carlo_all",

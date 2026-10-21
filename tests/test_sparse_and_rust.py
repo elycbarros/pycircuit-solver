@@ -10,24 +10,18 @@ Validates:
 """
 
 import time
-import pytest
 import numpy as np
 
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (
     Resistor,
     VoltageSource,
-    CurrentSource,
     VCVS,
-    VCCS,
     CCCS,
-    CCVS,
     OpAmp,
-    Inductor,
 )
-from circuit_solver.engine.mna import build_mna, build_mna_sparse, solve
-from circuit_solver.engine.monte_carlo_rust import monte_carlo, RUST_AVAILABLE
-import pycircuit_core as _rust
+from circuit_solver.engine.mna import build_mna_sparse, solve
+from circuit_solver.engine.monte_carlo_rust import monte_carlo
 
 
 def test_rust_elements_monte_carlo_with_opamp():

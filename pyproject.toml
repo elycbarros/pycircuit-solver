@@ -50,3 +50,14 @@ addopts = "-v --tb=short"
 [tool.coverage.run]
 source = ["circuit_solver"]
 omit = ["tests/*", "examples/*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["F", "E9", "E711", "E712", "E713", "E721", "E722"]
+ignore = [
+    "EXE002",  # Filesystem permissions on external FAT/exFAT drive
+]
+

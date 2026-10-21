@@ -20,6 +20,9 @@ These are tracked via :attr:`auxiliary_map`.
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Sequence
+
 import numpy as np
 
 from circuit_solver.core.elements import (
@@ -41,7 +44,7 @@ from circuit_solver.core.elements import (
     MOSFET,
     _Element,
 )
-from circuit_solver.core.validator import CircuitValidator, parse_value
+from circuit_solver.core.validator import CircuitValidator
 from circuit_solver.core.subcircuit import HierarchyTree
 
 __all__ = ["Circuit"]

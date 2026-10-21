@@ -4,7 +4,6 @@ test_validator.py — Testes para o validador topológico e conversor de sufixos
 
 import pytest
 
-from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import Resistor, VoltageSource
 from circuit_solver.core.validator import (
     CircuitValidationError,

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
+from typing import Sequence
 
 import numpy as np
 
@@ -22,14 +22,12 @@ from circuit_solver.engine.mna import solve
 from circuit_solver.engine.thevenin import thevenin_norton
 from circuit_solver.engine.monte_carlo import monte_carlo
 from circuit_solver.engine.ac import solve_ac, ac_sweep
-from circuit_solver.engine.transient import solve_transient
 from circuit_solver.engine.dc_sweep import dc_sweep
 from circuit_solver.io.parser import parse_netlist, parse_dc_directive
 from circuit_solver.visualization.plots import (
     plot_power_transfer,
     plot_monte_carlo_all,
     plot_bode,
-    plot_transient,
     plot_dc_sweep,
 )
 

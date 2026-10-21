@@ -566,7 +566,65 @@ print(f"Energia final armazenada no capacitor: {res.stored_energy[-1] * 1e6:.2f}
 
 ---
 
-## 📋 18. Tabela de Cola dos Elementos Suportados
+## 🌐 18. Lição: Redes de Duas Portas (Quadripolos) e Sistemas Trifásicos
+
+### 18.1 Redes de Duas Portas (`two_port.py`)
+Extraia diretamente as matrizes de Impedância ($Z$), Admitância ($Y$) e Transmissão ($ABCD$):
+
+```python
+from circuit_solver import Circuit, Resistor, analyze_two_port
+
+# Rede T assimétrica: R1=20Ω, R2=40Ω, R3=30Ω (shunt)
+circuito = Circuit([
+    Resistor("R1", "n1", "mid", 20.0),
+    Resistor("R2", "n2", "mid", 40.0),
+    Resistor("R3", "mid", "0", 30.0),
+], allowed_open_nodes=["n1", "n2"])
+
+res = analyze_two_port(circuito, port1=("n1", "0"), port2=("n2", "0"))
+print(f"Z11 = {res.z11} Ω, Z22 = {res.z22} Ω")
+print(f"Matriz ABCD: A={res.A:.3f}, B={res.B:.3f} Ω, C={res.C:.4f} S, D={res.D:.3f}")
+print(f"Recíproco: {res.is_reciprocal}, Simétrico: {res.is_symmetric}")
+
+# Impedância de entrada terminada em carga RL = 50 Ω
+zin = res.input_impedance(Z_load=50.0)
+print(f"Zin(RL=50) = {zin.real:.3f} Ω")
+```
+
+### 18.2 Sistemas Trifásicos e Método dos Dois Wattímetros (`three_phase.py`)
+Gere geradores balanceados, cargas em triângulo ou estrela e meça a potência total via Teorema de Blondel:
+
+```python
+from circuit_solver import (
+    Circuit, build_three_phase_source, build_delta_load,
+    solve_ac, analyze_two_wattmeters
+)
+
+# Fonte equilibrada Y (120 V rms, 60 Hz) + Carga Delta (24 + j18 Ω)
+fontes = build_three_phase_source("Y", V_rms=120.0, node_a="s_a", node_b="s_b", node_c="s_c", node_neutral="0")
+cargas = build_delta_load(R=24.0, L=18.0/(2*3.14159*60), node_a="s_a", node_b="s_b", node_c="s_c")
+circuito = Circuit(fontes + cargas)
+
+sol = solve_ac(circuito, frequency=60.0)
+z_branch = 24.0 + 18.0j
+i_ab = (sol.V("s_a") - sol.V("s_b")) / z_branch
+i_bc = (sol.V("s_b") - sol.V("s_c")) / z_branch
+i_ca = (sol.V("s_c") - sol.V("s_a")) / z_branch
+i_line_a = i_ab - i_ca
+i_line_b = i_bc - i_ab
+
+wm = analyze_two_wattmeters(
+    V_line_ac=sol.V("s_a") - sol.V("s_c"),
+    V_line_bc=sol.V("s_b") - sol.V("s_c"),
+    I_line_a=i_line_a,
+    I_line_b=i_line_b,
+)
+print(f"P_total = {wm.P_total:.1f} W, Q_total = {wm.Q_total:.1f} VAR, FP = {wm.power_factor:.3f}")
+```
+
+---
+
+## 📋 19. Tabela de Cola dos Elementos Suportados
 
 | Elemento | Letra SPICE | Como Instanciar em Python | O que faz |
 | :--- | :---: | :--- | :--- |
@@ -590,7 +648,7 @@ print(f"Energia final armazenada no capacitor: {res.stored_energy[-1] * 1e6:.2f}
 
 ---
 
-## ⚠️ 19. Erros Comuns e Como Evitá-los
+## ⚠️ 20. Erros Comuns e Como Evitá-los
 
 1. **"Missing ground node '0'":**
    * *Motivo:* Nenhum nó do circuito se chama `"0"`.

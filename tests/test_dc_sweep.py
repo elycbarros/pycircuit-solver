@@ -23,7 +23,6 @@ from circuit_solver import (
     BJT,
     MOSFET,
     dc_sweep,
-    DCSweepResult,
 )
 from circuit_solver.cli import main
 from circuit_solver.io.parser import parse_dc_directive

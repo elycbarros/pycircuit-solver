@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import cmath
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Any
 
 import numpy as np
 from numpy.linalg import LinAlgError
@@ -39,7 +39,6 @@ from circuit_solver.core.elements import (
     Resistor,
     Capacitor,
     Inductor,
-    MutualCoupling,
     Transformer,
     VoltageSource,
     CurrentSource,
@@ -48,7 +47,6 @@ from circuit_solver.core.elements import (
     CCCS,
     CCVS,
     OpAmp,
-    _Element,
 )
 
 __all__ = ["ACSolution", "solve_ac", "ac_sweep"]

@@ -11,7 +11,6 @@ Tests cover:
 """
 
 import math
-import numpy as np
 import pytest
 
 from circuit_solver.core.circuit import Circuit
@@ -97,6 +96,7 @@ def test_transformer_step_down_ac():
     # Check currents through primary and secondary windings
     i_prim = sol.I_transformer_primary("T1")
     i_sec = sol.I_transformer_secondary("T1")
+    assert abs(i_prim) > 0.0
     assert abs(i_sec) > 0.0
     # Secondary current leaves p2 and flows into RL: I_RL = -I_sec
     assert abs(abs(i_sec) - v2 / 100.0) < 0.01

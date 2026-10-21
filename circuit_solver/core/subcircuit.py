@@ -362,7 +362,6 @@ class SubcircuitExpander:
 
         # Step 1: Collect definitions, resolve .include, and separate top-level lines
         top_lines: list[str] = []
-        i = 0
         all_input_lines: list[str] = list(raw_lines)
 
         # Process .include / .inc recursively
@@ -574,9 +573,6 @@ class SubcircuitExpander:
             # Standard element
             qualified_elem_name = f"{inst_name}.{desig}"
             element_names.append(qualified_elem_name)
-
-            # Substitute parameters {expr} in the line
-            substituted_tokens: list[str] = [qualified_elem_name]
 
             # Handle nodes and values per element type
             if prefix in ("R", "C", "L"):

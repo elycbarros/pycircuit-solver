@@ -27,23 +27,17 @@ sources are killed).
 
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass, replace
-from typing import Sequence
 
 import numpy as np
 
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (
-    Resistor,
     VoltageSource,
     CurrentSource,
-    VCVS,
-    VCCS,
-    OpAmp,
     _Element,
 )
-from circuit_solver.engine.mna import solve, build_mna
+from circuit_solver.engine.mna import solve
 
 __all__ = ["TheveninResult", "thevenin_norton"]
 

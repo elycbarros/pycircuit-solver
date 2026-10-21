@@ -2,7 +2,6 @@
 test_cli.py — Testes da interface de linha de comando (CLI) pycircuit.
 """
 
-import sys
 import pytest
 
 from circuit_solver.cli import main

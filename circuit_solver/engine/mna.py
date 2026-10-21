@@ -38,7 +38,6 @@ Ground ('0') rows/cols are skipped (not added to matrix).
 
 from __future__ import annotations
 
-from typing import Sequence
 
 import numpy as np
 from numpy.linalg import LinAlgError
@@ -54,9 +53,7 @@ from circuit_solver.core.elements import (
     CCVS,
     OpAmp,
     Inductor,
-    MutualCoupling,
     Transformer,
-    _Element,
 )
 from circuit_solver.core.solution import Solution
 

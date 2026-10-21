@@ -17,7 +17,6 @@ Validates:
 
 import math
 import pytest
-import numpy as np
 
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (
@@ -25,7 +24,6 @@ from circuit_solver.core.elements import (
     VoltageSource,
     CurrentSource,
     VCVS,
-    VCCS,
     OpAmp,
 )
 from circuit_solver.engine.sensitivity import analyze_sensitivity, worst_case_analysis

@@ -21,10 +21,7 @@ Usage (identical API to the Python version)
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass
-from typing import Optional
 
-import numpy as np
 
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (
@@ -38,7 +35,6 @@ from circuit_solver.core.elements import (
     OpAmp,
     Inductor,
     Transformer,
-    _Element,
 )
 from circuit_solver.engine.monte_carlo import MonteCarloResult
 

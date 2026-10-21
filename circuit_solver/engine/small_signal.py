@@ -36,11 +36,8 @@ Theory & Small-Signal Models (Sedra & Smith, Alexander & Sadiku, Neamen):
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
-import numpy as np
 
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (

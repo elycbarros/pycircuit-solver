@@ -22,14 +22,13 @@ from circuit_solver.core.elements import (
     Capacitor,
     Inductor,
     VoltageSource,
-    CurrentSource,
     StepWaveform,
     PulseWaveform,
     SineWaveform,
     Diode,
 )
 from circuit_solver.engine.transient import solve_transient, RUST_AVAILABLE
-from circuit_solver.engine.transient_rust import can_run_in_rust, solve_transient_rust
+from circuit_solver.engine.transient_rust import can_run_in_rust
 
 
 @pytest.mark.skipif(not RUST_AVAILABLE, reason="Rust extension not installed")

@@ -57,6 +57,20 @@ Problemas Cobertos:
 29. Cap. 4 — Amplificador de Instrumentação (INA) Clássico de 3 Op-Amps
 30. Cap. 5 — Ponte de Wheatstone Desbalanceada e Equivalente de Thévenin Exato
 31. Cap. 3 — Fonte Controlada por Corrente CCCS (F) em Análise Nodal Modificada
+
+[Expansão Multi-Livros — Exercícios 32 a 43]
+32. Boylestad (Cap. 2)            — Regulador de Tensão com Diodo Zener e Variação de Carga
+33. Sedra & Smith (Cap. 4)        — Retificador de Onda Completa em Ponte (Ponte de Graetz)
+34. Sedra & Smith (Cap. 7)        — Espelho de Corrente BJT Básico (Current Mirror)
+35. Boylestad / Sedra (Cap. 5/6)  — Amplificador BJT Emissor Comum com Degeneração de Emissor
+36. Sedra & Smith (Cap. 14)       — Inversor CMOS Digital Estático com Par Complementar NMOS/PMOS
+37. Sedra & Smith / Dorf (Cap. 2) — Amplificador de Transimpedância (Conversor Corrente-Tensão)
+38. Alexander & Sadiku (Cap. 6)   — Diferenciador Ideal com Op-Amp e Resposta Fasorial CA
+39. Alexander & Sadiku (Cap. 11)  — Correção de Fator de Potência com Capacitor em Paralelo
+40. Nilsson & Riedel (Cap. 14)    — Filtro Passa-Baixas Ativo de 2ª Ordem Sallen-Key
+41. Nilsson & Riedel (Cap. 7)     — Resposta Transitória ao Degrau de Circuito RL de Primeira Ordem
+42. Hayt, Kemmerly (Cap. 13)      — Transformador Linear com Reflexão de Impedância de Carga
+43. Dorf & Svoboda (Cap. 8)       — Resposta Natural Transitória de Circuito RLC Paralelo Subamortecido
 """
 
 import math
@@ -67,7 +81,6 @@ from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (
     BJT,
     CCCS,
-    CCVS,
     MOSFET,
     Capacitor,
     CurrentSource,
@@ -76,15 +89,21 @@ from circuit_solver.core.elements import (
     MutualCoupling,
     OpAmp,
     Resistor,
-    Transformer,
     VCCS,
     VCVS,
     VoltageSource,
+    ZenerDiode,
 )
 from circuit_solver.engine.ac import solve_ac
 from circuit_solver.engine.mna import solve
 from circuit_solver.engine.thevenin import thevenin_norton
 from circuit_solver.engine.transient import solve_transient
+from circuit_solver.engine.two_port import analyze_two_port
+from circuit_solver.engine.three_phase import (
+    build_three_phase_source,
+    build_delta_load,
+    analyze_two_wattmeters,
+)
 
 
 # ===========================================================================
@@ -1151,4 +1170,703 @@ def test_sadiku_cap13_linear_transformer_mutual_coupling():
     i2_phase = float(np.degrees(np.angle(i2)))
     assert i2_mag == pytest.approx(0.1431, abs=0.005)
     assert i2_phase == pytest.approx(-30.85, abs=0.3)
+
+
+# ===========================================================================
+# 9. EXPANSÃO DE BENCHMARKS MULTI-LIVROS (Exercícios 32 a 43)
+# ===========================================================================
+
+def test_boylestad_cap02_zener_voltage_regulator():
+    """Boylestad, Introdução à Análise de Circuitos / Dispositivos Eletrônicos (Capítulo 2):
+    Regulador de Tensão com Diodo Zener e Variação de Resistência de Carga.
+    Circuito alimentado por fonte DC Vs = 16.0 V com resistor limitador Rs = 1000 Ω.
+    Diodo Zener de regulação reversa Vz = 10.0 V com resistência dinâmica Rz = 10.0 Ω.
+
+    Cenário A: Carga subcrítica RL = 1200 Ω.
+      Sem condução Zener, a tensão de circuito aberto é:
+        V_aberto = Vs * RL / (Rs + RL) = 16 * 1200 / 2200 ≈ 8.727 V < 10.0 V
+      Logo, o Zener permanece cortado (desligado) e a tensão de saída é governada
+      exclusivamente pelo divisor de tensão linear:
+        V_out ≈ 8.727 V
+
+    Cenário B: Carga suficiente RL = 3000 Ω.
+      Tensão em circuito aberto:
+        V_aberto = 16 * 3000 / 4000 = 12.0 V > 10.0 V (Zener entra em breakdown reverso).
+      Equivalente de Thévenin visto pelo Zener:
+        Vth = 12.0 V, Rth = Rs // RL = (1000 * 3000) / 4000 = 750 Ω.
+      Corrente reversa no Zener:
+        Iz = (Vth - Vz) / (Rth + Rz) = (12.0 - 10.0) / (750 + 10) = 2.0 / 760 ≈ 2.6316 mA.
+      Tensão regulada nos terminais da carga:
+        V_out = Vz + Iz * Rz = 10.0 + 0.0026316 * 10 ≈ 10.026 V.
+    """
+    # Cenário A: Zener cortado
+    c_off = Circuit([
+        VoltageSource("Vs", "in", "0", 16.0),
+        Resistor("Rs", "in", "out", 1000.0),
+        ZenerDiode("Z1", "0", "out", Vz=10.0, Rz=10.0),
+        Resistor("RL", "out", "0", 1200.0),
+    ])
+    sol_off = solve(c_off)
+    assert sol_off.V("out") == pytest.approx(8.727, rel=1e-2)
+
+    # Cenário B: Zener em breakdown (regulação ativa)
+    c_on = Circuit([
+        VoltageSource("Vs", "in", "0", 16.0),
+        Resistor("Rs", "in", "out", 1000.0),
+        ZenerDiode("Z1", "0", "out", Vz=10.0, Rz=10.0),
+        Resistor("RL", "out", "0", 3000.0),
+    ])
+    sol_on = solve(c_on)
+    v_out = sol_on.V("out")
+    assert v_out == pytest.approx(10.026, rel=1e-3)
+
+    # Auditoria de correntes na regulação:
+    i_s = sol_on.I_resistor("Rs")
+    assert i_s == pytest.approx((16.0 - 10.026) / 1000.0, rel=1e-3)
+
+
+def test_sedra_smith_cap04_graetz_full_wave_bridge_rectifier():
+    """Sedra & Smith, Microelectronic Circuits (Capítulo 4):
+    Retificador de Onda Completa em Ponte (Ponte de Graetz).
+    Quatro diodos em arranjo de ponte com carga resistiva RL = 1000 Ω.
+    Fonte de excitação Vin = 12.0 V aplicada entre os nós ac1 e ac2.
+
+    Solução analítica:
+      No semiciclo positivo (ac1 > ac2): D1 (ac1 -> out) e D4 (0 -> ac2) conduzem.
+      A tensão na carga é:
+        V_out = Vin - 2 * V_D ≈ 12.0 - 2 * 0.70 V ≈ 10.60 V.
+      No semiciclo negativo (ac1 < ac2, ex: Vin = -12.0 V): D3 (ac2 -> out) e D2 (0 -> ac1) conduzem.
+      A corrente na carga mantém rigorosamente o mesmo sentido unipolar:
+        V_out = |-12.0| - 2 * V_D ≈ 10.60 V.
+    """
+    # Semiciclo positivo (+12V)
+    c_pos = Circuit([
+        VoltageSource("Vin", "ac1", "ac2", 12.0),
+        Diode("D1", "ac1", "out"),
+        Diode("D2", "0", "ac1"),
+        Diode("D3", "ac2", "out"),
+        Diode("D4", "0", "ac2"),
+        Resistor("RL", "out", "0", 1000.0),
+        Resistor("Rref", "ac2", "0", 100_000.0),
+    ])
+    sol_pos = solve(c_pos)
+    v_out_pos = sol_pos.V("out")
+    assert v_out_pos == pytest.approx(10.6, abs=0.3)
+
+    # Semiciclo negativo (-12V)
+    c_neg = Circuit([
+        VoltageSource("Vin", "ac1", "ac2", -12.0),
+        Diode("D1", "ac1", "out"),
+        Diode("D2", "0", "ac1"),
+        Diode("D3", "ac2", "out"),
+        Diode("D4", "0", "ac2"),
+        Resistor("RL", "out", "0", 1000.0),
+        Resistor("Rref", "ac2", "0", 100_000.0),
+    ])
+    sol_neg = solve(c_neg)
+    v_out_neg = sol_neg.V("out")
+
+    # Retificação simétrica de onda completa
+    assert v_out_neg == pytest.approx(v_out_pos, abs=0.05)
+
+
+def test_sedra_smith_cap07_bjt_current_mirror():
+    """Sedra & Smith, Microelectronic Circuits (Capítulo 7):
+    Espelho de Corrente BJT NPN Básico (Current Mirror).
+    Transistores idênticos Q1 e Q2 acoplados pelas bases (Is = 1e-14 A, beta = 100.0).
+    Q1 conectado em configuração de diodo (coletor em curto com a base no nó 'ref').
+    Resistor de referência Rref = 9.3 kΩ conectado a Vcc = 10.0 V.
+
+    Solução analítica:
+      Corrente de referência gerada:
+        I_ref = (Vcc - Vbe) / Rref ≈ (10.0 - 0.70 V) / 9300 Ω ≈ 1.000 mA.
+      Corrente espelhada na saída (coletor de Q2):
+        I_out = I_ref / (1 + 2 / beta) = 1.000 mA / (1 + 2/100) = 1.000 / 1.02 ≈ 0.9804 mA.
+    """
+    c = Circuit([
+        VoltageSource("VCC", "vcc", "0", 10.0),
+        Resistor("Rref", "vcc", "ref", 9300.0),
+        BJT("Q1", "ref", "ref", "0", polarity="NPN", beta=100.0, Is=1e-14),
+        BJT("Q2", "c2", "ref", "0", polarity="NPN", beta=100.0, Is=1e-14),
+        Resistor("RC", "vcc", "c2", 2000.0),
+    ])
+    sol = solve(c)
+    i_ref = sol.I_resistor("Rref")
+    i_out = sol.I_resistor("RC")
+
+    assert i_ref == pytest.approx(1.0e-3, rel=0.05)
+    assert i_out == pytest.approx(i_ref / 1.02, rel=0.03)
+
+
+def test_boylestad_sedra_bjt_common_emitter_emitter_degeneration():
+    """Boylestad (Cap. 5) & Sedra & Smith (Cap. 6):
+    Amplificador BJT Emissor Comum com Degeneração de Emissor (Resistor RE).
+    Polarização estável por divisor de tensão:
+      Vcc = 20.0 V, R1 = 40 kΩ, R2 = 10 kΩ, Rc = 4 kΩ, RE = 1 kΩ, beta = 100.0.
+
+    Solução analítica exata de polarização DC:
+      Equivalente de Thévenin da base:
+        Vth = Vcc * R2 / (R1 + R2) = 20 * 10 / 50 = 4.000 V
+        Rth = R1 // R2 = 400 / 50 = 8.000 kΩ
+      Corrente de base com Vbe ≈ 0.70 V:
+        IB = (Vth - Vbe) / [Rth + (beta + 1) * RE]
+           = (4.0 - 0.70) / [8000 + 101 * 1000] = 3.30 / 109000 ≈ 30.275 μA
+      Corrente de emissor e potencial de emissor:
+        IE = 101 * IB ≈ 3.058 mA  ==>  VE = IE * RE ≈ 3.058 V
+      Tensão no coletor:
+        IC = beta * IB ≈ 3.028 mA  ==>  VC = Vcc - IC * Rc = 20 - 4000 * 0.003028 ≈ 7.89 V
+      Tensão VCE na região ativa:
+        VCE = VC - VE ≈ 7.89 - 3.06 = 4.83 V >> 0.3 V (transistor plenamente ativo).
+    """
+    c = Circuit([
+        VoltageSource("VCC", "vcc", "0", 20.0),
+        Resistor("R1", "vcc", "b", 40000.0),
+        Resistor("R2", "b", "0", 10000.0),
+        Resistor("RC", "vcc", "c", 4000.0),
+        Resistor("RE", "e", "0", 1000.0),
+        BJT("Q1", "c", "b", "e", polarity="NPN", beta=100.0, Is=1e-14),
+    ])
+    sol = solve(c)
+    vb = sol.V("b")
+    ve = sol.V("e")
+    vc = sol.V("c")
+    vbe = vb - ve
+    vce = vc - ve
+
+    assert vbe == pytest.approx(0.70, abs=0.05)
+    assert ve == pytest.approx(3.05, abs=0.15)
+    assert vc == pytest.approx(7.9, abs=0.4)
+    assert vce > 3.0
+
+
+def test_sedra_smith_cap14_static_cmos_inverter():
+    """Sedra & Smith, Microelectronic Circuits (Capítulo 14):
+    Inversor Lógico Digital CMOS Estático (Par Complementar NMOS / PMOS).
+    Alimentação VDD = 5.0 V.
+    NMOS: nó d='out', g='in', s='0' (Vth = +1.0 V, Kp = 1 mA/V²).
+    PMOS: nó d='out', g='in', s='vdd' (Vth = -1.0 V, Kp = 1 mA/V²).
+
+    Comportamento booleano:
+      1. Nível Lógico BAIXO (Vin = 0.0 V):
+         NMOS: Vgs = 0.0 V < Vth (CORTADO, corrente zero).
+         PMOS: Vsg = 5.0 V > |Vth| (CONDUÇÃO em triodo profundo, puxa out para VDD).
+         ==> V_out = 5.000 V (Nível Lógico ALTO).
+
+      2. Nível Lógico ALTO (Vin = 5.0 V):
+         PMOS: Vsg = 0.0 V < |Vth| (CORTADO, corrente zero).
+         NMOS: Vgs = 5.0 V > Vth (CONDUÇÃO em triodo profundo, drena out para 0).
+         ==> V_out = 0.000 V (Nível Lógico BAIXO).
+    """
+    # Vin = 0V (Low) -> Vout = 5V (High)
+    c_low = Circuit([
+        VoltageSource("VDD", "vdd", "0", 5.0),
+        VoltageSource("VIN", "in", "0", 0.0),
+        MOSFET("M_N", "out", "in", "0", polarity="NMOS", Vth=1.0, Kp=1e-3),
+        MOSFET("M_P", "out", "in", "vdd", polarity="PMOS", Vth=-1.0, Kp=1e-3),
+        Resistor("Rload", "out", "0", 1e9),
+    ])
+    sol_low = solve(c_low)
+    assert sol_low.V("out") == pytest.approx(5.0, abs=0.01)
+
+    # Vin = 5V (High) -> Vout = 0V (Low)
+    c_high = Circuit([
+        VoltageSource("VDD", "vdd", "0", 5.0),
+        VoltageSource("VIN", "in", "0", 5.0),
+        MOSFET("M_N", "out", "in", "0", polarity="NMOS", Vth=1.0, Kp=1e-3),
+        MOSFET("M_P", "out", "in", "vdd", polarity="PMOS", Vth=-1.0, Kp=1e-3),
+        Resistor("Rload", "out", "0", 1e9),
+    ])
+    sol_high = solve(c_high)
+    assert sol_high.V("out") == pytest.approx(0.0, abs=0.01)
+
+
+def test_sedra_dorf_transimpedance_amplifier_current_to_voltage():
+    """Sedra & Smith (Cap. 2) & Dorf & Svoboda (Cap. 6):
+    Amplificador de Transimpedância (Conversor Corrente-Tensão I-V com Op-Amp).
+    Sensor com fonte de corrente Iin = 50.0 μA conectado à entrada inversora 'vn'.
+    Resistor de realimentação Rf = 100.0 kΩ entre 'vn' e 'out'. Terminal não-inversor aterrado.
+
+    Solução analítica:
+      O terminal inversor é mantido em terra virtual: V(vn) = 0.000 V.
+      Devido à impedância infinita de entrada do Op-Amp, toda a corrente Iin atravessa Rf:
+        V_out = - Iin * Rf = - (50.0e-6 A) * (100_000 Ω) = -5.000 V.
+      Transimpedância: Zm = V_out / Iin = -100.0 kΩ.
+    """
+    c = Circuit([
+        CurrentSource("Iin", "vn", "0", 50.0e-6),
+        OpAmp("U1", in_p="0", in_n="vn", out="out", gnd="0"),
+        Resistor("Rf", "vn", "out", 100_000.0),
+    ])
+    sol = solve(c)
+    assert sol.V("vn") == pytest.approx(0.0, abs=1e-6)
+    assert sol.V("out") == pytest.approx(-5.0, rel=1e-6)
+
+
+def test_sadiku_cap06_ideal_opamp_differentiator_ac():
+    """Alexander & Sadiku, Capítulo 6:
+    Amplificador Diferenciador Ideal com Op-Amp em Regime Permanente CA Fasorial.
+    Capacitor de entrada C = 1.0 μF e resistor de feedback R = 10.0 kΩ.
+    Função de transferência no domínio da frequência:
+      H(jω) = - j * ω * R * C
+
+    Para frequência angular de teste ω = 100.0 rad/s (f = 100 / (2π) ≈ 15.915 Hz):
+      |H(jω)| = ω * R * C = 100.0 * 10000.0 * 1e-6 = 1.000 (ganho unitário = 0 dB)
+      Fase: ∠H(jω) = ∠(-j) = -90.0°
+    Com tensão de excitação Vin = 1.0 ∠ 0° V:
+      V_out = 1.000 ∠ -90.0° V.
+    """
+    f = 100.0 / (2.0 * math.pi)
+    c = Circuit([
+        VoltageSource("Vin", "in", "0", voltage=1.0, ac_mag=1.0, ac_phase=0.0),
+        Capacitor("C", "in", "vn", 1.0e-6),
+        Resistor("R", "vn", "out", 10_000.0),
+        OpAmp("U1", in_p="0", in_n="vn", out="out", gnd="0"),
+    ])
+    sol = solve_ac(c, frequency=f)
+    vo = sol.V("out")
+    vo_mag = abs(vo)
+    vo_phase = float(np.degrees(np.angle(vo)))
+
+    assert vo_mag == pytest.approx(1.0, rel=1e-4)
+    assert vo_phase == pytest.approx(-90.0, abs=0.1)
+
+
+def test_sadiku_cap11_power_factor_correction_parallel_capacitor():
+    """Alexander & Sadiku, Capítulo 11 (Exemplo 11.15):
+    Correção de Fator de Potência com Capacitor em Paralelo em Sistema CA de 60 Hz.
+    Alimentação monofásica Vs = 120.0 ∠ 0° V (rms) a f = 60 Hz (ω = 376.991 rad/s).
+    Carga indutiva com modelo equivalente paralelo:
+      Rp = 3.6 Ω, reatância indutiva XLp = 4.8 Ω (L = 4.8 / ω ≈ 12.732 mH).
+
+    Cálculo do capacitor corretor para elevar o FP para 1.0 (unitário):
+      Deve-se anular a admitância reativa da carga:
+        B_C = 1 / XCp = 1 / XLp  ==>  C = 1 / (ω * XLp) = 1 / (376.991 * 4.8) ≈ 552.62 μF.
+      Com o capacitor instalado:
+        Admitância total Y_eq = 1/Rp + j0 = 1/3.6 S (puramente condutiva).
+        Corrente total fornecida: I_total = Vs / Rp = 120.0 / 3.6 = 33.333 A.
+        Fase da corrente: 0.00° (rigorosamente em fase com a tensão).
+    """
+    omega = 2.0 * math.pi * 60.0
+    f = 60.0
+    L_val = 4.8 / omega
+    C_val = 1.0 / (omega * 4.8)
+
+    c = Circuit([
+        VoltageSource("Vs", "1", "0", voltage=120.0, ac_mag=120.0, ac_phase=0.0),
+        Resistor("Rp", "1", "0", 3.6),
+        Inductor("Lp", "1", "0", L_val),
+        Capacitor("Cp", "1", "0", C_val),
+    ])
+    sol = solve_ac(c, frequency=f)
+    i_total = -sol.I_vsource("Vs")
+    i_mag = abs(i_total)
+    i_phase = float(np.degrees(np.angle(i_total)))
+
+    assert i_mag == pytest.approx(120.0 / 3.6, rel=1e-4)
+    assert i_phase == pytest.approx(0.0, abs=0.05)
+
+
+def test_nilsson_cap14_sallen_key_second_order_lowpass_filter():
+    """Nilsson & Riedel (Cap. 14) & Dorf & Svoboda (Cap. 16):
+    Filtro Passa-Baixas Ativo de 2ª Ordem Sallen-Key com Resposta de Butterworth.
+    Parâmetros:
+      R1 = 10 kΩ, R2 = 10 kΩ, C1 = 20 nF, C2 = 10 nF.
+      Buffer de ganho unitário K = 1 configurado com Op-Amp U1.
+
+    Solução analítica:
+      Frequência de corte natural:
+        ω0 = 1 / sqrt(R1 * R2 * C1 * C2) = 1 / sqrt(10^8 * 2e-16) ≈ 7071.07 rad/s
+        f0 = ω0 / (2π) ≈ 1125.40 Hz
+      Fator de qualidade:
+        Q = sqrt(R1 * R2 * C1 * C2) / [C2 * (R1 + R2)] = 1 / sqrt(2) ≈ 0.7071 (Butterworth puro).
+      Em baixa frequência (DC, f = 1 Hz):
+        Ganho |H(jω)| = 1.000 (0.0 dB).
+      Na frequência de corte f0 = 1125.40 Hz:
+        Ganho |H(jω0)| = 1 / sqrt(2) ≈ 0.7071 (-3.01 dB).
+        Fase: ∠H(jω0) = -90.00°.
+    """
+    f0 = 7071.0678 / (2.0 * math.pi)
+    c = Circuit([
+        VoltageSource("Vin", "in", "0", voltage=1.0, ac_mag=1.0, ac_phase=0.0),
+        Resistor("R1", "in", "1", 10_000.0),
+        Resistor("R2", "1", "vx", 10_000.0),
+        Capacitor("C1", "1", "out", 20.0e-9),
+        Capacitor("C2", "vx", "0", 10.0e-9),
+        OpAmp("U1", in_p="vx", in_n="out", out="out", gnd="0"),
+    ])
+    # DC / Baixa frequência
+    sol_dc = solve_ac(c, frequency=1.0)
+    assert abs(sol_dc.V("out")) == pytest.approx(1.0, rel=1e-3)
+
+    # Frequência de corte f0
+    sol_f0 = solve_ac(c, frequency=f0)
+    assert abs(sol_f0.V("out")) == pytest.approx(1.0 / math.sqrt(2.0), rel=1e-3)
+    assert float(np.degrees(np.angle(sol_f0.V("out")))) == pytest.approx(-90.0, abs=0.5)
+
+
+def test_nilsson_cap07_first_order_rl_transient_step_response():
+    """Nilsson & Riedel, Capítulo 7 (Exemplo 7.4):
+    Resposta Transitória ao Degrau de Circuito RL de Primeira Ordem.
+    Parâmetros:
+      Degrau DC Vs = 12.0 V aplicado a R = 4.0 Ω em série com L = 20.0 mH.
+      Condição inicial: iL(0) = 0.0 A.
+
+    Solução analítica:
+      Constante de tempo:
+        τ = L / R = 0.020 / 4.0 = 5.0 ms.
+      Corrente final em regime permanente:
+        I_inf = Vs / R = 12.0 / 4.0 = 3.000 A.
+      Equação exata da corrente no indutor:
+        iL(t) = 3.0 * (1 - e^(-t / τ)) A.
+
+    Pontos de auditoria analítica:
+      Em t = 1τ (5.0 ms):  iL(5ms)  = 3.0 * (1 - e^-1) ≈ 1.8964 A.
+      Em t = 2τ (10.0 ms): iL(10ms) = 3.0 * (1 - e^-2) ≈ 2.5940 A.
+      Em t = 5τ (25.0 ms): iL(25ms) = 3.0 * (1 - e^-5) ≈ 2.9798 A.
+    """
+    c = Circuit([
+        VoltageSource("Vs", "1", "0", 12.0),
+        Resistor("R", "1", "2", 4.0),
+        Inductor("L", "2", "0", 0.020, ic=0.0),
+    ])
+    dt = 1e-5
+    res = solve_transient(c, t_stop=0.025, dt=dt, uic=True)
+    idx_5ms = int(round(0.005 / dt))
+    idx_10ms = int(round(0.010 / dt))
+    idx_25ms = -1
+
+    i_L = res.I("L")
+    assert i_L[idx_5ms] == pytest.approx(1.8964, rel=0.01)
+    assert i_L[idx_10ms] == pytest.approx(2.5940, rel=0.01)
+    assert i_L[idx_25ms] == pytest.approx(2.9798, rel=0.01)
+
+
+def test_hayt_cap13_transformer_impedance_reflection():
+    """Hayt, Kemmerly & Durbin, Capítulo 13:
+    Transformador Linear e Reflexão de Impedância de Carga no Primário.
+    Parâmetros:
+      Fonte primária: Vs = 100.0 ∠ 0° V em série com resistência interna Rs = 20.0 Ω.
+      Indutância do primário L1 = 2.0 H, indutância do secundário L2 = 8.0 H.
+      Carga resistiva no secundário RL = 160.0 Ω.
+      Acoplamento mútuo unitário (k ≈ 0.99999).
+
+    Solução analítica:
+      Relação de espiras do transformador:
+        n = sqrt(L2 / L1) = sqrt(8.0 / 2.0) = 2.0.
+      Impedância de carga refletida ao circuito primário:
+        Z_refletida = RL / n² = 160.0 / 2.0² = 160.0 / 4.0 = 40.0 Ω.
+      Impedância total vista pela fonte no primário:
+        Z_total = Rs + Z_refletida = 20.0 + 40.0 = 60.0 Ω.
+      Corrente fasorial fornecida pelo primário:
+        I1 = Vs / Z_total = 100.0 / 60.0 ≈ 1.6667 A.
+    """
+    f = 2000.0
+    c = Circuit([
+        VoltageSource("Vs", "1", "0", voltage=100.0, ac_mag=100.0, ac_phase=0.0),
+        Resistor("Rs", "1", "2", 20.0),
+        Inductor("L1", "2", "0", 2.0),
+        Inductor("L2", "3", "0", 8.0),
+        Resistor("RL", "3", "0", 160.0),
+        MutualCoupling("K1", "L1", "L2", 0.99999),
+    ])
+    sol = solve_ac(c, frequency=f)
+    i1 = sol.I_resistor("Rs")
+    assert abs(i1) == pytest.approx(100.0 / 60.0, rel=0.02)
+
+
+def test_dorf_svoboda_cap08_rlc_parallel_underdamped_natural_response():
+    """Dorf & Svoboda, Capítulo 8:
+    Resposta Natural Transitória de Circuito RLC Paralelo Subamortecido.
+    Parâmetros:
+      R = 100.0 Ω, C = 10.0 μF, L = 10.0 mH.
+      Condições iniciais em t=0: Vc(0) = 10.0 V, iL(0) = 0.0 A.
+
+    Solução analítica exata:
+      Frequência não amortecida:
+        ω0 = 1 / sqrt(L * C) = 1 / sqrt(10^-2 * 10^-5) = 1 / sqrt(10^-7) ≈ 3162.28 rad/s.
+      Fator de atenuação neperiano:
+        α = 1 / (2 * R * C) = 1 / (2 * 100 * 10^-5) = 500.0 s^-1.
+      Frequência de oscilação amortecida:
+        ωd = sqrt(ω0² - α²) = sqrt(10^7 - 250000) = sqrt(9.75e6) ≈ 3122.50 rad/s.
+      Forma de onda da tensão no capacitor:
+        vC(t) = e^(-α*t) * [B1 * cos(ωd*t) + B2 * sin(ωd*t)]
+        Com Vc(0) = 10.0 V ==> B1 = 10.0 V.
+        Como iC(0) = - iR(0) = - 10 / 100 = -0.1 A ==> C * vC'(0) = -0.1 ==> vC'(0) = -10000 V/s.
+        vC'(0) = -α * B1 + ωd * B2 = -5000 + 3122.50 * B2 = -10000 ==> B2 ≈ -1.6013 V.
+        vC(t) = e^(-500*t) * [10.0 * cos(3122.5*t) - 1.6013 * sin(3122.5*t)] V.
+    """
+    c = Circuit([
+        Resistor("R", "1", "0", 100.0),
+        Capacitor("C", "1", "0", 10.0e-6, ic=10.0),
+        Inductor("L", "1", "0", 0.010, ic=0.0),
+    ])
+    dt = 2e-6
+    res = solve_transient(c, t_stop=0.003, dt=dt, uic=True)
+    t = res.time
+    vc_sim = res.V("1")
+
+    alpha = 500.0
+    wd = 3122.50
+    vc_analytical = np.exp(-alpha * t) * (10.0 * np.cos(wd * t) - 1.6013 * np.sin(wd * t))
+
+    error = np.abs(vc_sim - vc_analytical)
+    assert np.max(error) < 0.15
+    assert np.mean(error) < 0.05
+
+
+def test_alexander_sadiku_cap03_supermesh_analysis():
+    r"""Alexander & Sadiku, Capítulo 3 (Exemplo 3.7 / Análise de Supermalha):
+    Circuito com fonte de corrente independente compartilhada entre duas malhas essenciais.
+    Topologia nodal:
+      Fonte de tensão V1 = 20.0 V conectada entre nós '1' e '0'.
+      Resistor R1 = 6.0 Ω entre nós '1' e '2'.
+      Resistor R2 = 10.0 Ω entre nós '2' e '0'.
+      Fonte de corrente Is = 4.0 A conectada entre nós '2' e '3' (ramo da supermalha).
+      Resistor R3 = 4.0 Ω entre nós '3' e '0'.
+      Resistor R4 = 2.0 Ω entre nós '3' e '0'.
+
+    Solução analítica exata via LKC:
+      No nó 2:
+        (V2 - 20) / 6 + V2 / 10 + 4 = 0
+        V2 * (1/6 + 1/10) = 20/6 - 4 = 10/3 - 4 = -2/3
+        V2 * (4/15) = -2/3 ==> V2 = (-2/3) * (15/4) = -2.500 V.
+      No nó 3:
+        4 = V3 / 4 + V3 / 2 = V3 * (3/4) ==> V3 = 4 * (4/3) = 16/3 ≈ 5.333333 V.
+
+    Correntes de ramo:
+      I(R1) = (20 - (-2.5)) / 6 = 22.5 / 6 = 3.750 A.
+      I(R2) = -2.5 / 10 = -0.250 A.
+      I(R3) = (16/3) / 4 = 4/3 ≈ 1.333333 A.
+      I(R4) = (16/3) / 2 = 8/3 ≈ 2.666667 A.
+    """
+    c = Circuit([
+        VoltageSource("V1", "1", "0", 20.0),
+        Resistor("R1", "1", "2", 6.0),
+        Resistor("R2", "2", "0", 10.0),
+        CurrentSource("Is", "3", "2", 4.0),
+        Resistor("R3", "3", "0", 4.0),
+        Resistor("R4", "3", "0", 2.0),
+    ])
+    sol = solve(c)
+
+    assert sol.V("1") == pytest.approx(20.0, rel=1e-6)
+    assert sol.V("2") == pytest.approx(-2.5, rel=1e-6)
+    assert sol.V("3") == pytest.approx(16.0 / 3.0, rel=1e-6)
+    assert sol.I_resistor("R1") == pytest.approx(3.75, rel=1e-6)
+    assert sol.I_resistor("R2") == pytest.approx(-0.25, rel=1e-6)
+    assert sol.I_resistor("R3") == pytest.approx(4.0 / 3.0, rel=1e-6)
+    assert sol.I_resistor("R4") == pytest.approx(8.0 / 3.0, rel=1e-6)
+
+
+def test_alexander_sadiku_cap08_rlc_series_overdamped_step():
+    r"""Alexander & Sadiku, Capítulo 8 (Exemplo 8.4):
+    Resposta ao Degrau de Circuito RLC Série Superamortecido (Overdamped: \alpha > \omega_0).
+    Parâmetros:
+      R = 9.0 Ω, L = 1.0 H, C = 0.05 F (1/20 F).
+      Fonte degrau Vs = 24.0 V em t = 0.
+      Condições iniciais nulas: i(0) = 0, vC(0) = 0.
+
+    Solução analítica exata:
+      \alpha = R / (2*L) = 9 / (2*1) = 4.5 s^-1.
+      \omega_0 = 1 / sqrt(L*C) = 1 / sqrt(0.05) = sqrt(20) ≈ 4.472136 rad/s.
+      Como \alpha > \omega_0, o sistema é superamortecido com raízes reais:
+        s1 = -4.5 + sqrt(20.25 - 20) = -4.5 + 0.5 = -4.0 s^-1.
+        s2 = -4.5 - 0.5 = -5.0 s^-1.
+      Solução geral da tensão no capacitor:
+        vC(t) = 24 - 120 * e^(-4*t) + 96 * e^(-5*t) V.
+      Corrente através do indutor:
+        i(t) = C * dvC/dt = 24 * (e^(-4*t) - e^(-5*t)) A.
+    """
+    c = Circuit([
+        VoltageSource("Vs", "1", "0", 24.0),
+        Resistor("R", "1", "2", 9.0),
+        Inductor("L", "2", "3", 1.0, ic=0.0),
+        Capacitor("C", "3", "0", 0.05, ic=0.0),
+    ])
+    dt = 1e-3
+    res = solve_transient(c, t_stop=2.0, dt=dt, uic=True)
+    t = res.time
+    vc_sim = res.V("3")
+
+    vc_analytical = 24.0 - 120.0 * np.exp(-4.0 * t) + 96.0 * np.exp(-5.0 * t)
+    error = np.abs(vc_sim - vc_analytical)
+
+    assert np.max(error) < 0.25
+    assert np.mean(error) < 0.05
+    # Valor de regime permanente em t = 2.0 s (vC -> 24 V)
+    assert vc_sim[-1] == pytest.approx(24.0, abs=0.05)
+
+
+def test_alexander_sadiku_cap08_rlc_parallel_critically_damped():
+    r"""Alexander & Sadiku, Capítulo 8 (Exemplo 8.6):
+    Resposta Natural de Circuito RLC Paralelo Criticamente Amortecido (\alpha = \omega_0).
+    Parâmetros:
+      C = 2.0 μF, L = 20.0 mH = 0.02 H.
+      \omega_0 = 1 / sqrt(L*C) = 1 / sqrt(0.02 * 2e-6) = 1 / (2e-4) = 5000.0 rad/s.
+      Para amortecimento crítico (\alpha = \omega_0):
+        \alpha = 1 / (2 * R * C) = 5000.0 ==> R = 1 / (2 * 5000 * 2e-6) = 50.0 Ω.
+      Condições iniciais em t = 0:
+        vC(0) = 12.0 V, iL(0) = 0.0 A.
+
+    Solução analítica exata:
+      v(t) = (A1 + A2 * t) * e^(-\alpha * t)
+      v(0) = A1 = 12.0 V.
+      iC(0) = - iR(0) - iL(0) = - 12 / 50 = -0.24 A.
+      v'(0) = iC(0) / C = -0.24 / 2e-6 = -120_000 V/s.
+      v'(0) = A2 - \alpha * A1 ==> A2 = -120_000 + 5000 * 12 = -60_000 V/s.
+      ==> v(t) = (12.0 - 60_000 * t) * e^(-5000 * t) V.
+
+      Cruzamento por zero analítico:
+        12 - 60000*t = 0 ==> t_zero = 12 / 60000 = 0.200 ms (0.0002 s).
+    """
+    c = Circuit([
+        Resistor("R", "1", "0", 50.0),
+        Capacitor("C", "1", "0", 2.0e-6, ic=12.0),
+        Inductor("L", "1", "0", 0.020, ic=0.0),
+    ])
+    dt = 2e-6
+    res = solve_transient(c, t_stop=0.0015, dt=dt, uic=True)
+    t = res.time
+    v_sim = res.V("1")
+
+    v_analytical = (12.0 - 60_000.0 * t) * np.exp(-5000.0 * t)
+    error = np.abs(v_sim - v_analytical)
+
+    assert np.max(error) < 0.15
+    assert np.mean(error) < 0.03
+    # Verificação em t = 0.2 ms (t_zero): v ≈ 0.0 V
+    idx_zero = int(0.0002 / dt)
+    assert abs(v_sim[idx_zero]) < 0.10
+
+
+def test_alexander_sadiku_cap12_three_phase_two_wattmeter_method():
+    r"""Alexander & Sadiku, Capítulo 12 (Exemplo 12.14 / Medição de Potência Trifásica):
+    Método dos Dois Wattímetros (Teorema de Blondel) em Sistema Y-Δ Equilibrado.
+    Fonte: Y equilibrada, V_LN = 120 V rms, V_LL = 207.846 V rms, 60 Hz, sequência ABC.
+    Carga: Carga Δ equilibrada com impedância de ramo Z_delta = 24.0 + j18.0 Ω.
+      |Z_delta| = sqrt(24² + 18²) = 30.0 Ω.
+      Fator de potência da carga: FP = cos(atan(18/24)) = cos(36.87°) = 0.800 indutivo.
+
+    Grandezas teóricas analíticas:
+      Corrente de fase na carga: I_phase = 207.846 / 30.0 ≈ 6.9282 A.
+      Corrente de linha: I_line = sqrt(3) * 6.9282 = 12.000 A.
+      Potência ativa total: P_tot = 3 * (6.9282²) * 24.0 = 3456.0 W.
+      Potência reativa total: Q_tot = 3 * (6.9282²) * 18.0 = 2592.0 VAR.
+      Potência aparente total: S_tot = sqrt(3456² + 2592²) = 4320.0 VA.
+      Leituras dos Wattímetros (Referência fase C):
+        W1 = Re(Vac * conj(Ia)) = 207.846 * 12.0 * cos(30° + 36.87°) = 2494.15 * cos(66.87°) = 979.7 W.
+        W2 = Re(Vbc * conj(Ib)) = 207.846 * 12.0 * cos(30° - 36.87°) = 2494.15 * cos(-6.87°) = 2476.3 W.
+        P_tot = W1 + W2 = 3456.0 W.
+        Q_tot = sqrt(3) * (W1 - W2) [com sinal compatível de sequência] = 2592.0 VAR.
+    """
+    freq = 60.0
+    w = 2.0 * math.pi * freq
+    r_branch = 24.0
+    l_branch = 18.0 / w
+    v_ln = 120.0
+
+    sources = build_three_phase_source(
+        connection="Y",
+        V_rms=v_ln,
+        sequence="ABC",
+        node_a="s_a",
+        node_b="s_b",
+        node_c="s_c",
+        node_neutral="0",
+        prefix="Vs",
+    )
+    load = build_delta_load(
+        R=r_branch,
+        L=l_branch,
+        node_a="s_a",
+        node_b="s_b",
+        node_c="s_c",
+        prefix="Zd",
+    )
+
+    c = Circuit(sources + load)
+    sol = solve_ac(c, frequency=freq)
+
+    # Tensões de linha e correntes de linha
+    v_a = sol.V("s_a")
+    v_b = sol.V("s_b")
+    v_c = sol.V("s_c")
+
+    z_branch = r_branch + 1j * w * l_branch
+    # Correntes nos ramos delta
+    i_ab = (v_a - v_b) / z_branch
+    i_bc = (v_b - v_c) / z_branch
+    i_ca = (v_c - v_a) / z_branch
+
+    # Correntes de linha entrando na carga
+    i_a = i_ab - i_ca
+    i_b = i_bc - i_ab
+
+    wm = analyze_two_wattmeters(
+        V_line_ac=(v_a - v_c),
+        V_line_bc=(v_b - v_c),
+        I_line_a=i_a,
+        I_line_b=i_b,
+    )
+
+    assert abs(i_a) == pytest.approx(12.0, rel=1e-3)
+    assert wm.P_total == pytest.approx(3456.0, rel=1e-2)
+    assert wm.Q_total == pytest.approx(2592.0, rel=1e-2)
+    assert wm.S_total == pytest.approx(4320.0, rel=1e-2)
+    assert wm.power_factor == pytest.approx(0.80, abs=0.01)
+
+
+def test_hayt_sadiku_cap19_two_port_z_and_transmission_parameters():
+    r"""Hayt & Kemmerly (Capítulo 17) & Alexander & Sadiku (Capítulo 19):
+    Rede de Duas Portas (Quadripolo) Resistiva com Extração de Parâmetros Z e ABCD (T).
+    Topologia em T assimétrica:
+      Porta 1: nó 'n1' para terra '0'.
+      Porta 2: nó 'n2' para terra '0'.
+      Braço série 1: R1 = 20.0 Ω entre 'n1' e 'mid'.
+      Braço série 2: R2 = 40.0 Ω entre 'n2' e 'mid'.
+      Braço shunt: R3 = 30.0 Ω entre 'mid' e '0'.
+
+    Solução analítica exata:
+      Matriz Z:
+        Z11 = R1 + R3 = 50.0 Ω
+        Z12 = R3 = 30.0 Ω
+        Z21 = R3 = 30.0 Ω
+        Z22 = R2 + R3 = 70.0 Ω
+        det(Z) = 50 * 70 - 30 * 30 = 3500 - 900 = 2600.0 Ω²
+      Matriz ABCD (Transmissão T):
+        A = Z11 / Z21 = 50 / 30 = 5/3 ≈ 1.666667
+        B = det(Z) / Z21 = 2600 / 30 = 260/3 ≈ 86.666667 Ω
+        C = 1 / Z21 = 1/30 ≈ 0.033333 S
+        D = Z22 / Z21 = 70 / 30 = 7/3 ≈ 2.333333
+        AD - BC = (5/3)*(7/3) - (260/3)*(1/30) = 35/9 - 26/9 = 1.0 (recíproco)
+
+      Impedância de entrada terminada em RL = 50.0 Ω:
+        Zin = (A * RL + B) / (C * RL + D) = 42.500 Ω.
+        Verificação direta: R1 + (R3 || (R2 + RL)) = 20 + (30 || 90) = 20 + 22.5 = 42.500 Ω.
+    """
+    c = Circuit([
+        Resistor("R1", "n1", "mid", 20.0),
+        Resistor("R2", "n2", "mid", 40.0),
+        Resistor("R3", "mid", "0", 30.0),
+    ], allowed_open_nodes=["n1", "n2"])
+
+    res = analyze_two_port(c, port1=("n1", "0"), port2=("n2", "0"))
+
+    assert res.is_reciprocal
+    assert not res.is_symmetric
+    assert res.z11 == pytest.approx(50.0, rel=1e-6)
+    assert res.z12 == pytest.approx(30.0, rel=1e-6)
+    assert res.z21 == pytest.approx(30.0, rel=1e-6)
+    assert res.z22 == pytest.approx(70.0, rel=1e-6)
+
+    assert res.A == pytest.approx(5.0 / 3.0, rel=1e-6)
+    assert res.B == pytest.approx(260.0 / 3.0, rel=1e-6)
+    assert res.C == pytest.approx(1.0 / 30.0, rel=1e-6)
+    assert res.D == pytest.approx(7.0 / 3.0, rel=1e-6)
+
+    # Impedância de entrada sob carga RL = 50.0 Ω
+    zin = res.input_impedance(Z_load=50.0)
+    assert zin.real == pytest.approx(42.5, rel=1e-6)
+
+
 

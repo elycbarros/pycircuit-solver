@@ -3,13 +3,14 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![NumPy](https://img.shields.io/badge/NumPy-1.24%2B-013243.svg)](https://numpy.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-147%20passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-159%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
 **`pycircuit-solver`** é um motor computacional modular em Python para análise sistemática de circuitos elétricos lineares e não-lineares em corrente contínua (CC) e alternada (CA), fundamentado no método da **Análise Nodal Modificada (MNA — *Modified Nodal Analysis*)**.
 
 O projeto foi arquitetado para atender rigorosamente ao escopo acadêmico e profissional de Engenharia Elétrica e Eletrônica, unindo precisão matemática estática, validação topológica robusta contra erros humanos e suporte a engenharia de software de nível de portfólio.
 
 > 📖 **Documentação e Guias Rápidos:**
+> * 📑 **[Memória de Cálculo Formal (48 Exercícios Resolvidos)](MEMORIA_DE_CALCULO.html)** — Relatório científico interativo em HTML com MathJax, deduções analíticas exaustivas passo a passo e auditoria comparativa contra o solver.
 > * 🎓 **[Me Ensine a Usar! (Tutorial Passo a Passo)](ME_ENSINE_A_USAR.md)** — Do primeiro divisor de tensão aos semicondutores, subcircuitos SPICE e transiente em Rust.
 > * 📘 **[Documentação Técnica Completa](DOCUMENTACAO_TECNICA.md)** — Formulação matemática do MNA, teoria dos grafos, CA fasorial, sensibilidade analítica e arquitetura em Rust.
 
@@ -366,7 +367,7 @@ pytest --cov=circuit_solver --cov-report=term-missing
 
 ## 📚 Matriz de Validação Analítica Multi-Livros
 
-O motor computacional do **`pycircuit-solver`** é continuamente validado por uma suíte de testes de precisão analítica (`tests/test_textbook_benchmarks.py`) contendo **31 problemas canônicos clássicos** retirados das 7 principais referências bibliográficas mundiais do ensino de engenharia elétrica e eletrônica:
+O motor computacional do **`pycircuit-solver`** é continuamente validado por uma suíte de testes de precisão analítica (`tests/test_textbook_benchmarks.py`) contendo **48 problemas canônicos clássicos** retirados das 7 principais referências bibliográficas mundiais do ensino de engenharia elétrica e eletrônica:
 
 | Livro / Manual | Capítulo / Exemplo | Tópico de Análise | Resultado Analítico de Referência | Status do Solver |
 | :--- | :--- | :--- | :--- | :---: |
@@ -382,25 +383,42 @@ O motor computacional do **`pycircuit-solver`** é continuamente validado por um
 | **Alexander & Sadiku** | Cap. 5 (Ex. 5.6) | Somador Inversor de 3 Entradas | $V_o = -17.0\text{ V}, V_n = 0.0\text{ V}$ | ✅ Aprovado |
 | **Alexander & Sadiku** | Cap. 5 (Ex. 5.7) | Amplificador Diferencial (Subtrator) | $V_o = 4.0\text{ V}, V_p = V_n = 3.333\text{ V}$ | ✅ Aprovado |
 | **Alexander & Sadiku** | Cap. 6 (Ex. 6.13) | Integrador Ideal com Op-Amp (Tempo) | $dv_o/dt = -200\text{ V/s}, v_o(5\text{ms}) = -1.000\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 6 | Diferenciador Ideal Op-Amp (Fasores CA) | $\|H(j\omega)\| = 1.000\text{ (0 dB)}, \angle H = -90.0^\circ$ | ✅ Aprovado |
 | **Alexander & Sadiku** | Cap. 9 (Ex. 9.9) | Circuito RLC Série CA (Fasores) | $I = 0.3322\angle -10.24^\circ\text{ A}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 11 (Ex. 11.15) | Correção de Fator de Potência ($C_\parallel$) | $C \approx 552.6\ \mu\text{F}, I = 33.333\angle 0^\circ\text{ A (FP=1)}$ | ✅ Aprovado |
 | **Alexander & Sadiku** | Cap. 13 (Ex. 13.1) | Circuitos Magneticamente Acoplados | $I_1 = 1.350\angle -62.85^\circ\text{ A}, I_2 = 0.1431\angle -30.85^\circ\text{ A}$ | ✅ Aprovado |
 | **Nilsson & Riedel** | Cap. 4 (Ex. 4.10) | Thévenin com Fonte Controlada | $V_{th} = 40\text{ V}, R_{th} = 10\ \Omega, P_{max} = 40\text{ W}$ | ✅ Aprovado |
 | **Nilsson & Riedel** | Cap. 5 (Ex. 5.3) | Somador Inversor com Pesos Arbitrários | $V_o = -23.0\text{ V}, I_L = -0.92\text{ mA}$ | ✅ Aprovado |
+| **Nilsson & Riedel** | Cap. 7 (Ex. 7.4) | Degrau Transitório RL de 1ª Ordem | $i_L(5\text{ms}) = 1.896\text{ A}, i_L(25\text{ms}) = 2.980\text{ A}$ | ✅ Aprovado |
 | **Nilsson & Riedel** | Cap. 9 (Ex. 9.6) | RLC Paralelo CA em Alta Frequência | $V = 200\sqrt{2}\angle 45^\circ\text{ V}, I_L = 8\sqrt{2}\angle -45^\circ\text{ A}$ | ✅ Aprovado |
-| **Boylestad** | Cap. 9 | Teorema de Millman (3 Baterias) | $V_L = 6.0\text{ V}, I_1 = 6\text{ A}, I_2 = -3\text{ A}, P = 18\text{ W}$ | ✅ Aprovado |
-| **Boylestad** | Cap. 8 | Rede Escada R-2R D/A (4 Bits) | Escalonamento binário exato ($V_o = 8, 4, 2, 1, 15\text{ V}$) | ✅ Aprovado |
+| **Nilsson & Riedel** | Cap. 14 | Filtro Sallen-Key 2ª Ordem (Butterworth) | $f_0 \approx 1125\text{ Hz}, \|H(f_0)\| = -3.01\text{ dB}, \angle = -90^\circ$ | ✅ Aprovado |
+| **Boylestad** | Cap. 2 | Regulador Zener com Variação de Carga | $V_{L(off)} \approx 8.73\text{ V}, V_{L(reg)} \approx 10.03\text{ V}$ | ✅ Aprovado |
+| **Boylestad** | Cap. 5 / Sedra Cap. 6 | BJT Emissor Comum com Degeneração $R_E$ | $V_E \approx 3.06\text{ V}, V_C \approx 7.89\text{ V}, V_{CE} > 3\text{ V}$ | ✅ Aprovado |
 | **Boylestad** | Cap. 6 | Ponte de Wheatstone Balanceada | $V_{ab} = 0.000\text{ V}, I_g = 0.000\text{ A}, P_g = 0\text{ W}$ | ✅ Aprovado |
+| **Boylestad** | Cap. 8 | Rede Escada R-2R D/A (4 Bits) | Escalonamento binário exato ($V_o = 8, 4, 2, 1, 15\text{ V}$) | ✅ Aprovado |
+| **Boylestad** | Cap. 9 | Teorema de Millman (3 Baterias) | $V_L = 6.0\text{ V}, I_1 = 6\text{ A}, I_2 = -3\text{ A}, P = 18\text{ W}$ | ✅ Aprovado |
 | **Dorf & Svoboda** | Cap. 6 | Op-Amp com Rede T de Realimentação | $A_v = -12.0, V_o = -1.200\text{ V}, V_t = -0.1\text{ V}$ | ✅ Aprovado |
 | **Dorf & Svoboda** | Cap. 6 | Buffer Seguidor & Isolamento de Carga | $V_o = 5.000\text{ V}, I_{RL} = 100\text{ mA}, I_{Rs} = 0\text{ A}$ | ✅ Aprovado |
+| **Dorf & Svoboda** | Cap. 8 | RLC Paralelo Subamortecido ($v_C(t)$ natural) | $\omega_0 \approx 3162, \alpha = 500, \omega_d \approx 3122.5\text{ rad/s}$ | ✅ Aprovado |
+| **Sedra & Smith** | Cap. 2 | Amplificador de Transimpedância ($I \to V$) | $V_{out} = -I_{in} \cdot R_f = -5.000\text{ V}, Z_m = -100\text{ k}\Omega$ | ✅ Aprovado |
 | **Sedra & Smith** | Cap. 4 | Ponto Q e Reta de Carga de Diodo PN | $V_D \approx 0.6925\text{ V}, I_D \approx 4.3075\text{ mA}, P_D \approx 2.98\text{ mW}$ | ✅ Aprovado |
-| **Sedra & Smith** | Cap. 6 | Polarização BJT NPN com 4 Resistores | $V_C \approx 7.75\text{ V}, V_E \approx 1.30\text{ V}, V_{CE} > 5\text{ V}$ (Ativo) | ✅ Aprovado |
+| **Sedra & Smith** | Cap. 4 | Retificador em Ponte (Ponte de Graetz) | Onda completa simétrica: $V_o \approx \|V_{in}\| - 2V_D \approx 10.6\text{ V}$ | ✅ Aprovado |
 | **Sedra & Smith** | Cap. 5 | Fonte Comum MOSFET NMOS Saturação | $I_D = 1.0\text{ mA}, V_D = 7.500\text{ V}, V_{DS} \ge V_{ov}$ (Saturado) | ✅ Aprovado |
+| **Sedra & Smith** | Cap. 6 | Polarização BJT NPN com 4 Resistores | $V_C \approx 7.75\text{ V}, V_E \approx 1.30\text{ V}, V_{CE} > 5\text{ V}$ (Ativo) | ✅ Aprovado |
+| **Sedra & Smith** | Cap. 7 | Espelho de Corrente BJT (Current Mirror) | $I_{ref} \approx 1.00\text{ mA}, I_{out} = I_{ref} / (1 + 2/\beta) \approx 0.98\text{ mA}$ | ✅ Aprovado |
+| **Sedra & Smith** | Cap. 14 | Inversor Digital CMOS Estático (NMOS/PMOS) | $V_{in}=0\text{V} \implies V_o=5.0\text{V (H)}, V_{in}=5\text{V} \implies V_o=0.0\text{V (L)}$ | ✅ Aprovado |
 | **Hayt, Kemmerly & Durbin** | Cap. 5 | Teorema da Superposição (3 Fontes) | $V_2 = V_{2(V1)} + V_{2(V2)} + V_{2(I1)} = 6+6+6 = 18\text{ V}$ | ✅ Aprovado |
 | **Hayt, Kemmerly & Durbin** | Cap. 7 | Carga RC Transiente ao Degrau (1ª Ordem)| $v_C(\tau) = 6.321\text{ V}, v_C(2\tau) = 8.647\text{ V}, v_C(5\tau) = 9.933\text{ V}$ | ✅ Aprovado |
 | **Hayt, Kemmerly & Durbin** | Cap. 9 | RLC Série Ressonância e Ganho $Q=10$ | $I = 1.000\angle 0^\circ\text{ A}, V_C = 100.0\angle -90^\circ\text{ V}$ ($Q \cdot V_s$) | ✅ Aprovado |
+| **Hayt, Kemmerly & Durbin** | Cap. 13 | Reflexão de Impedância de Carga ($Z_{ref}$)| $n=2, Z_{ref} = R_L / n^2 = 40\ \Omega, I_1 = 1.667\angle 0^\circ\text{ A}$ | ✅ Aprovado |
+| **Irwin & Nelms** | Cap. 3 | Fonte Controlada CCCS (Elemento F) | $I_{F1} = 4 \cdot I(V_s) = 8.0\text{ A}, V_{load} = 80.000\text{ V}$ | ✅ Aprovado |
 | **Irwin & Nelms** | Cap. 4 | Amplificador de Instrumentação (3 Op-Amps)| $A_d = 41.0, V_{out} = 2.050\text{ V}$ (Rejeição de Modo Comum) | ✅ Aprovado |
 | **Irwin & Nelms** | Cap. 5 | Ponte Desbalanceada e Thévenin Exato | $V_{th} = 8/7\text{ V} \approx 1.143\text{ V}, R_{th} = 5000/21\ \Omega \approx 238.10\ \Omega$ | ✅ Aprovado |
-| **Irwin & Nelms** | Cap. 3 | Fonte Controlada CCCS (Elemento F) | $I_{F1} = 4 \cdot I(V_s) = 8.0\text{ A}, V_{load} = 80.000\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 3 (Ex. 3.7) | Supermalha com Fonte Compartilhada | $V_2 = -2.500\text{ V}, V_3 = 16/3\text{ V}, I_{R1} = 3.750\text{ A}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 8 (Ex. 8.4) | RLC Série Superamortecido ($\alpha > \omega_0$) | $s_1 = -4.0, s_2 = -5.0, v_C(t) = 24 - 120e^{-4t} + 96e^{-5t}\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 8 (Ex. 8.6) | RLC Paralelo Criticamente Amortecido | $\alpha = \omega_0 = 5000\text{ s}^{-1}, v(t) = (12 - 60000t)e^{-5000t}\text{ V}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 12 (Ex. 12.14) | Trifásico com Dois Wattímetros (Blondel) | $P_{3\phi} = 3456\text{ W}, Q_{3\phi} = 2592\text{ VAR}, \text{FP} = 0.800$ | ✅ Aprovado |
+| **Hayt, Kemmerly & Durbin** | Cap. 17 / Sadiku Cap. 19 | Quadripolos / Two-Port ($Z$ e $ABCD$) | $Z_{11}=50, Z_{22}=70, A=5/3, B=260/3, Z_{in}=42.5\ \Omega$ | ✅ Aprovado |
 
 ---
 

@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import math
 import numpy as np
-import pytest
 
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (
@@ -22,10 +21,7 @@ from circuit_solver.core.elements import (
     Capacitor,
     Inductor,
     VoltageSource,
-    CurrentSource,
     StepWaveform,
-    PulseWaveform,
-    SineWaveform,
 )
 from circuit_solver.engine.transient import solve_transient
 from circuit_solver.io.parser import parse_netlist_string
@@ -61,7 +57,6 @@ def test_rc_charging_step_response_trapezoidal():
     sol = solve_transient(circ, t_stop=t_stop, dt=dt, method="trapezoidal", uic=True)
 
     v2_arr = sol.V("2")
-    t_arr = sol.time
 
     # Evaluate at 1 tau, 3 tau, 5 tau
     for target_t, exact_v in [

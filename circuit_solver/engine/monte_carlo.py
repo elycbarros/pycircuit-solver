@@ -23,9 +23,7 @@ Usage
 
 from __future__ import annotations
 
-import copy
-from dataclasses import dataclass, field, replace
-from typing import Callable, Sequence
+from dataclasses import dataclass, replace
 
 import numpy as np
 

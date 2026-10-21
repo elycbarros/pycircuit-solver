@@ -12,10 +12,9 @@ Tests verify:
 from __future__ import annotations
 
 import time
-import math
 import pytest
 
-from circuit_solver.core.elements import Resistor, VoltageSource, CurrentSource
+from circuit_solver.core.elements import Resistor, VoltageSource
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.engine.monte_carlo_rust import RUST_AVAILABLE
 
@@ -100,7 +99,7 @@ class TestRustCorrectnessVsPython:
 
         # Node '2' is the resistive divider output, subject to resistor tolerances
         idx = result.node_labels.index("2")
-        assert result.std[idx] > 0, f"Std of divider node 2 is zero — tolerance not applied?"
+        assert result.std[idx] > 0, "Std of divider node 2 is zero — tolerance not applied?"
 
     def test_percentile_ordering(self):
         """p5 ≤ mean ≤ p95 for each node."""

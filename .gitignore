@@ -48,6 +48,7 @@ Thumbs.db
 *.pdf
 *.html
 !ME_ENSINE_A_USAR.html
+!MEMORIA_DE_CALCULO.html
 
 # Distribution
 MANIFEST

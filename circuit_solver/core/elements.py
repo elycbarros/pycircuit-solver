@@ -16,7 +16,7 @@ from engineering-suffix notation by :mod:`circuit_solver.core.validator`.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 
@@ -559,7 +559,6 @@ class Diode(_Element):
         """
         import math
         # Clamp v_d to avoid math range error
-        v_crit = self.n * self.Vt * math.log((self.n * self.Vt) / (math.sqrt(2.0) * self.Is))
         v_clamped = min(v_d, 0.85)
 
         arg = v_clamped / (self.n * self.Vt)

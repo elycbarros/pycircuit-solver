@@ -56,7 +56,7 @@ def main() -> None:
     v_peak = np.max(v_c)
     t_peak = sol.time[np.argmax(v_c)]
 
-    print(f"\n📊 Análise de Desempenho Dinâmico:")
+    print("\n📊 Análise de Desempenho Dinâmico:")
     print(f"  Tensão máxima de pico (Overshoot): {v_peak:.3f} V (em t = {t_peak*1000:.3f} ms)")
     print(f"  Tensão final de regime:            {v_c[-1]:.3f} V")
     print(f"  Corrente máxima no indutor:        {np.max(sol.I('L1')):.3f} A")

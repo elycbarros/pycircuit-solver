@@ -19,7 +19,7 @@ further customise or save it without showing it interactively.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import os
 import sys
@@ -31,7 +31,6 @@ if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY") and s
     matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 
 if TYPE_CHECKING:
     from circuit_solver.engine.thevenin import TheveninResult

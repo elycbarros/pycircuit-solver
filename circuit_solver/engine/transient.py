@@ -13,7 +13,7 @@ tens of thousands of time steps to be solved in milliseconds.
 
 from __future__ import annotations
 
-from typing import Literal, Sequence
+from typing import Literal
 import numpy as np
 from scipy import linalg
 
@@ -30,12 +30,9 @@ from circuit_solver.core.elements import (
     OpAmp,
     Capacitor,
     Inductor,
-    MutualCoupling,
-    Transformer,
-    _Element,
 )
 from circuit_solver.core.transient_solution import TransientSolution
-from circuit_solver.engine.mna import build_mna, solve as solve_dc
+from circuit_solver.engine.mna import solve as solve_dc
 from circuit_solver.engine.transient_rust import (
     solve_transient_rust,
     can_run_in_rust,

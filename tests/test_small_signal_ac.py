@@ -9,24 +9,14 @@ Validates Q-point linearization and AC frequency response for:
 5. CLI pycircuit op command.
 """
 
-import math
 from pathlib import Path
 import numpy as np
 import pytest
 
 from circuit_solver.core.circuit import Circuit
-from circuit_solver.core.elements import (
-    Resistor,
-    Capacitor,
-    VoltageSource,
-    Diode,
-    BJT,
-    MOSFET,
-)
 from circuit_solver.engine.ac import solve_ac, ac_sweep
 from circuit_solver.engine.small_signal import (
     compute_operating_point,
-    build_small_signal_circuit,
 )
 from circuit_solver.cli import main
 

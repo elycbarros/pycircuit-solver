@@ -46,7 +46,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Sequence
 
 from circuit_solver.core.elements import (
     Resistor,

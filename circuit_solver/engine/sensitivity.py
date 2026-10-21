@@ -19,8 +19,7 @@ Implements:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Sequence
+from dataclasses import dataclass
 import numpy as np
 
 from circuit_solver.core.circuit import Circuit
@@ -32,8 +31,6 @@ from circuit_solver.core.elements import (
     VCCS,
     CCCS,
     CCVS,
-    OpAmp,
-    _Element,
 )
 from circuit_solver.engine.mna import build_mna, solve
 

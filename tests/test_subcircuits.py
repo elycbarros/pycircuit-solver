@@ -9,7 +9,7 @@ import pytest
 
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.engine.mna import solve
-from circuit_solver.io.parser import parse_netlist_string, parse_netlist_with_hierarchy
+from circuit_solver.io.parser import parse_netlist_with_hierarchy
 from circuit_solver.cli import main
 
 

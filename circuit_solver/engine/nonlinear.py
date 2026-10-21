@@ -32,7 +32,6 @@ numerical overflow in the exponential terms during early iterations.
 from __future__ import annotations
 
 import math
-from typing import Sequence
 
 import numpy as np
 from numpy.linalg import LinAlgError
@@ -48,13 +47,11 @@ from circuit_solver.core.elements import (
     CCVS,
     OpAmp,
     Inductor,
-    MutualCoupling,
     Transformer,
     Diode,
     ZenerDiode,
     BJT,
     MOSFET,
-    _Element,
 )
 from circuit_solver.core.solution import Solution
 

@@ -14,7 +14,6 @@ All currents follow the **passive sign convention** unless otherwise noted.
 
 from __future__ import annotations
 
-import textwrap
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -27,8 +26,6 @@ from circuit_solver.core.elements import (
     VCCS,
     CCCS,
     CCVS,
-    Capacitor,
-    Inductor,
     OpAmp,
     Diode,
     ZenerDiode,

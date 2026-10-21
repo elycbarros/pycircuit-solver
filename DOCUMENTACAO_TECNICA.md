@@ -241,6 +241,63 @@ Circuito com indutores acoplados magneticamente por fluxo compartilhado (transfo
 
 ---
 
+### 1.10 Redes de Duas Portas / Quadripolos (`two_port.py`)
+
+Redes lineares invariantes no tempo com duas portas de acesso (Porta 1 de entrada e Porta 2 de saída) são caracterizadas por relações matriciais $2 \times 2$ entre as tensões $(V_1, V_2)$ e correntes $(I_1, I_2)$ de porta.
+
+#### 1. Parâmetros de Impedância ($\mathbf{Z}$):
+$$\begin{bmatrix} V_1 \\ V_2 \end{bmatrix} = \begin{bmatrix} z_{11} & z_{12} \\ z_{21} & z_{22} \end{bmatrix} \begin{bmatrix} I_1 \\ I_2 \end{bmatrix}$$
+* $z_{11} = \left. \frac{V_1}{I_1} \right|_{I_2 = 0}$ (impedância de entrada em circuito aberto)
+* $z_{12} = \left. \frac{V_1}{I_2} \right|_{I_1 = 0}$ (impedância de transferência reversa em circuito aberto)
+* $z_{21} = \left. \frac{V_2}{I_1} \right|_{I_2 = 0}$ (impedância de transferência direta em circuito aberto)
+* $z_{22} = \left. \frac{V_2}{I_2} \right|_{I_1 = 0}$ (impedância de saída em circuito aberto)
+
+#### 2. Parâmetros de Admitância ($\mathbf{Y}$):
+$$\begin{bmatrix} I_1 \\ I_2 \end{bmatrix} = \begin{bmatrix} y_{11} & y_{12} \\ y_{21} & y_{22} \end{bmatrix} \begin{bmatrix} V_1 \\ V_2 \end{bmatrix} = \mathbf{Z}^{-1} \begin{bmatrix} V_1 \\ V_2 \end{bmatrix}$$
+
+#### 3. Parâmetros de Transmissão / ABCD ($\mathbf{T}$):
+Convenção clássica de telecomunicações e linhas de transmissão (com corrente da porta 2 saindo do quadripolo):
+$$\begin{bmatrix} V_1 \\ I_1 \end{bmatrix} = \begin{bmatrix} A & B \\ C & D \end{bmatrix} \begin{bmatrix} V_2 \\ -I_2 \end{bmatrix}$$
+* $A = \frac{z_{11}}{z_{21}}$ (ganho de tensão inverso em circuito aberto, adimensional)
+* $B = \frac{\det(\mathbf{Z})}{z_{21}}$ (impedância de transferência reversa em curto-circuito, em $\Omega$)
+* $C = \frac{1}{z_{21}}$ (admitância de transferência reversa em circuito aberto, em $\text{S}$)
+* $D = \frac{z_{22}}{z_{21}}$ (ganho de corrente inverso em curto-circuito, adimensional)
+
+#### 4. Propriedades Estruturais e Operações:
+* **Reciprocidade:** $z_{12} = z_{21} \iff AD - BC = 1 \iff y_{12} = y_{21}$.
+* **Simetria:** $z_{11} = z_{22} \iff A = D \iff y_{11} = y_{22}$.
+* **Impedância de Entrada sob Carga $Z_L$:** $Z_{in} = \frac{A Z_L + B}{C Z_L + D}$.
+* **Impedância de Saída sob Gerador com Impedância $Z_S$:** $Z_{out} = \frac{D Z_S + B}{C Z_S + A}$.
+* **Associação em Cascata:** Se dois quadripolos são ligados em cascata, a matriz de transmissão total é o produto matricial direto: $\mathbf{T}_{total} = \mathbf{T}_1 \mathbf{T}_2$.
+
+---
+
+### 1.11 Sistemas Trifásicos e Teorema de Blondel (`three_phase.py`)
+
+A modelagem de circuitos polifásicos baseia-se na teoria de sistemas simétricos e balanceados:
+
+#### 1. Tensões e Correntes Fasoriais:
+Para uma fonte em estrela (Y) com sequência direta positiva (ABC) e referência de fase em $V_{an} = V_{LN} \angle 0^\circ$:
+$$\mathbf{V}_{an} = V_{LN} \angle 0^\circ, \quad \mathbf{V}_{bn} = V_{LN} \angle -120^\circ, \quad \mathbf{V}_{cn} = V_{LN} \angle +120^\circ$$
+As tensões de linha ($\mathbf{V}_{LL}$) relacionam-se por:
+$$\mathbf{V}_{ab} = \mathbf{V}_{an} - \mathbf{V}_{bn} = \sqrt{3} V_{LN} \angle +30^\circ$$
+
+#### 2. Cargas em Triângulo (Δ) e Estrela (Y):
+* Equivalência $\Delta \leftrightarrow Y$: $Z_Y = \frac{Z_\Delta}{3}$.
+* Corrente de linha em carga $\Delta$: $I_L = \sqrt{3} I_\Delta \angle -30^\circ$.
+
+#### 3. Método dos Dois Wattímetros (Teorema de Blondel):
+Para sistemas a 3 condutores sem neutro, a medição com dois wattímetros referenciados à linha comum C satisfaz:
+$$W_1 = \text{Re}(\mathbf{V}_{ac} \cdot \mathbf{I}_a^*) = V_{LL} I_L \cos(30^\circ + \theta)$$
+$$W_2 = \text{Re}(\mathbf{V}_{bc} \cdot \mathbf{I}_b^*) = V_{LL} I_L \cos(30^\circ - \theta)$$
+Propriedades de síntese global de potência:
+$$P_{3\phi} = W_1 + W_2 = \sqrt{3} V_{LL} I_L \cos\theta \quad [\text{W}]$$
+$$Q_{3\phi} = \sqrt{3}(W_1 - W_2) = \sqrt{3} V_{LL} I_L \sin\theta \quad [\text{VAR}]$$
+$$S_{3\phi} = \sqrt{P_{3\phi}^2 + Q_{3\phi}^2} = \sqrt{3} V_{LL} I_L \quad [\text{VA}]$$
+$$\text{FP} = \frac{P_{3\phi}}{S_{3\phi}} = \cos\theta, \quad \tan\theta = \sqrt{3} \frac{W_1 - W_2}{W_1 + W_2}$$
+
+---
+
 ## 2. 🛡️ Validação Topológica e Teoria dos Grafos (`validator.py`)
 
 A maior causa de falha em simuladores de circuitos (inclusive no SPICE original) são circuitos fisicamente incoerentes que resultam em matrizes singulares (`LinAlgError`). O `pycircuit-solver` intercepta esses problemas **antes** de montar as matrizes através de algoritmos de Teoria dos Grafos:
@@ -356,6 +413,8 @@ pycircuit-solver/
 │   │   ├── nonlinear.py        # Semicondutores e solver não-linear Newton-Raphson com amortecimento
 │   │   ├── dc_sweep.py         # Varredura paramétrica DC (.dc sweep) de fontes e resistências
 │   │   ├── thevenin.py         # Algoritmo de injeção dual de Thévenin/Norton e P_max
+│   │   ├── two_port.py         # Quadripolos / Redes de Duas Portas (Matrizes Z, Y, H, ABCD e cascata)
+│   │   ├── three_phase.py      # Sistemas Trifásicos (Y-Δ) e Método dos Dois Wattímetros (Blondel)
 │   │   ├── monte_carlo.py      # Implementação de referência Monte Carlo em Python puro
 │   │   └── monte_carlo_rust.py # Ponte de alta performance para o crate Rust (Rayon)
 │   ├── io/
@@ -373,8 +432,10 @@ pycircuit-solver/
 │       ├── monte_carlo.rs      # Rayon data-parallel worker para simulação Monte Carlo
 │       └── transient.rs        # Motor de integração implícita transiente (>1M passos/s) com balanço Joule
 │
-└── tests/                      # Suíte de 136 testes automatizados com pytest
-    ├── test_textbook_benchmarks.py     # 20 benchmarks analíticos canônicos (Sadiku, Nilsson, Boylestad, Dorf)
+└── tests/                      # Suíte de 173 testes automatizados com pytest (100% aprovados)
+    ├── test_textbook_benchmarks.py     # 48 benchmarks analíticos canônicos (Sadiku, Nilsson, Boylestad, Dorf, Sedra, Hayt, Irwin)
+    ├── test_two_port.py                # Redes de duas portas (Z, Y, H, ABCD, Zin, Zout e cascata)
+    ├── test_three_phase.py             # Sistemas trifásicos Y-Y, Y-Δ e Teorema de Blondel (dois wattímetros)
     ├── test_sensitivity_wca.py        # Sensibilidade analítica (Rede Adjunta), EVA, Taylor e RSS
     ├── test_rust_transient.py          # Transiente em Rust, conservação de energia e speedup
     ├── test_small_signal_ac.py         # Análise de pequenos sinais com Diodos, BJT e MOSFET
@@ -394,43 +455,60 @@ pycircuit-solver/
 
 ---
 
-## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (147 Testes)
+## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (173 Testes)
 
-A biblioteca é auditada de ponta a ponta por uma suíte de **147 testes automatizados** executados via `pytest`, cobrindo exercícios canônicos clássicos com soluções analíticas exatas publicadas em 7 das maiores referências bibliográficas mundiais da Engenharia Elétrica e Microeletrônica:
+A biblioteca é auditada de ponta a ponta por uma suíte de **173 testes automatizados** executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com soluções analíticas exatas publicadas em 7 das maiores referências bibliográficas mundiais da Engenharia Elétrica e Microeletrônica:
 
 1. **Alexander & Sadiku (*Fundamentos de Circuitos Elétricos*):**
    * Divisores e reduções série-paralelo (Cap. 2, Ex. 2.8).
    * Transformação estrela-triângulo ($\Delta - Y$) em ponte (Cap. 2, Ex. 2.15).
    * Análise nodal com supernós e fontes de corrente (Cap. 3, Ex. 3.1 & 3.3).
    * Análise com fonte controlada VCCS (Cap. 3, Ex. 3.2).
+   * Supermalha (Supermesh) com fonte de corrente compartilhada entre malhas (Cap. 3, Ex. 3.7).
    * Teorema de Thévenin, Norton e Máxima Transferência de Potência (Cap. 4, Ex. 4.8 & 4.9).
    * Circuitos com Op-Amp: Inversor, Não-Inversor, Somador e Subtrator (Cap. 5, Ex. 5.2, 5.5, 5.6 & 5.7).
+   * Amplificador integrador ideal no domínio do tempo (Cap. 6, Ex. 6.13).
+   * Amplificador diferenciador ideal em regime permanente CA fasorial (Cap. 6).
+   * Resposta transitória ao degrau de circuito RLC série superamortecido ($\alpha > \omega_0$) (Cap. 8, Ex. 8.4).
+   * Resposta natural transitória de circuito RLC paralelo criticamente amortecido ($\alpha = \omega_0$) (Cap. 8, Ex. 8.6).
    * Regime permanente CA fasorial RLC série (Cap. 9, Ex. 9.9).
-   * Amplificador integrador ideal com Op-Amp e resposta à rampa no tempo (Cap. 6, Ex. 6.13).
+   * Correção de fator de potência com banco de capacitores em paralelo (Cap. 11, Ex. 11.15).
+   * Medição de potência trifásica pelo Método dos Dois Wattímetros (Teorema de Blondel) (Cap. 12, Ex. 12.14).
    * Circuitos magneticamente acoplados e transformador linear (Cap. 13, Ex. 13.1).
 2. **Nilsson & Riedel (*Circuitos Elétricos*):**
    * Equivalente de Thévenin com fonte dependente mista (Cap. 4, Ex. 4.10).
    * Somador inversor com ponderação de ganhos arbitrários (Cap. 5, Ex. 5.3).
+   * Resposta transitória ao degrau DC de circuito RL de 1ª ordem ($i_L(t) = I_\infty(1 - e^{-t/\tau})$) (Cap. 7, Ex. 7.4).
    * Circuito RLC paralelo em regime CA de alta frequência (Cap. 9, Ex. 9.6).
-3. **Boylestad (*Introdução à Análise de Circuitos*):**
-   * Teorema de Millman para baterias em paralelo com resistência interna (Cap. 9).
-   * Escada R-2R de 4 bits para conversão Digital/Analógica (Cap. 8).
+   * Filtro ativo de 2ª ordem passa-baixas Sallen-Key com aproximação Butterworth pura (Cap. 14).
+3. **Boylestad (*Introdução à Análise de Circuitos & Dispositivos Eletrônicos*):**
+   * Regulador de tensão com Diodo Zener e sensibilidade à variação de carga (Cap. 2).
+   * Amplificador BJT emissor comum com degeneração de emissor $R_E$ e polarização por divisor (Cap. 5).
    * Ponte de Wheatstone em condição de equilíbrio de nulo (Cap. 6).
+   * Rede escada R-2R de 4 bits para conversão Digital/Analógica (Cap. 8).
+   * Teorema de Millman para baterias em paralelo com resistência interna (Cap. 9).
 4. **Dorf & Svoboda (*Introdução aos Circuitos Elétricos*):**
    * Op-Amp com rede de realimentação em T para altíssimo ganho estável (Cap. 6).
    * Buffer seguidor de tensão e isolamento de impedância de carga (Cap. 6).
+   * Resposta natural transitória de circuito RLC paralelo subamortecido ($\omega_d = \sqrt{\omega_0^2 - \alpha^2}$) (Cap. 8).
 5. **Sedra & Smith (*Microelectronic Circuits / Microeletrônica*):**
+   * Amplificador de transimpedância com conversão corrente-tensão $I \to V$ com Op-Amp (Cap. 2).
    * Ponto Q e reta de carga DC de diodo retificador PN com modelo de Shockley (Cap. 4).
-   * Polarização de transistor BJT NPN por divisor de 4 resistores na região ativa (Cap. 6).
+   * Retificador de onda completa em ponte (Ponte de Graetz) simétrica (Cap. 4).
    * Amplificador Fonte Comum MOSFET NMOS operando na saturação quadrática (Cap. 5).
+   * Polarização de transistor BJT NPN por divisor de 4 resistores na região ativa (Cap. 6).
+   * Espelho de corrente BJT (Current Mirror) com compensação de corrente de base (Cap. 7).
+   * Inversor lógico digital CMOS estático com par complementar NMOS/PMOS (Cap. 14).
 6. **Hayt, Kemmerly & Durbin (*Engineering Circuit Analysis / Análise de Circuitos em Engenharia*):**
    * Teorema e Princípio da Superposição com 3 fontes independentes simultâneas (Cap. 5).
    * Resposta transitória analítica de carga RC de 1ª ordem ($v_C(t) = V_s(1 - e^{-t/\tau})$) (Cap. 7).
    * Circuito RLC série em ressonância e fator de qualidade $Q$ com ganho de tensão reativa (Cap. 9).
+   * Acoplamento magnético e reflexão de impedância de carga ($Z_{ref} = R_L / n^2$) no circuito primário (Cap. 13).
+   * Extração completa dos parâmetros de Impedância ($Z$) e Transmissão ($ABCD$) de Quadripolos em T (Cap. 17).
 7. **Irwin & Nelms (*Basic Engineering Circuit Analysis / Análise Básica de Circuitos*):**
+   * Análise Nodal Modificada com fonte de corrente controlada por corrente (CCCS - Elemento F) (Cap. 3).
    * Amplificador de Instrumentação (INA) de 3 Op-Amps com ganho diferencial calibrado (Cap. 4).
    * Ponte de Wheatstone desbalanceada e extração exata do equivalente de Thévenin (Cap. 5).
-   * Análise Nodal Modificada com fonte de corrente controlada por corrente (CCCS - Elemento F) (Cap. 3).
 8. **Casos Degenerados, Não-Lineares e Robustez:**
    * Redes com $R_{th} = 0\ \Omega$ (fonte ideal nos terminais) e $R_{th} \to \infty$ (circuito aberto).
    * Detecção topológica de loops fechados de fontes ideais de tensão via DFS.

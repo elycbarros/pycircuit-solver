@@ -19,7 +19,6 @@ import pytest
 
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (
-    CurrentSource,
     Inductor,
     Resistor,
     VoltageSource,

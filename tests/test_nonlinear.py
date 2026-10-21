@@ -10,9 +10,7 @@ Validates:
 - Convergence to tolerance epsilon < 1e-6.
 """
 
-import math
 import pytest
-import numpy as np
 
 from circuit_solver import (
     Circuit,

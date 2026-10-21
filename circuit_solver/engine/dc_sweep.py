@@ -13,7 +13,6 @@ Supports:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
 
 import numpy as np
 
@@ -26,7 +25,6 @@ from circuit_solver.core.elements import (
     ZenerDiode,
     BJT,
     MOSFET,
-    _Element,
 )
 from circuit_solver.engine.mna import solve
 
@@ -85,7 +83,7 @@ class DCSweepResult:
         """Format a human-readable text summary of the DC sweep."""
         lines = [
             "=" * 60,
-            f"  DC Parametric Sweep Summary",
+            "  DC Parametric Sweep Summary",
             "=" * 60,
             f"  Primary parameter   : {self.param_name}",
             f"  Range               : [{self.sweep_values[0]:.4g}, {self.sweep_values[-1]:.4g}]",
