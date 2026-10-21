@@ -194,23 +194,46 @@ pycircuit op amplificador.cir
 
 ### Instalação
 
+O ambiente de estudo foi validado com CPython 3.12. Crie a `.venv` na raiz e use seu interpretador para instalar e executar o projeto:
+
 ```bash
 git clone https://github.com/elycbarros/pycircuit-solver.git
 cd pycircuit-solver
-pip install -e .
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -e .
 ```
 
-Para instalar dependências de desenvolvimento e testes:
+Para reproduzir as versões de desenvolvimento validadas em Python 3.12/macOS arm64:
+
 ```bash
-pip install -e .[dev]
+.venv/bin/python -m pip install -c constraints-study-py312.txt -e '.[dev]'
 ```
+
+`pyproject.toml` é a fonte das dependências; `requirements.txt` instala o mesmo projeto. O arquivo de constraints registra versões do ambiente de estudo, incluindo dependências transitivas como Pillow e pyparsing. Para outros ambientes suportados, instale `'.[dev]'` sem essas constraints específicas.
 
 #### Compilação do Núcleo em Rust (Opcional — Alto Desempenho)
-O `pycircuit-solver` opera em Python puro com NumPy por padrão. Para habilitar aceleração em Rust com paralelismo nativo multi-thread via `rayon`:
+
+As dependências de desenvolvimento incluem `maturin`; o compilador Rust precisa estar instalado. Compile usando o Python da própria `.venv`:
+
 ```bash
 cd rust_core
-maturin build --release --features extension-module --interpreter python3
-pip install --force-reinstall target/wheels/*.whl
+../.venv/bin/maturin build --release --features extension-module --interpreter ../.venv/bin/python
+cd ..
+.venv/bin/python -m pip install --force-reinstall rust_core/target/wheels/*.whl
+```
+
+Em volumes externos no macOS, arquivos auxiliares AppleDouble (`._*`) podem ser confundidos com metadados de pacotes ou estilos do Matplotlib. Se houver esse problema, remova apenas os auxiliares identificados dentro da `.venv`:
+
+```bash
+.venv/bin/python scripts/clean_venv_appledouble.py
+```
+
+Confira a instalação e rode os testes a partir da raiz. `Agg` permite testar gráficos sem abrir janelas:
+
+```bash
+.venv/bin/python -m pip check
+.venv/bin/python -c "import circuit_solver, pycircuit_core; print('Python e Rust disponíveis')"
+MPLBACKEND=Agg .venv/bin/python -m pytest -q -rs
 ```
 
 ### Exemplo em Python (Divisor com Carga e Op-Amp)

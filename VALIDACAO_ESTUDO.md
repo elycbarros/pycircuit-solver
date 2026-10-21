@@ -43,3 +43,17 @@ Sementes dos descartes nesta execução:
 - Com transformadores: 8, 20, 27, 31, 32, 43, 47 e 57.
 
 Esses descartes indicam condicionamento acima do limite de comparação, não uma demonstração de singularidade matemática exata. Os testes de igualdade das estampas densa/esparsa continuam sendo executados para essas sementes.
+
+## Complemento: ambiente local reparado e instalação reproduzida
+
+A validação anterior usava Python 3.14 externo à `.venv`. A pendência foi encerrada com a instalação e execução completas em CPython 3.12.14, NumPy 2.2.6 e SciPy 1.14.1, respeitando as dependências declaradas do projeto.
+
+- Instaladas as dependências transitivas ausentes Pillow 13.0.0 e pyparsing 3.3.3. Reinstalado maturin 1.15.0 para recuperar seu executável na `.venv`.
+- Removidos apenas arquivos auxiliares AppleDouble com assinatura verificada dentro da `.venv`. Esses arquivos estavam sendo confundidos com metadados de distribuições e estilos do Matplotlib. A rotina está em `scripts/clean_venv_appledouble.py`; ela exige `pyvenv.cfg`, não segue arquivos simbólicos e preserva arquivos que não tenham a assinatura AppleDouble.
+- `pyproject.toml` continua como fonte das dependências. `requirements.txt` agora instala esse mesmo projeto; maturin faz parte do extra de desenvolvimento.
+- `constraints-study-py312.txt` registra as versões de dependências diretas e transitivas validadas para Python 3.12/macOS arm64. A extensão Rust é construída separadamente com `rust_core/Cargo.lock`.
+- Extensão Rust recompilada em release usando o interpretador da `.venv`, instalada e importada nela.
+- `pip check` na `.venv`: nenhuma dependência quebrada. Suíte completa: **511 aprovados e 10 descartes numéricos diagnosticados**.
+- Instalação reproduzida em outro ambiente Python 3.12 criado do zero, com as constraints e a wheel Rust recém-compilada. `pip check` também passou; suíte completa: **511 aprovados e os mesmos 10 descartes**.
+
+As execuções usaram `MPLBACKEND=Agg` para gráficos sem interface e diretórios temporários separados de configuração do Matplotlib. O README registra como reproduzir a instalação e executar os testes usando a `.venv` do projeto.
