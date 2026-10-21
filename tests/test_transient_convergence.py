@@ -78,10 +78,6 @@ def test_capacitor_across_voltage_source_with_inconsistent_ic():
     assert ts.V("2")[-1] == pytest.approx(0.5, abs=1e-6)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Fase 2.3 pendente: o backend Rust ainda calcula o t=0 com UIC pelo modelo companheiro",
-)
 def test_rust_backend_trapezoidal_is_second_order():
     from circuit_solver.engine.transient_rust import RUST_AVAILABLE
 
