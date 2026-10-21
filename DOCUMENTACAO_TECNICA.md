@@ -465,7 +465,7 @@ pycircuit-solver/
 
 ## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (447 Testes)
 
-A biblioteca é auditada de ponta a ponta por uma suíte de **610 testes automatizados** (610 aprovados, sem ignorados nesta execução) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
+A biblioteca é auditada de ponta a ponta por uma suíte de **620 testes automatizados** (620 aprovados, sem ignorados nesta execução) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
 
 1. **Alexander & Sadiku (*Fundamentos de Circuitos Elétricos*):**
    * Divisores e reduções série-paralelo (Cap. 2, Ex. 2.8).
@@ -756,7 +756,7 @@ pycircuit tran netlist.cir --tstop 10m --dt 10u --backend rust --plot
 
 Em projetos de engenharia eletrônica de alta confiabilidade (aeroespacial, médica, automotiva ISO 26262 e certificações militares), a análise nominal é insuficiente. O projetista e o pesquisador acadêmico necessitam quantificar:
 1. **Sensibilidade Paramétrica:** O quanto uma variação em cada componente altera a tensão do nó crítico.
-2. **Pior Caso Extremo (Worst-Case / EVA - Extreme Value Analysis):** Resolução dos dois cantos indicados pelas derivadas nominais; não prova extremos globais.
+2. **Pior Caso Extremo (Worst-Case / EVA - Extreme Value Analysis):** Enumeração dos 2ⁿ cantos até 10 parâmetros variáveis por padrão; acima desse limite, resolução dos dois cenários indicados pelas derivadas nominais. Nenhum método prova extremos globais no interior do domínio.
 3. **Pior Caso Estatístico (RSS - Root-Sum-Square):** Combinação de primeira ordem das tolerâncias; não implica automaticamente 3σ.
 
 ### 11.1 Formulação Matemática do Método da Rede Adjunta (*Adjoint Network Method*)
@@ -799,7 +799,13 @@ Com a derivada $\frac{\partial V_k}{\partial p}$ e a tolerância de fabricação
 1. **Determinação dos Cantos de Pior Caso (Extreme Value Analysis - EVA):**
    * Se $\frac{\partial V_k}{\partial p_i} > 0 \implies$ Para maximizar $V_k$, toma-se $p_i^{\max} = p_i + |p_i|\tau_i$; para minimizar, $p_i^{\min} = p_i - |p_i|\tau_i$.
    * Se $\frac{\partial V_k}{\partial p_i} < 0 \implies$ Para maximizar $V_k$, toma-se $p_i^{\min} = p_i - |p_i|\tau_i$; para minimizar, $p_i^{\max} = p_i + |p_i|\tau_i$.
-   * **Re-solve Não-Linear Exato:** O `pycircuit` monta os circuitos nos cantos calculados e os resolve via MNA, capturando não-linearidades de curvatura reais da rede elétrica.
+   * As direções acima são locais. No modo `selected`, uma derivada nominal nula mantém o parâmetro nominal; esses dois cenários podem perder efeitos de interação.
+   * Por padrão (`corner_method="auto"`), até `max_corner_parameters=10` parâmetros com intervalo não nulo são enumerados em todos os 2ⁿ cantos. Incluem-se derivadas nominais nulas. Um parâmetro nominal zero tem intervalo relativo de largura zero.
+   * `corner_method="exhaustive"` exige enumeração e rejeita um orçamento insuficiente; `"selected"` força a heurística. A CLI expõe `--corners` e `--max-corner-parameters`. A tolerância explícita do resistor precede o padrão; use `custom_tolerances` para fixá-la em zero.
+   * Cada combinação é resolvida novamente por MNA. Uma falha aborta a análise, preservando a exceção e anotando os parâmetros; resultados parciais não são aprovados. O circuito original não é alterado.
+   * `corner_method`, `corners_evaluated`, `varying_parameters` e os dicionários `worst_case_min_parameters`/`worst_case_max_parameters` registram o método, o custo e as combinações que produziram os extremos avaliados. Sem variação, reutiliza-se o nominal, com zero resoluções adicionais.
+   * **Limite matemático:** os extremos dos cantos não certificam o interior. Por exemplo, V(g)=g/(1−g) em g∈[−0,25; 1,25] tem cantos finitos (−0,2 e −5 V), mas um polo em g=1. O relatório não os apresenta como limites globais. Taylor e RSS também continuam aproximações locais.
+   * **Interações:** para V=(g₁−1)(g₂−1), em g₁=g₂=1 ambas as derivadas nominais são zero; com tolerâncias 20% e 30%, Taylor e RSS dão zero, mas os quatro cantos dão −0,06 e +0,06 V. Esse exemplo integra os testes de regressão.
 
 2. **Aproximação Linear de Taylor de 1ª Ordem:**
    $$\Delta V_{\text{linear}} = \sum_i \left| \frac{\partial V_k}{\partial p_i} \right| \cdot (\tau_i |p_i|)$$

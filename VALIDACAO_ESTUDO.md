@@ -82,3 +82,12 @@ Auditoria detalhada: `AUDITORIA_DC_IDEAL.md`. Suíte completa na `.venv`: **610 
 
 
 O ensaio de Monte Carlo em uma malha DC de corrente indeterminada também passou a exigir erro quando todas as amostras falham. O adaptador Rust não retorna mais médias e desvios zero para uma coleção vazia de soluções; seu comportamento agora coincide com o Python.
+
+
+## Complemento: enumeração de cantos no pior caso
+
+A análise de sensibilidade agora enumera automaticamente os 2ⁿ cantos até dez parâmetros com intervalo relativo não nulo (1.024 resoluções adicionais). Acima desse limite usa os dois cenários indicados pelas derivadas nominais, identificados como `selected`. A API e a CLI permitem forçar o método e configurar o orçamento; exigir enumeração com orçamento insuficiente gera erro. O resultado registra método efetivamente usado, número de resoluções, quantidade de parâmetros variáveis e combinações dos extremos avaliados. Um domínio sem variação reutiliza o nominal.
+
+Foram acrescentadas dez regressões: interação com derivadas nominais nulas, reprodução dos extremos pelos parâmetros registrados e preservação do circuito, heurística e fallback por orçamento, rejeição de orçamento insuficiente, polo interior com cantos finitos, rejeição de canto singular com contexto dos parâmetros, domínio degenerado, quatro opções inválidas e integração CLI. O exemplo V=(g₁−1)(g₂−1), com tolerâncias de 20% e 30%, mostra ±0,06 V nos cantos mesmo com Taylor e RSS nulos. Já V=g/(1−g) mostra por que extremos finitos nos cantos não certificam o interior: pode existir um polo. Os relatórios e a documentação deixam essa limitação explícita, sem aprovação global implícita.
+
+Validação na `.venv` Python 3.12: **620 testes aprovados, nenhum ignorado**; **5 testes nativos Rust aprovados**; **19 configurações aprovadas nos cinco roteiros**. Esta etapa altera apenas Python, CLI e documentação; a extensão Rust instalada permanece a reconstruída na etapa anterior. Ruff e `git diff --check` passaram.

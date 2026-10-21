@@ -9,7 +9,8 @@ Implements:
 3. Extreme Value Analysis (EVA / Worst-Case Analysis):
    Estimates parameter corner directions from nominal derivatives (+ or -) that maximize and
    minimize the target node voltage. Evaluates both:
-     - Exact non-linear corner simulation via MNA re-solve.
+     - Exhaustive corner enumeration for small domains, or two selected combinations.
+       Corner extrema alone do not certify global bounds.
      - First-order linear Taylor worst-case estimate.
 4. Root-Sum-Square (RSS) first-order tolerance combination (no probability coverage implied):
      Delta_V_RSS = sqrt(sum( (dV/dp_i * delta_p_i)^2 ))
@@ -19,7 +20,8 @@ Implements:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from itertools import product
 import numpy as np
 
 from circuit_solver.core.circuit import Circuit
@@ -54,8 +56,8 @@ class ComponentSensitivity:
     abs_sensitivity: float   # d(V_target) / d(param) in [V / unit]
     rel_sensitivity: float   # (param / V_target) * (dV / d_param) [% / %]
     worst_case_dir: int      # +1 if increasing param increases V, -1 if decreases V
-    param_wc_max: float      # Component value that maximizes target
-    param_wc_min: float      # Component value that minimizes target
+    param_wc_max: float      # Value selected locally to increase target
+    param_wc_min: float      # Value selected locally to decrease target
     linear_delta: float      # |dV/dp| * (tolerance * nominal)
     percent_contribution: float = 0.0  # Fraction of total absolute linear impact (Pareto)
 
@@ -67,12 +69,18 @@ class SensitivityResult:
     target_node: str
     nominal_value: float
     components: dict[str, ComponentSensitivity]
-    worst_case_max: float        # MNA solve at sensitivity-selected upper corner
-    worst_case_min: float        # MNA solve at sensitivity-selected lower corner
+    worst_case_max: float        # Maximum among evaluated parameter combinations
+    worst_case_min: float        # Minimum among evaluated parameter combinations
     linear_worst_case_max: float # Nominal + sum(linear_delta)
     linear_worst_case_min: float # Nominal - sum(linear_delta)
     rss_max: float               # Nominal + sqrt(sum(linear_delta^2))
     rss_min: float               # Nominal - sqrt(sum(linear_delta^2))
+
+    corner_method: str = "selected"
+    corners_evaluated: int = 0
+    varying_parameters: int = 0
+    worst_case_max_parameters: dict[str, float] = field(default_factory=dict)
+    worst_case_min_parameters: dict[str, float] = field(default_factory=dict)
 
     def pareto_ranking(self) -> list[ComponentSensitivity]:
         """Return components sorted by their absolute impact on the target node."""
@@ -89,8 +97,11 @@ class SensitivityResult:
             f"  Worst-Case (EVA) & Sensitivity Analysis Report: Node '{self.target_node}'",
             "=" * 82,
             f"  Nominal Voltage:         {self.nominal_value:>12.6f} V",
-            f"  Selected Corner Range:   [{self.worst_case_min:>11.6f} V, {self.worst_case_max:>11.6f} V]  (Corner re-solve; no global bound)",
-            f"  Linear Taylor Bounds:    [{self.linear_worst_case_min:>11.6f} V, {self.linear_worst_case_max:>11.6f} V]  (ΔV_wc = ±{self.linear_worst_case_max - self.nominal_value:.6f} V)",
+            f"  Evaluated Range:         [{self.worst_case_min:>11.6f} V, {self.worst_case_max:>11.6f} V]  (no global bound)",
+            f"  Corner method: {self.corner_method}; solves: {self.corners_evaluated}; varying parameters: {self.varying_parameters}",
+            f"  Min parameters: {self.worst_case_min_parameters}",
+            f"  Max parameters: {self.worst_case_max_parameters}",
+            f"  Linear Taylor Estimate:    [{self.linear_worst_case_min:>11.6f} V, {self.linear_worst_case_max:>11.6f} V]  (ΔV_wc = ±{self.linear_worst_case_max - self.nominal_value:.6f} V)",
             f"  Linear RSS Range:  [{self.rss_min:>11.6f} V, {self.rss_max:>11.6f} V]  (ΔV_rss = ±{self.rss_max - self.nominal_value:.6f} V)",
             "-" * 82,
             f"  {'Component':<10} {'Nominal':>12} {'Tol (%)':>8} {'∂V/∂p (V/u)':>14} {'S (%/%)':>10} {'Dir':>5} {'Impact (mV)':>12} {'Pareto':>8}",
@@ -113,6 +124,8 @@ class SensitivityResult:
 
         lines.extend([
             "=" * 82,
+            "  * Corner extrema do not certify the interior: poles or other extrema may exist.",
+            "    Dir and Pareto describe nominal derivatives, not guaranteed global directions.",
             "  * RSS assumes independent variations; it is not automatically a 3-sigma interval.",
             "    Uniform ±tolerances give sigma(V) ≈ RSS/sqrt(3) in the linear model.",
             "  * Legend: S (%/%) = (p/V)*(∂V/∂p). Dir indicates whether increasing the parameter",
@@ -156,8 +169,10 @@ def analyze_sensitivity(
     custom_tolerances: dict[str, float] | None = None,
     default_resistor_tolerance: float = 0.05,
     default_source_tolerance: float = 0.01,
+    corner_method: str = "auto",
+    max_corner_parameters: int = 10,
 ) -> SensitivityResult:
-    """Compute exact analytical sensitivities and Worst-Case/EVA bounds.
+    """Compute analytical sensitivities and extrema among evaluated corners.
 
     Parameters
     ----------
@@ -172,11 +187,23 @@ def analyze_sensitivity(
     default_source_tolerance : float, optional
         Default tolerance used for sources (default 0.01 = 1%).
 
+    corner_method : {"auto", "exhaustive", "selected"}
+        Auto enumerates all 2**n endpoints up to max_corner_parameters, otherwise
+        solves two nominal-sensitivity combinations. Exhaustive raises if over budget.
+        Neither method certifies extrema or absence of singularities in the interior.
+    max_corner_parameters : int
+        Enumeration budget in variable parameters (default 10 = 1024 corners).
+        Zero-valued parameters have zero relative interval width and do not count.
+
     Returns
     -------
     SensitivityResult
-        Complete analytical sensitivities, Pareto rankings, and EVA bounds.
+        Analytical sensitivities, Pareto rankings, and evaluated corner extrema.
     """
+    if corner_method not in {"auto", "exhaustive", "selected"}:
+        raise ValueError("corner_method must be auto, exhaustive or selected")
+    if isinstance(max_corner_parameters, bool) or not isinstance(max_corner_parameters, int) or max_corner_parameters < 0:
+        raise ValueError("max_corner_parameters must be a non-negative integer")
     supported = (Resistor, VoltageSource, CurrentSource, VCVS, VCCS, CCCS, CCVS, OpAmp)
     if any(not isinstance(el, supported) for el in circuit.elements):
         raise ValueError("Sensitivity requires a linear DC circuit of supported elements.")
@@ -365,20 +392,59 @@ def analyze_sensitivity(
     rss_max = v_target_nom + delta_rss
     rss_min = v_target_nom - delta_rss
 
-    # 5. Exact Extreme Value Analysis (EVA) via Non-Linear Corner Re-solves
-    overrides_max = {c.name: c.param_wc_max for c in components.values() if c.tolerance > 0}
-    overrides_min = {c.name: c.param_wc_min for c in components.values() if c.tolerance > 0}
+    # Every nonzero interval counts, even when its nominal derivative is zero.
+    varying = [c for c in components.values() if abs(c.nominal_value) * c.tolerance > 0]
+    n_varying = len(varying)
+    method = corner_method
+    if method == "auto":
+        method = "exhaustive" if n_varying <= max_corner_parameters else "selected"
+    if method == "exhaustive" and n_varying > max_corner_parameters:
+        raise ValueError(
+            f"Exhaustive corners require {n_varying} parameters; "
+            f"max_corner_parameters={max_corner_parameters}. Increase the budget explicitly."
+        )
 
-    circ_max = _clone_circuit_with_overrides(circuit, overrides_max)
-    circ_min = _clone_circuit_with_overrides(circuit, overrides_min)
+    if method == "exhaustive":
+        endpoints = [
+            (c.nominal_value - abs(c.nominal_value) * c.tolerance,
+             c.nominal_value + abs(c.nominal_value) * c.tolerance)
+            for c in varying
+        ]
+        combinations = (dict(zip((c.name for c in varying), values))
+                        for values in product(*endpoints))
+    else:
+        combinations = iter([
+            {c.name: c.param_wc_max for c in varying},
+            {c.name: c.param_wc_min for c in varying},
+        ])
 
-    # Failed corner solves must propagate; a Taylor estimate is not a solved corner.
-    exact_wc_max = float(solve(circ_max).V(target))
-    exact_wc_min = float(solve(circ_min).V(target))
-
-    # Ensure max >= min even in severe non-linear curvature
-    if exact_wc_min > exact_wc_max:
-        exact_wc_min, exact_wc_max = exact_wc_max, exact_wc_min
+    exact_wc_min = math.inf
+    exact_wc_max = -math.inf
+    min_parameters = {}
+    max_parameters = {}
+    count = 0
+    if not varying:
+        # The nominal solve already evaluated the single, degenerate combination.
+        exact_wc_min = exact_wc_max = float(v_target_nom)
+        combinations = iter(())
+    for overrides in combinations:
+        try:
+            value = float(solve(_clone_circuit_with_overrides(circuit, overrides)).V(target))
+            if not math.isfinite(value):
+                raise ValueError("Non-finite corner voltage")
+        except Exception as err:
+            # Preserve the solver's exception type, with reproducible parameter evidence.
+            context = f"{method} corner failed at parameters {overrides!r}"
+            if hasattr(err, "add_note"):
+                err.add_note(context)
+            else:  # Python 3.10 has no BaseException.add_note.
+                err.args = (f"{err} ({context})",)
+            raise
+        count += 1
+        if value < exact_wc_min:
+            exact_wc_min, min_parameters = value, dict(overrides)
+        if value > exact_wc_max:
+            exact_wc_max, max_parameters = value, dict(overrides)
 
     return SensitivityResult(
         circuit=circuit,
@@ -391,6 +457,11 @@ def analyze_sensitivity(
         linear_worst_case_min=lin_min,
         rss_max=rss_max,
         rss_min=rss_min,
+        corner_method=method,
+        corners_evaluated=count,
+        varying_parameters=n_varying,
+        worst_case_max_parameters=max_parameters,
+        worst_case_min_parameters=min_parameters,
     )
 
 

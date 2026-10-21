@@ -247,6 +247,8 @@ def _cmd_sensitivity(args: argparse.Namespace) -> int:
         circuit,
         target_node=args.target,
         default_resistor_tolerance=args.tol if args.tol is not None else 0.05,
+        corner_method=args.corners,
+        max_corner_parameters=args.max_corner_parameters,
     )
     print(res.summary())
     return 0
@@ -340,6 +342,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_sens.add_argument("netlist", type=str, help="Caminho do arquivo netlist SPICE (.cir)")
     p_sens.add_argument("--target", "-t", type=str, required=True, help="Nó alvo para avaliação de sensibilidade e pior caso (ex: '2', 'out')")
     p_sens.add_argument("--tol", type=float, default=None, help="Tolerância padrão para resistores (padrão 0.05 = 5%%)")
+
+    p_sens.add_argument("--corners", choices=("auto", "exhaustive", "selected"), default="auto", help="Método de avaliação dos cantos (padrão auto)")
+    p_sens.add_argument("--max-corner-parameters", type=int, default=10, help="Limite de parâmetros para enumeração (padrão 10 = 1024 cantos)")
 
     return parser
 

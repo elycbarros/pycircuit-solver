@@ -9,7 +9,7 @@ Validates:
   2. Extreme Value Analysis (EVA):
      - Exact non-linear corner simulation bounds (worst_case_max, worst_case_min)
      - Linear Taylor first-order worst-case bounds
-     - Statistical RSS 3-sigma tolerance bounds
+     - Linear RSS combination without automatic probability coverage
   3. Pareto ranking and pedagogical sensitivity reports.
   4. Dependent source sensitivities (VCVS, VCCS).
   5. CLI integration (`pycircuit sensitivity` and `pycircuit wca`).
