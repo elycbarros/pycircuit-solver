@@ -33,10 +33,11 @@ O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contr
 * **Semicondutores & Solver de Newton-Raphson:** Resolução iterativa de circuitos não-lineares ($Q$-point) com Diodos de Junção (Equação de Shockley), Diodos Zener (regulação de tensão reversa), Transistores BJT (Ebers-Moll ativo e saturado) e MOSFETs (modelo quadrático de corte, triodo e saturação), amortecimento numérico SPICE (`pnjlim`, `fetlim`) e convergência estrita de resíduos ($\epsilon < 10^{-6}$).
 * **Análise Transitória no Domínio do Tempo (`.tran`):** Simulação dinâmica de carga e descarga em capacitores e indutores (circuitos RC, RL e RLC de 2ª ordem) via modelos companheiros de integração implícita (**Trapezoidal Rule** e **Backward Euler**) com formas de onda `PULSE`, `SIN` e `STEP`.
 * **Fontes Dependentes Completas:** Suporte integral aos elementos SPICE $E$ (VCVS), $G$ (VCCS), $F$ (CCCS) e $H$ (CCVS).
+* **Análise de Sensibilidade Analítica via Rede Adjunta e Pior Caso (Worst-Case / EVA):** Cálculo exato das derivadas parciais $\partial V_k / \partial p_i$ e sensibilidades relativas normalizadas $S_{p_i}^{V_k}$ (%/%) para todos os componentes simultaneamente com custo $O(1)$ adicional via Teorema de Tellegen e Método da Rede Adjunta. Determinação automática dos cantos de pior caso com simulação não-linear exata dos extremos (EVA), estimativa linear de Taylor e dispersão estatística RSS ($3\sigma$), acompanhado de relatório White-Box com **Ranking de Pareto de Sensibilidade**.
 * **Motor Transiente de Alta Performance em Rust (>1.000.000 passos/s):** Simulação ultra-rápida no domínio do tempo com modelos companion (Trapezoidal Rule e Backward Euler). A matriz MNA é fatorada uma única vez via LU ($O(N^3)$) e cada passo temporal é resolvido em $O(N^2)$ por substituição em código Rust compilado. Inclui auditoria em tempo real de conservação de energia ($E_{\text{stored}}(t) = \frac{1}{2}\sum C v_c^2 + \frac{1}{2}\sum L i_l^2$ e $P_{\text{diss}}(t) = \sum v_r^2/R$) e despacho transparente com fallback automático.
 * **Subcircuitos SPICE Hierárquicos (.subckt / .ends):** Suporte nativo a subcircuitos com hierarquia aninhada arbitrária, avaliação paramétrica (`PARAMS:`) com expressões matemáticas `{...}`, biblioteca pedagógica embutida (LM741, inversor CMOS, Sallen-Key), introspecção White-Box e comandos `pycircuit explain` e `pycircuit hierarchy`.
 * **Análise CA de Pequenos Sinais com Semicondutores:** Ponto de operação DC ($Q$-point) com Newton-Raphson e linearização analítica automática para Diodos ($r_d$), BJTs (modelo híbrido-$\pi$: $g_m, r_\pi, r_o$) e MOSFETs ($g_m, r_{ds}$), permitindo traçar diagramas de Bode de amplificadores transistorizados.
-* **CLI Integrada (`pycircuit`):** Resolução, Thévenin, Monte Carlo, análise CA, transiente (`pycircuit tran --backend rust`), ponto de operação (`pycircuit op`) e inspeção de macromodelos (`pycircuit explain`) diretamente no terminal.
+* **CLI Integrada (`pycircuit`):** Resolução, Thévenin, Monte Carlo, análise CA, transiente (`pycircuit tran --backend rust`), ponto de operação (`pycircuit op`), sensibilidade (`pycircuit sensitivity` / `wca`) e inspeção de macromodelos (`pycircuit explain`) diretamente no terminal.
 * **Validador Topológico Pré-Solver (`validator.py`):** Checagem por busca em largura (BFS) de conectividade com o terra, detecção de loops ilegais de fontes de tensão por DFS, impedância de controle de fontes dependentes e nós flutuantes.
 * **Conversor de Sufixos de Engenharia:** Leitura nativa de notações laboratoriais (`"4.7k"`, `"10mA"`, `"220u"`, `"4k7"`, `"1MEG"`).
 * **Extrator de Thévenin/Norton Dual:** Método híbrido (injeção de tensão e injeção de corrente) que resolve casos degenerados como fontes ideais nos terminais ($R_{th} = 0\ \Omega$) ou terminais abertos ($R_{th} \to \infty$).
@@ -79,6 +80,7 @@ pycircuit-solver/
 │   │   ├── mna.py                       # Algoritmo MNA estático (DC) em NumPy
 │   │   ├── ac.py                        # Motor fasorial e resposta em frequência (CA) em complex128
 │   │   ├── small_signal.py              # Análise CA de pequenos sinais com linearização de semicondutores
+│   │   ├── sensitivity.py               # Análise de Sensibilidade Analítica (Rede Adjunta), WCA e EVA
 │   │   ├── transient.py                 # Motor de análise transitória com auto-dispatch para Rust
 │   │   ├── transient_rust.py            # Ponte Python ↔ Rust para simulação transiente ultra-rápida
 │   │   ├── thevenin.py                  # Extração dual de Thévenin, Norton e Máxima Potência
@@ -109,7 +111,8 @@ pycircuit-solver/
 │   ├── cap07_transiente_rlc.py          # Resposta ao degrau de RLC de 2ª ordem e overshoot
 │   └── cap09_filtro_rc_fasores.py       # Filtro passa-baixas RC, fasores e Diagrama de Bode
 │
-└── tests/                               # Suíte de testes automatizados (129 testes pytest)
+└── tests/                               # Suíte de testes automatizados (136 testes pytest)
+    ├── test_sensitivity_wca.py         # Testes de sensibilidade analítica (Rede Adjunta), WCA e EVA
     ├── test_rust_transient.py           # Testes do motor transiente em Rust, conservação de energia e speedup
     ├── test_small_signal_ac.py          # Testes de pequenos sinais com diodos, BJT e MOSFET
     ├── test_subcircuits.py              # Testes de subcircuitos SPICE (.subckt), parâmetros e introspecção
@@ -137,6 +140,12 @@ O comando `pycircuit` fica disponível no terminal após a instalação:
 ```bash
 # Resolver circuito DC a partir de netlist SPICE
 pycircuit solve circuito.cir
+
+# Análise de Sensibilidade e Pior Caso (Worst-Case / EVA)
+pycircuit sensitivity circuito.cir --target 2
+# ou com o alias rápido 'wca'
+pycircuit wca circuito.cir -t out --tol 0.01
+
 
 # Extrair equivalente de Thévenin / Norton entre nós 3 e 0 com gráfico
 pycircuit thevenin circuito.cir -a 3 -b 0 --plot

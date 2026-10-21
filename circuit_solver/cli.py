@@ -239,6 +239,22 @@ def _cmd_dc(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_sensitivity(args: argparse.Namespace) -> int:
+    from circuit_solver.engine.sensitivity import analyze_sensitivity
+
+    elements = parse_netlist(args.netlist)
+    circuit = Circuit(elements)
+
+    res = analyze_sensitivity(
+        circuit,
+        target_node=args.target,
+        default_resistor_tolerance=args.tol if args.tol is not None else 0.05,
+    )
+    print(res.summary())
+    return 0
+
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pycircuit",
@@ -317,6 +333,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_op = subparsers.add_parser("op", help="Ponto de operação DC (.op) e parâmetros de pequenos sinais para semicondutores")
     p_op.add_argument("netlist", type=str, help="Caminho do arquivo netlist SPICE (.cir)")
 
+    # sensitivity / wca
+    p_sens = subparsers.add_parser(
+        "sensitivity",
+        aliases=["wca"],
+        help="Análise de Sensibilidade Analítica (Rede Adjunta) e Pior Caso (Worst-Case / EVA)",
+    )
+    p_sens.add_argument("netlist", type=str, help="Caminho do arquivo netlist SPICE (.cir)")
+    p_sens.add_argument("--target", "-t", type=str, required=True, help="Nó alvo para avaliação de sensibilidade e pior caso (ex: '2', 'out')")
+    p_sens.add_argument("--tol", type=float, default=None, help="Tolerância padrão para resistores (padrão 0.05 = 5%%)")
+
     return parser
 
 
@@ -333,6 +359,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_solve(args)
         elif args.command == "op":
             return _cmd_op(args)
+        elif args.command in ("sensitivity", "wca"):
+            return _cmd_sensitivity(args)
         elif args.command == "explain":
             return _cmd_explain(args)
         elif args.command == "hierarchy":
@@ -350,6 +378,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             parser.print_help()
             return 1
+
     except Exception as exc:
         print(f"\n❌ Erro na execução: {exc}", file=sys.stderr)
         return 1

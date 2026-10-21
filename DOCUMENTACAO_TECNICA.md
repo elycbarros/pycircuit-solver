@@ -603,4 +603,89 @@ Na CLI:
 pycircuit tran netlist.cir --tstop 10m --dt 10u --backend rust --plot
 ```
 
+---
+
+## 11. 🎯 Análise de Sensibilidade Analítica via Rede Adjunta e Pior Caso (Worst-Case / EVA)
+
+Em projetos de engenharia eletrônica de alta confiabilidade (aeroespacial, médica, automotiva ISO 26262 e certificações militares), a análise nominal é insuficiente. O projetista e o pesquisador acadêmico necessitam quantificar:
+1. **Sensibilidade Paramétrica:** O quanto uma variação em cada componente altera a tensão do nó crítico.
+2. **Pior Caso Extremo (Worst-Case / EVA - Extreme Value Analysis):** Qual a excursão máxima e mínima de tensão considerando as tolerâncias de fabricação.
+3. **Pior Caso Estatístico (RSS - Root-Sum-Square):** A dispersão realista a $3\sigma$ assumindo independência estatística dos componentes.
+
+### 11.1 Formulação Matemática do Método da Rede Adjunta (*Adjoint Network Method*)
+
+O `pycircuit` implementa o clássico **Método da Rede Adjunta** (Tellegen / Director & Rohrer, 1969), que calcula a sensibilidade analítica exata de um nó de interesse $k$ com respeito a **todos os $M$ componentes do circuito simultaneamente com custo de um único solve adicional**:
+
+Dado o sistema linear MNA do circuito nominal:
+$$\mathbf{A} \mathbf{x} = \mathbf{z}$$
+
+Diferenciando implicitamente com respeito a qualquer parâmetro $p$:
+$$\mathbf{A} \frac{\partial \mathbf{x}}{\partial p} + \frac{\partial \mathbf{A}}{\partial p} \mathbf{x} = \frac{\partial \mathbf{z}}{\partial p} \implies \frac{\partial \mathbf{x}}{\partial p} = \mathbf{A}^{-1} \left( \frac{\partial \mathbf{z}}{\partial p} - \frac{\partial \mathbf{A}}{\partial p} \mathbf{x} \right)$$
+
+Para a tensão no nó alvo $k$, $V_k = \mathbf{e}_k^T \mathbf{x}$. Definindo o vetor adjunto $\mathbf{y}_k$ como a solução do sistema linear transposto:
+$$\mathbf{A}^T \mathbf{y}_k = \mathbf{e}_k \implies \mathbf{y}_k^T = \mathbf{e}_k^T \mathbf{A}^{-1}$$
+
+A sensibilidade analítica em relação a $p$ é obtida diretamente pelo produto interno:
+$$\frac{\partial V_k}{\partial p} = \mathbf{y}_k^T \left( \frac{\partial \mathbf{z}}{\partial p} - \frac{\partial \mathbf{A}}{\partial p} \mathbf{x} \right)$$
+
+#### Estampas Analíticas por Componente:
+* **Resistor $R$ (entre os nós $p$ e $n$):**
+  $$\frac{\partial V_k}{\partial R} = \frac{(y_p - y_n)(x_p - x_n)}{R^2}$$
+  onde $(x_p - x_n)$ é a tensão nominal no resistor e $(y_p - y_n)$ é a tensão no elemento no circuito adjunto.
+* **Fonte de Tensão Independente $V_s$:**
+  $$\frac{\partial V_k}{\partial V_s} = y_{aux}$$
+* **Fonte de Corrente Independente $I_s$ (sai de $p$, entra em $n$):**
+  $$\frac{\partial V_k}{\partial I_s} = y_p - y_n$$
+* **Fonte Controlada VCVS ($E$, ganho $\mu$):**
+  $$\frac{\partial V_k}{\partial \mu} = y_{aux} \cdot (x_{cp} - x_{cn})$$
+
+### 11.2 Sensibilidade Relativa Normalizada (Bode Sensitivity)
+
+Para comparar grandezas com unidades diferentes ($\Omega$, V, A), calcula-se a sensibilidade normalizada percentual:
+$$S_p^{V_k} = \frac{p}{V_k} \frac{\partial V_k}{\partial p} = \frac{\partial \ln V_k}{\partial \ln p}$$
+*Exemplo:* $S_R^{V_k} = +0.75$ indica que uma variação de $+1\%$ na resistência provoca uma elevação de $+0.75\%$ na tensão de saída.
+
+### 11.3 Métodos de Pior Caso: EVA vs Taylor vs RSS
+
+Com a derivada $\frac{\partial V_k}{\partial p}$ e a tolerância de fabricação $\tau_i$ de cada componente:
+
+1. **Determinação dos Cantos de Pior Caso (Extreme Value Analysis - EVA):**
+   * Se $\frac{\partial V_k}{\partial p_i} > 0 \implies$ Para maximizar $V_k$, toma-se $p_i^{\max} = p_i (1 + \tau_i)$; para minimizar, $p_i^{\min} = p_i (1 - \tau_i)$.
+   * Se $\frac{\partial V_k}{\partial p_i} < 0 \implies$ Para maximizar $V_k$, toma-se $p_i^{\min} = p_i (1 - \tau_i)$; para minimizar, $p_i^{\max} = p_i (1 + \tau_i)$.
+   * **Re-solve Não-Linear Exato:** O `pycircuit` monta os circuitos nos cantos calculados e os resolve via MNA, capturando não-linearidades de curvatura reais da rede elétrica.
+
+2. **Aproximação Linear de Taylor de 1ª Ordem:**
+   $$\Delta V_{\text{linear}} = \sum_i \left| \frac{\partial V_k}{\partial p_i} \right| \cdot (\tau_i p_i)$$
+   $$V_k^{\text{lin}} \in [V_{\text{nom}} - \Delta V_{\text{linear}}, \ V_{\text{nom}} + \Delta V_{\text{linear}}]$$
+
+3. **Pior Caso Estatístico RSS ($3\sigma$):**
+   $$\Delta V_{\text{RSS}} = \sqrt{\sum_i \left( \frac{\partial V_k}{\partial p_i} \cdot \tau_i p_i \right)^2}$$
+   $$V_k^{\text{RSS}} \in [V_{\text{nom}} - \Delta V_{\text{RSS}}, \ V_{\text{nom}} + \Delta V_{\text{RSS}}]$$
+
+### 11.4 Relatório Pedagógico e Pareto de Sensibilidade
+
+O método `res.summary()` e o ranking `res.pareto_ranking()` decompõem a variância total da saída, identificando quais componentes são os "vilões da tolerância" que mais afetam a especificação do circuito.
+
+#### Exemplo via Python:
+```python
+from circuit_solver import Circuit, VoltageSource, Resistor, analyze_sensitivity
+
+circ = Circuit([
+    VoltageSource("V1", "1", "0", 10.0),
+    Resistor("R1", "1", "2", 1000.0, tolerance=0.05),
+    Resistor("R2", "2", "0", 1000.0, tolerance=0.05),
+])
+
+res = analyze_sensitivity(circ, target_node="2")
+print(res.summary())
+```
+
+#### Exemplo via Terminal (CLI):
+```bash
+pycircuit sensitivity netlist.cir --target 2
+# ou usando o alias rápido
+pycircuit wca netlist.cir -t out --tol 0.01
+```
+
+
 

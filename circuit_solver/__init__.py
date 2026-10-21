@@ -40,6 +40,12 @@ from circuit_solver.engine.small_signal import (
     build_small_signal_circuit,
     OperatingPoint,
 )
+from circuit_solver.engine.sensitivity import (
+    analyze_sensitivity,
+    worst_case_analysis,
+    SensitivityResult,
+    ComponentSensitivity,
+)
 from circuit_solver.core.subcircuit import (
     SubcircuitDefinition,
     SubcircuitInstance,
@@ -102,6 +108,10 @@ __all__ = [
     "thevenin_norton",
     "monte_carlo",
     "dc_sweep",
+    "analyze_sensitivity",
+    "worst_case_analysis",
+    "SensitivityResult",
+    "ComponentSensitivity",
     "plot_power_transfer",
     "plot_monte_carlo",
     "plot_monte_carlo_all",
