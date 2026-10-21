@@ -463,8 +463,10 @@ def solve(
     if use_sparse:
         # Check if native Rust sparse solver can be used
         if solver == "rust_sparse":
-            from circuit_solver.engine.monte_carlo_rust import _build_rust_descriptors, RUST_AVAILABLE
-            if RUST_AVAILABLE:
+            from circuit_solver.engine.monte_carlo_rust import (
+                _build_rust_descriptors, _has_unsupported_elements, RUST_AVAILABLE,
+            )
+            if RUST_AVAILABLE and not _has_unsupported_elements(circuit):
                 import pycircuit_core as _rust
                 (
                     n_nodes,
