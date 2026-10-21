@@ -370,13 +370,52 @@ plot_dc_sweep(res, node_to_plot="out", title="Curva de Transferência V_out x V_
 
 ---
 
-## 📋 13. Tabela de Cola dos Elementos Suportados
+## 🧲 13. Transformadores e Acoplamento Magnético Mútuo
+
+Você pode modelar indutores acoplados magneticamente por fluxo compartilhado de duas maneiras:
+1. Usando a classe `Transformer` (transformador de 2 enrolamentos com terminais primário e secundário).
+2. Usando indutores `Inductor` separados acoplados pelo elemento `MutualCoupling` (elemento `K` do SPICE).
+
+### Exemplo com `Transformer` (Relação de Transformação 2:1):
+```python
+from circuit_solver import Circuit, VoltageSource, Transformer, Resistor, solve_ac
+
+# Transforma 120 V em 60 V (relação de espiras n = sqrt(L1 / L2) = sqrt(10 / 2.5) = 2.0)
+circuito = Circuit([
+    VoltageSource("V1", "1", "0", voltage=120.0, ac_mag=120.0),
+    Transformer("T1", p1="1", n1="0", p2="2", n2="0", L1=10.0, L2=2.5, coupling=0.999),
+    Resistor("RL", "2", "0", 100.0),
+])
+
+sol = solve_ac(circuito, frequency=60.0)
+print(f"Tensão Primário: {sol.V_mag('1'):.2f} V")
+print(f"Tensão Secundário: {sol.V_mag('2'):.2f} V")  # ~60.0 V
+```
+
+### Exemplo em Netlist SPICE com elemento `K`:
+```spice
+* Circuito com Bobinas Acopladas
+V1 1 0 AC 12 0
+R1 1 2 4
+L1 2 0 8
+L2 3 0 10
+C1 3 4 0.5
+R2 4 0 5
+K1 L1 L2 0.1118
+.end
+```
+
+---
+
+## 📋 14. Tabela de Cola dos Elementos Suportados
 
 | Elemento | Letra SPICE | Como Instanciar em Python | O que faz |
 | :--- | :---: | :--- | :--- |
 | **Resistor** | `R` | `Resistor("R1", "p", "n", 100.0, tolerance=0.05)` | Resistor linear em Ohms |
 | **Capacitor** | `C` | `Capacitor("C1", "p", "n", 10e-6, ic=0.0)` | Capacitor ideal em Farads |
 | **Indutor** | `L` | `Inductor("L1", "p", "n", 1e-3, ic=0.0)` | Indutor ideal em Henries |
+| **Acoplamento Mútuo** | `K` | `MutualCoupling("K1", "L1", "L2", coupling=0.999)` | Acoplamento magnético mútuo SPICE |
+| **Transformador** | `T` | `Transformer("T1", "p1", "n1", "p2", "n2", L1=10.0, L2=2.5, coupling=0.999)` | Transformador de dois enrolamentos |
 | **Fonte de Tensão** | `V` | `VoltageSource("V1", "p", "n", 12.0, ac_mag=1.0)` | Fonte DC, CA ou Transitória |
 | **Fonte de Corrente** | `I` | `CurrentSource("I1", "p", "n", 2.0)` | Fonte DC, CA ou Transitória |
 | **Diodo PN** | `D` | `Diode("D1", node_p="2", node_n="0", Is=1e-14, n=1.0)` | Diodo Shockley não-linear |
@@ -391,7 +430,7 @@ plot_dc_sweep(res, node_to_plot="out", title="Curva de Transferência V_out x V_
 
 ---
 
-## ⚠️ 14. Erros Comuns e Como Evitá-los
+## ⚠️ 15. Erros Comuns e Como Evitá-los
 
 1. **"Missing ground node '0'":**
    * *Motivo:* Nenhum nó do circuito se chama `"0"`.
@@ -408,3 +447,4 @@ plot_dc_sweep(res, node_to_plot="out", title="Curva de Transferência V_out x V_
 ---
 
 Agora você está pronto para simular qualquer circuito com precisão acadêmica e performance profissional! 🚀
+

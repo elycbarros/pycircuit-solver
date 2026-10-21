@@ -370,6 +370,94 @@ class Inductor(_Element):
             )
 
 
+@dataclass
+class MutualCoupling(_Element):
+    """Magnetic mutual coupling between two inductors (K element in SPICE).
+
+    Constitutive equation:
+        M = coupling * sqrt(L1 * L2)
+
+    Parameters
+    ----------
+    name : str
+        Designator (must start with 'K').
+    ind1_name : str
+        Designator of first inductor (e.g. 'L1').
+    ind2_name : str
+        Designator of second inductor (e.g. 'L2').
+    coupling : float
+        Magnetic coupling coefficient k (-1.0 <= k <= 1.0, default 0.999).
+    """
+
+    ind1_name: str
+    ind2_name: str
+    coupling: float = 0.999
+
+    def __post_init__(self) -> None:
+        if abs(self.coupling) > 1.0:
+            raise ValueError(
+                f"Coupling coefficient k must satisfy -1.0 <= k <= 1.0 (got {self.coupling})."
+            )
+
+    def mutual_inductance(self, L1: float, L2: float) -> float:
+        """Mutual inductance M = k * sqrt(L1 * L2)."""
+        import math
+        return self.coupling * math.sqrt(L1 * L2)
+
+
+@dataclass
+class Transformer(_Element):
+    """Two-winding coupled transformer.
+
+    Parameters
+    ----------
+    name : str
+        Designator (must start with 'T' or 'K').
+    p1 : str
+        Primary positive terminal (dot).
+    n1 : str
+        Primary negative terminal.
+    p2 : str
+        Secondary positive terminal (dot).
+    n2 : str
+        Secondary negative terminal.
+    L1 : float
+        Primary self-inductance in Henries.
+    L2 : float
+        Secondary self-inductance in Henries.
+    coupling : float, optional
+        Coupling coefficient k (-1.0 <= k <= 1.0, default 0.999).
+    """
+
+    p1: str
+    n1: str
+    p2: str
+    n2: str
+    L1: float
+    L2: float
+    coupling: float = 0.999
+
+    def __post_init__(self) -> None:
+        if self.L1 <= 0 or self.L2 <= 0:
+            raise ValueError(f"Transformer '{self.name}': L1 and L2 must be > 0.")
+        if abs(self.coupling) > 1.0:
+            raise ValueError(
+                f"Coupling coefficient k must satisfy -1.0 <= k <= 1.0 (got {self.coupling})."
+            )
+
+    @property
+    def turns_ratio(self) -> float:
+        """Ideal turns ratio n = N1 / N2 = sqrt(L1 / L2)."""
+        import math
+        return math.sqrt(self.L1 / self.L2)
+
+    @property
+    def mutual_inductance(self) -> float:
+        """Mutual inductance M = k * sqrt(L1 * L2)."""
+        import math
+        return self.coupling * math.sqrt(self.L1 * self.L2)
+
+
 # ---------------------------------------------------------------------------
 # Current-Controlled Dependent Sources (Alexander & Sadiku Cap. 3 & 4)
 # ---------------------------------------------------------------------------

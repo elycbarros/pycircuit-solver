@@ -48,6 +48,8 @@ from circuit_solver.core.elements import (
     CCVS,
     OpAmp,
     Inductor,
+    MutualCoupling,
+    Transformer,
     Diode,
     ZenerDiode,
     BJT,
@@ -209,6 +211,21 @@ def _build_linear_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
             if p is not None and n_node is not None:
                 A[p, n_node] -= g
                 A[n_node, p] -= g
+
+        elif isinstance(el, Transformer):
+            g = 1e6
+            p1, n1 = idx(el.p1), idx(el.n1)
+            p2, n2 = idx(el.p2), idx(el.n2)
+            if p1 is not None: A[p1, p1] += g
+            if n1 is not None: A[n1, n1] += g
+            if p1 is not None and n1 is not None:
+                A[p1, n1] -= g
+                A[n1, p1] -= g
+            if p2 is not None: A[p2, p2] += g
+            if n2 is not None: A[n2, n2] += g
+            if p2 is not None and n2 is not None:
+                A[p2, n2] -= g
+                A[n2, p2] -= g
 
     return A, z
 

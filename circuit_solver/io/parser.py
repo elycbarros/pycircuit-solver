@@ -58,6 +58,8 @@ from circuit_solver.core.elements import (
     CCVS,
     Capacitor,
     Inductor,
+    MutualCoupling,
+    Transformer,
     OpAmp,
     Diode,
     ZenerDiode,
@@ -308,6 +310,23 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
                 elif u_tok.startswith("LAMBDA="):
                     lam = parse_value(extra.split("=")[1])
             return MOSFET(name.upper(), nd.lower(), ng.lower(), ns.lower(), polarity=polarity, Vth=vth, Kp=kp, lambda_param=lam)
+
+        elif prefix == "K":
+            # K<name>  L1  L2  [coupling]
+            name, ind1, ind2 = tokens[0], tokens[1], tokens[2]
+            k_val = parse_value(tokens[3]) if len(tokens) > 3 else 0.999
+            return MutualCoupling(name.upper(), ind1.upper(), ind2.upper(), coupling=k_val)
+
+        elif prefix == "T":
+            # T<name>  p1  n1  p2  n2  L1  L2  [coupling]
+            name, p1, n1, p2, n2, l1_str, l2_str = (
+                tokens[0], tokens[1], tokens[2], tokens[3], tokens[4], tokens[5], tokens[6]
+            )
+            k_val = parse_value(tokens[7]) if len(tokens) > 7 else 0.999
+            return Transformer(
+                name.upper(), p1.lower(), n1.lower(), p2.lower(), n2.lower(),
+                L1=parse_value(l1_str), L2=parse_value(l2_str), coupling=k_val
+            )
 
         else:
             # Unknown / unsupported element — warn and skip

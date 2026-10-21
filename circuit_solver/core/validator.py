@@ -38,6 +38,8 @@ from circuit_solver.core.elements import (
     OpAmp,
     Capacitor,
     Inductor,
+    MutualCoupling,
+    Transformer,
     CCCS,
     CCVS,
     Diode,
@@ -213,6 +215,7 @@ class CircuitValidator:
         self._check_self_shorts()
         self._check_resistances()
         self._check_controlling_sources()
+        self._check_mutual_couplings()
         self._check_floating_nodes()
         self._check_ground_connectivity()
         self._check_parallel_voltage_sources()
@@ -242,6 +245,10 @@ class CircuitValidator:
             return [el.node_c, el.node_b, el.node_e]
         if isinstance(el, MOSFET):
             return [el.node_d, el.node_g, el.node_s]
+        if isinstance(el, Transformer):
+            return [el.p1, el.n1, el.p2, el.n2]
+        if isinstance(el, MutualCoupling):
+            return []
         return []
 
     def _check_ground(self) -> None:
@@ -270,6 +277,15 @@ class CircuitValidator:
                     raise CircuitValidationError(
                         f"MOSFET '{el.name}' has all terminals connected to the same node '{el.node_d}'."
                     )
+            elif isinstance(el, Transformer):
+                if el.p1 == el.n1:
+                    raise CircuitValidationError(
+                        f"Transformer '{el.name}' has shorted primary winding (p1 == n1 == '{el.p1}')."
+                    )
+                if el.p2 == el.n2:
+                    raise CircuitValidationError(
+                        f"Transformer '{el.name}' has shorted secondary winding (p2 == n2 == '{el.p2}')."
+                    )
 
     def _check_resistances(self) -> None:
         for el in self._elements:
@@ -289,6 +305,37 @@ class CircuitValidator:
                         f"Element '{el.name}' references controlling voltage source '{el.vctrl_name}', "
                         "which does not exist in the circuit. In MNA/SPICE, current-controlled sources "
                         "must reference a defined independent VoltageSource (or a 0V dummy source)."
+                    )
+
+    def _check_mutual_couplings(self) -> None:
+        """Validate mutual coupling (K) elements and Transformer definitions."""
+        inductor_names = {el.name: el for el in self._elements if isinstance(el, Inductor)}
+        for el in self._elements:
+            if isinstance(el, MutualCoupling):
+                if el.ind1_name == el.ind2_name:
+                    raise CircuitValidationError(
+                        f"Mutual coupling '{el.name}' references the same inductor '{el.ind1_name}' twice."
+                    )
+                if el.ind1_name not in inductor_names:
+                    raise CircuitValidationError(
+                        f"Mutual coupling '{el.name}' references inductor '{el.ind1_name}', which is not in the circuit."
+                    )
+                if el.ind2_name not in inductor_names:
+                    raise CircuitValidationError(
+                        f"Mutual coupling '{el.name}' references inductor '{el.ind2_name}', which is not in the circuit."
+                    )
+                if abs(el.coupling) > 1.0:
+                    raise CircuitValidationError(
+                        f"Mutual coupling '{el.name}' has invalid coupling coefficient k={el.coupling}. Must be -1.0 <= k <= 1.0."
+                    )
+            elif isinstance(el, Transformer):
+                if abs(el.coupling) > 1.0:
+                    raise CircuitValidationError(
+                        f"Transformer '{el.name}' has invalid coupling coefficient k={el.coupling}. Must be -1.0 <= k <= 1.0."
+                    )
+                if el.L1 <= 0 or el.L2 <= 0:
+                    raise CircuitValidationError(
+                        f"Transformer '{el.name}' has non-positive inductance (L1={el.L1}, L2={el.L2})."
                     )
 
     def _check_floating_nodes(self) -> None:
@@ -332,7 +379,7 @@ class CircuitValidator:
 
         adj: dict[str, set[str]] = defaultdict(set)
         for el in self._elements:
-            if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS)):
+            if isinstance(el, (Resistor, VoltageSource, CurrentSource, Capacitor, Inductor, CCCS, CCVS, Diode, ZenerDiode)):
                 adj[el.node_p].add(el.node_n)
                 adj[el.node_n].add(el.node_p)
             elif isinstance(el, (VCVS, VCCS)):
@@ -341,6 +388,19 @@ class CircuitValidator:
             elif isinstance(el, OpAmp):
                 adj[el.out].add(el.gnd)
                 adj[el.gnd].add(el.out)
+            elif isinstance(el, Transformer):
+                adj[el.p1].add(el.n1)
+                adj[el.n1].add(el.p1)
+                adj[el.p2].add(el.n2)
+                adj[el.n2].add(el.p2)
+            elif isinstance(el, BJT):
+                adj[el.node_b].add(el.node_e)
+                adj[el.node_e].add(el.node_b)
+                adj[el.node_c].add(el.node_e)
+                adj[el.node_e].add(el.node_c)
+            elif isinstance(el, MOSFET):
+                adj[el.node_d].add(el.node_s)
+                adj[el.node_s].add(el.node_d)
 
         visited: set[str] = set()
         queue = deque(["0"])

@@ -27,6 +27,7 @@ O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contr
 ### 2. Funcionalidades Nativas
 * **Arquitetura Híbrida de Alto Desempenho (Python + Rust):** Núcleo numérico em Rust (`rust_core/`) integrado via PyO3 e `maturin`. Acelera simulações de Monte Carlo com paralelismo multi-thread nativo (`rayon`) sem as travas do GIL do Python, com fallback transparente para NumPy.
 * **Motor MNA Dual (DC & CA):** Resolução matricial em números reais (DC) e complexos `complex128` (CA).
+* **Transformadores e Acoplamento Magnético Mútuo (Elemento K do SPICE):** Modelagem de indutores acoplados por fluxo magnético mútuo ($M = k \sqrt{L_1 L_2}$ com $-1.0 \le k \le 1.0$), suporte a transformadores de dois enrolamentos com relação de espiras arbitrária ($n = \sqrt{L_1/L_2}$), inversão de fase/polaridade ($k < 0$), estampagem de admitância fasorial em CA e modelo companheiro transiente no domínio do tempo.
 * **Varredura Paramétrica DC (.dc sweep):** Varredura de fontes de tensão, corrente e resistências com suporte a curvas de transferência ($V_{out} \times V_{in}$), curvas de carga e varreduras aninhadas 2D para famílias de curvas características de transistores ($I_C \times V_{CE}$ para diferentes $I_B$).
 * **Semicondutores & Solver de Newton-Raphson:** Resolução iterativa de circuitos não-lineares ($Q$-point) com Diodos de Junção (Equação de Shockley), Diodos Zener (regulação de tensão reversa), Transistores BJT (Ebers-Moll ativo e saturado) e MOSFETs (modelo quadrático de corte, triodo e saturação), amortecimento numérico SPICE (`pnjlim`, `fetlim`) e convergência estrita de resíduos ($\epsilon < 10^{-6}$).
 * **Análise Transitória no Domínio do Tempo (`.tran`):** Simulação dinâmica de carga e descarga em capacitores e indutores (circuitos RC, RL e RLC de 2ª ordem) via modelos companheiros de integração implícita (**Trapezoidal Rule** e **Backward Euler**) com formas de onda `PULSE`, `SIN` e `STEP`.
@@ -100,11 +101,14 @@ pycircuit-solver/
 │   ├── cap07_transiente_rlc.py          # Resposta ao degrau de RLC de 2ª ordem e overshoot
 │   └── cap09_filtro_rc_fasores.py       # Filtro passa-baixas RC, fasores e Diagrama de Bode
 │
-└── tests/                               # Suíte de testes automatizados (76 testes pytest)
+└── tests/                               # Suíte de testes automatizados (101 testes pytest)
     ├── test_textbook_benchmarks.py      # Validação analítica multi-livros (Sadiku, Nilsson, Boylestad, Dorf)
-    ├── test_robustness_edge_cases.py    # Testes de robustez, BFS, loops KVL, R_th=0 e parser
-    ├── test_rust_monte_carlo.py         # Testes de correção, reprodutibilidade e speedup do motor Rust
+    ├── test_coupled_inductors.py        # Acoplamento magnético mútuo, transformador e Sadiku Cap. 13
+    ├── test_nonlinear.py                # Semicondutores não-lineares e Newton-Raphson (Diodo, Zener, BJT, MOSFET)
+    ├── test_dc_sweep.py                 # Varredura paramétrica DC (.dc sweep), curvas IV e famílias 2D
     ├── test_transient.py                # Testes analíticos de transitório RC, RL, RLC e formas de onda
+    ├── test_rust_monte_carlo.py         # Testes de correção, reprodutibilidade e speedup do motor Rust
+    ├── test_robustness_edge_cases.py    # Testes de robustez, BFS, loops KVL, R_th=0 e parser
     ├── test_validator.py                # Testes de validação topológica e sufixos
     ├── test_mna_engine.py               # Testes analíticos do motor MNA e 4 fontes dependentes
     ├── test_thevenin.py                 # Testes de Thévenin/Norton e máxima transferência
@@ -290,6 +294,7 @@ O motor computacional do **`pycircuit-solver`** é continuamente validado por um
 | **Alexander & Sadiku** | Cap. 5 (Ex. 5.6) | Somador Inversor de 3 Entradas | $V_o = -17.0\text{ V}, V_n = 0.0\text{ V}$ | ✅ Aprovado |
 | **Alexander & Sadiku** | Cap. 5 (Ex. 5.7) | Amplificador Diferencial (Subtrator) | $V_o = 4.0\text{ V}, V_p = V_n = 3.333\text{ V}$ | ✅ Aprovado |
 | **Alexander & Sadiku** | Cap. 9 (Ex. 9.9) | Circuito RLC Série CA (Fasores) | $I = 0.3322\angle -10.24^\circ\text{ A}$ | ✅ Aprovado |
+| **Alexander & Sadiku** | Cap. 13 (Ex. 13.1) | Circuitos Magneticamente Acoplados | $I_1 = 1.350\angle -62.85^\circ\text{ A}, I_2 = 0.1431\angle -30.85^\circ\text{ A}$ | ✅ Aprovado |
 | **Nilsson & Riedel** | Cap. 4 (Ex. 4.10) | Thévenin com Fonte Controlada | $V_{th} = 40\text{ V}, R_{th} = 10\ \Omega, P_{max} = 40\text{ W}$ | ✅ Aprovado |
 | **Nilsson & Riedel** | Cap. 5 (Ex. 5.3) | Somador Inversor com Pesos Arbitrários | $V_o = -23.0\text{ V}, I_L = -0.92\text{ mA}$ | ✅ Aprovado |
 | **Nilsson & Riedel** | Cap. 9 (Ex. 9.6) | RLC Paralelo CA em Alta Frequência | $V = 200\sqrt{2}\angle 45^\circ\text{ V}, I_L = 8\sqrt{2}\angle -45^\circ\text{ A}$ | ✅ Aprovado |

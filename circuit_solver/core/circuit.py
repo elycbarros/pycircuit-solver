@@ -20,7 +20,7 @@ These are tracked via :attr:`auxiliary_map`.
 
 from __future__ import annotations
 
-from typing import Sequence
+import numpy as np
 
 from circuit_solver.core.elements import (
     Resistor,
@@ -31,6 +31,8 @@ from circuit_solver.core.elements import (
     OpAmp,
     Capacitor,
     Inductor,
+    MutualCoupling,
+    Transformer,
     CCCS,
     CCVS,
     Diode,
@@ -137,7 +139,105 @@ class Circuit:
             return [el.node_c, el.node_b, el.node_e]
         if isinstance(el, MOSFET):
             return [el.node_d, el.node_g, el.node_s]
+        if isinstance(el, Transformer):
+            return [el.p1, el.n1, el.p2, el.n2]
+        if isinstance(el, MutualCoupling):
+            return []
         return []
+
+    def get_coupled_inductor_names(self) -> set[str]:
+        """Names of individual Inductor elements that participate in a MutualCoupling."""
+        names = set()
+        for el in self.elements:
+            if isinstance(el, MutualCoupling):
+                names.add(el.ind1_name)
+                names.add(el.ind2_name)
+        return names
+
+    def get_coupled_pairs(self) -> list[dict]:
+        """Resolve all magnetically coupled pairs (both MutualCoupling and Transformer).
+
+        Returns a list of dictionaries with resolved parameters:
+            - name: identifier
+            - p1, n1: primary terminal nodes
+            - p2, n2: secondary terminal nodes
+            - L1, L2: self inductances in H
+            - coupling: coupling coefficient k
+            - M: mutual inductance in H
+            - Gamma: 2x2 inverse inductance matrix (H^-1)
+            - ind1_name: inductor 1 name (or transformer primary name)
+            - ind2_name: inductor 2 name (or transformer secondary name)
+            - is_transformer: bool
+        """
+        pairs: list[dict] = []
+        ind_by_name = {el.name: el for el in self.elements if isinstance(el, Inductor)}
+
+        # 1. MutualCoupling (SPICE K element)
+        for el in self.elements:
+            if isinstance(el, MutualCoupling):
+                if el.ind1_name not in ind_by_name or el.ind2_name not in ind_by_name:
+                    continue
+                ind1 = ind_by_name[el.ind1_name]
+                ind2 = ind_by_name[el.ind2_name]
+                L1, L2 = ind1.inductance, ind2.inductance
+                k = el.coupling
+                # Clamp k to avoid division by zero if |k| == 1
+                k_clamped = min(max(k, -0.9999999), 0.9999999)
+                M = k * np.sqrt(L1 * L2)
+                M_clamped = k_clamped * np.sqrt(L1 * L2)
+                det = L1 * L2 - M_clamped**2
+                Gamma = np.array([
+                    [L2 / det, -M_clamped / det],
+                    [-M_clamped / det, L1 / det]
+                ], dtype=float)
+
+                pairs.append({
+                    "name": el.name,
+                    "p1": ind1.node_p,
+                    "n1": ind1.node_n,
+                    "p2": ind2.node_p,
+                    "n2": ind2.node_n,
+                    "L1": L1,
+                    "L2": L2,
+                    "coupling": k,
+                    "M": M,
+                    "Gamma": Gamma,
+                    "ind1_name": ind1.name,
+                    "ind2_name": ind2.name,
+                    "is_transformer": False,
+                })
+
+        # 2. Transformer
+        for el in self.elements:
+            if isinstance(el, Transformer):
+                L1, L2 = el.L1, el.L2
+                k = el.coupling
+                k_clamped = min(max(k, -0.9999999), 0.9999999)
+                M = k * np.sqrt(L1 * L2)
+                M_clamped = k_clamped * np.sqrt(L1 * L2)
+                det = L1 * L2 - M_clamped**2
+                Gamma = np.array([
+                    [L2 / det, -M_clamped / det],
+                    [-M_clamped / det, L1 / det]
+                ], dtype=float)
+
+                pairs.append({
+                    "name": el.name,
+                    "p1": el.p1,
+                    "n1": el.n1,
+                    "p2": el.p2,
+                    "n2": el.n2,
+                    "L1": L1,
+                    "L2": L2,
+                    "coupling": k,
+                    "M": M,
+                    "Gamma": Gamma,
+                    "ind1_name": f"{el.name}_p",
+                    "ind2_name": f"{el.name}_s",
+                    "is_transformer": True,
+                })
+
+        return pairs
 
     # ------------------------------------------------------------------
     # Convenience helpers

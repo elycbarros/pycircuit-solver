@@ -29,6 +29,8 @@ from circuit_solver.core.elements import (
     OpAmp,
     Capacitor,
     Inductor,
+    MutualCoupling,
+    Transformer,
     _Element,
 )
 from circuit_solver.core.transient_solution import TransientSolution
@@ -84,8 +86,11 @@ def solve_transient(
     # -----------------------------------------------------------------------
     # 1. Classify dynamic elements and companion conductances
     # -----------------------------------------------------------------------
+    coupled_pairs = circuit.get_coupled_pairs()
+    coupled_ind_names = circuit.get_coupled_inductor_names()
+
     capacitors: list[Capacitor] = [el for el in circuit.elements if isinstance(el, Capacitor)]
-    inductors: list[Inductor] = [el for el in circuit.elements if isinstance(el, Inductor)]
+    inductors: list[Inductor] = [el for el in circuit.elements if isinstance(el, Inductor) and el.name not in coupled_ind_names]
 
     # Compute companion conductances
     # Capacitor:  G_eq = 2*C / dt (trap)  or  C / dt (euler)
@@ -97,6 +102,12 @@ def solve_transient(
     g_l: dict[str, float] = {}
     for ind in inductors:
         g_l[ind.name] = (dt / (2.0 * ind.inductance)) if method == "trapezoidal" else (dt / ind.inductance)
+
+    # Coupled pairs companion conductance matrix G_eq = alpha * Gamma
+    alpha = (dt / 2.0) if method == "trapezoidal" else dt
+    g_eq_coupled: dict[str, np.ndarray] = {
+        pair["name"]: alpha * pair["Gamma"] for pair in coupled_pairs
+    }
 
     # -----------------------------------------------------------------------
     # 2. Build the time-invariant MNA matrix A
@@ -189,6 +200,32 @@ def solve_transient(
                 A[p, n_node] -= g
                 A[n_node, p] -= g
 
+    # Coupled pairs companion conductance matrix stamping
+    for pair in coupled_pairs:
+        G = g_eq_coupled[pair["name"]]
+        p1, n1 = idx(pair["p1"]), idx(pair["n1"])
+        p2, n2 = idx(pair["p2"]), idx(pair["n2"])
+
+        # Port 1
+        g11 = G[0, 0]
+        if p1 is not None: A[p1, p1] += g11
+        if n1 is not None: A[n1, n1] += g11
+        if p1 is not None and n1 is not None: A[p1, n1] -= g11; A[n1, p1] -= g11
+
+        # Port 2
+        g22 = G[1, 1]
+        if p2 is not None: A[p2, p2] += g22
+        if n2 is not None: A[n2, n2] += g22
+        if p2 is not None and n2 is not None: A[p2, n2] -= g22; A[n2, p2] -= g22
+
+        # Cross
+        g12 = G[0, 1]
+        g21 = G[1, 0]
+        if p1 is not None and p2 is not None: A[p1, p2] += g12; A[p2, p1] += g21
+        if p1 is not None and n2 is not None: A[p1, n2] -= g12; A[n2, p1] -= g21
+        if n1 is not None and p2 is not None: A[n1, p2] -= g12; A[p2, n1] -= g21
+        if n1 is not None and n2 is not None: A[n1, n2] += g12; A[n2, n1] += g21
+
     # Pre-factorize A with LU decomposition (once for the whole run)
     lu_factor = linalg.lu_factor(A)
 
@@ -200,11 +237,18 @@ def solve_transient(
     i_c_state: dict[str, float] = {}
     v_l_state: dict[str, float] = {}
     i_l_state: dict[str, float] = {}
+    v_coupled_state: dict[str, np.ndarray] = {}
+    i_coupled_state: dict[str, np.ndarray] = {}
 
     # Storage arrays
     node_labels = list(circuit.nodes)
     node_voltages: dict[str, np.ndarray] = {node: np.zeros(n_steps) for node in node_labels}
     branch_currents: dict[str, np.ndarray] = {el.name: np.zeros(n_steps) for el in circuit.elements}
+    for pair in coupled_pairs:
+        if pair["ind1_name"] not in branch_currents:
+            branch_currents[pair["ind1_name"]] = np.zeros(n_steps)
+        if pair["ind2_name"] not in branch_currents:
+            branch_currents[pair["ind2_name"]] = np.zeros(n_steps)
 
     if uic:
         # Use explicit initial conditions
@@ -214,6 +258,13 @@ def solve_transient(
         for ind in inductors:
             v_l_state[ind.name] = 0.0
             i_l_state[ind.name] = ind.ic
+
+        ind_by_name = {el.name: el for el in circuit.elements if isinstance(el, Inductor)}
+        for pair in coupled_pairs:
+            i1 = getattr(ind_by_name.get(pair["ind1_name"]), "ic", 0.0)
+            i2 = getattr(ind_by_name.get(pair["ind2_name"]), "ic", 0.0)
+            v_coupled_state[pair["name"]] = np.zeros(2)
+            i_coupled_state[pair["name"]] = np.array([i1, i2], dtype=float)
 
         # Solve t=0 state from companion model at t=0
         z0 = np.zeros(n)
@@ -240,6 +291,15 @@ def solve_transient(
             if p is not None: z0[p] -= ieq
             if n_node is not None: z0[n_node] += ieq
 
+        for pair in coupled_pairs:
+            istate = i_coupled_state[pair["name"]]
+            p1, n1 = idx(pair["p1"]), idx(pair["n1"])
+            p2, n2 = idx(pair["p2"]), idx(pair["n2"])
+            if p1 is not None: z0[p1] -= istate[0]
+            if n1 is not None: z0[n1] += istate[0]
+            if p2 is not None: z0[p2] -= istate[1]
+            if n2 is not None: z0[n2] += istate[1]
+
         x0 = linalg.lu_solve(lu_factor, z0)
     else:
         # Operating point DC solve at t = 0
@@ -258,11 +318,24 @@ def solve_transient(
                 vp = dc_sol.V(ind.node_p) if ind.node_p != "0" else 0.0
                 vn = dc_sol.V(ind.node_n) if ind.node_n != "0" else 0.0
                 i_l_state[ind.name] = (vp - vn) * 1e6
+
+            for pair in coupled_pairs:
+                vp1 = dc_sol.V(pair["p1"]) if pair["p1"] != "0" else 0.0
+                vn1 = dc_sol.V(pair["n1"]) if pair["n1"] != "0" else 0.0
+                vp2 = dc_sol.V(pair["p2"]) if pair["p2"] != "0" else 0.0
+                vn2 = dc_sol.V(pair["n2"]) if pair["n2"] != "0" else 0.0
+                v1 = vp1 - vn1
+                v2 = vp2 - vn2
+                v_coupled_state[pair["name"]] = np.array([v1, v2], dtype=float)
+                i_coupled_state[pair["name"]] = np.array([v1 * 1e6, v2 * 1e6], dtype=float)
         except Exception:
             # Fallback to zero state if DC fails
             x0 = np.zeros(n)
             for c in capacitors: v_c_state[c.name] = 0.0; i_c_state[c.name] = 0.0
             for ind in inductors: v_l_state[ind.name] = 0.0; i_l_state[ind.name] = 0.0
+            for pair in coupled_pairs:
+                v_coupled_state[pair["name"]] = np.zeros(2)
+                i_coupled_state[pair["name"]] = np.zeros(2)
 
     # Record t=0 results
     for node in node_labels:
@@ -272,6 +345,14 @@ def solve_transient(
         branch_currents[c.name][0] = i_c_state[c.name]
     for ind in inductors:
         branch_currents[ind.name][0] = i_l_state[ind.name]
+    for pair in coupled_pairs:
+        istate = i_coupled_state[pair["name"]]
+        if pair["ind1_name"] in branch_currents:
+            branch_currents[pair["ind1_name"]][0] = istate[0]
+        if pair["ind2_name"] in branch_currents:
+            branch_currents[pair["ind2_name"]][0] = istate[1]
+        if pair["name"] in branch_currents:
+            branch_currents[pair["name"]][0] = istate[0]
     for el in circuit.elements:
         if isinstance(el, Resistor):
             vp = x0[idx(el.node_p)] if idx(el.node_p) is not None else 0.0
@@ -324,6 +405,24 @@ def solve_transient(
             if p is not None: z[p] -= ieq
             if n_node is not None: z[n_node] += ieq
 
+        # Coupled pairs companion current injection
+        ieq_coupled: dict[str, np.ndarray] = {}
+        for pair in coupled_pairs:
+            G = g_eq_coupled[pair["name"]]
+            v_prev = v_coupled_state[pair["name"]]
+            i_prev = i_coupled_state[pair["name"]]
+            if method == "trapezoidal":
+                ieq = i_prev + G @ v_prev
+            else:
+                ieq = i_prev.copy()
+            ieq_coupled[pair["name"]] = ieq
+            p1, n1 = idx(pair["p1"]), idx(pair["n1"])
+            p2, n2 = idx(pair["p2"]), idx(pair["n2"])
+            if p1 is not None: z[p1] -= ieq[0]
+            if n1 is not None: z[n1] += ieq[0]
+            if p2 is not None: z[p2] -= ieq[1]
+            if n2 is not None: z[n2] += ieq[1]
+
         # Solve MNA system for step k
         x = linalg.lu_solve(lu_factor, z)
 
@@ -352,6 +451,28 @@ def solve_transient(
             v_l_state[ind.name] = v_curr
             i_l_state[ind.name] = i_curr
             branch_currents[ind.name][k] = i_curr
+
+        # Update coupled pairs states & currents
+        for pair in coupled_pairs:
+            p1, n1 = idx(pair["p1"]), idx(pair["n1"])
+            p2, n2 = idx(pair["p2"]), idx(pair["n2"])
+            vp1 = x[p1] if p1 is not None else 0.0
+            vn1 = x[n1] if n1 is not None else 0.0
+            vp2 = x[p2] if p2 is not None else 0.0
+            vn2 = x[n2] if n2 is not None else 0.0
+            v_curr = np.array([vp1 - vn1, vp2 - vn2], dtype=float)
+            G = g_eq_coupled[pair["name"]]
+            ieq = ieq_coupled[pair["name"]]
+            i_curr = G @ v_curr + ieq
+
+            v_coupled_state[pair["name"]] = v_curr
+            i_coupled_state[pair["name"]] = i_curr
+            if pair["ind1_name"] in branch_currents:
+                branch_currents[pair["ind1_name"]][k] = i_curr[0]
+            if pair["ind2_name"] in branch_currents:
+                branch_currents[pair["ind2_name"]][k] = i_curr[1]
+            if pair["name"] in branch_currents:
+                branch_currents[pair["name"]][k] = i_curr[0]
 
         # Update resistors and sources currents
         for el in circuit.elements:

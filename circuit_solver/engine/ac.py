@@ -39,6 +39,8 @@ from circuit_solver.core.elements import (
     Resistor,
     Capacitor,
     Inductor,
+    MutualCoupling,
+    Transformer,
     VoltageSource,
     CurrentSource,
     VCVS,
@@ -124,19 +126,59 @@ class ACSolution:
         return self.V_diff(el.node_p, el.node_n) * y
 
     def I_inductor(self, name: str) -> complex:
-        """Current phasor through inductor: I = V / (j*omega*L)."""
+        """Current phasor through inductor: I = V / (j*omega*L), taking mutual coupling into account."""
+        coupled_names = self.circuit.get_coupled_inductor_names()
+        if name in coupled_names:
+            for pair in self.circuit.get_coupled_pairs():
+                if pair["ind1_name"] == name:
+                    Y = pair["Gamma"] / (1j * self.omega)
+                    v1 = self.V_diff(pair["p1"], pair["n1"])
+                    v2 = self.V_diff(pair["p2"], pair["n2"])
+                    return Y[0, 0] * v1 + Y[0, 1] * v2
+                elif pair["ind2_name"] == name:
+                    Y = pair["Gamma"] / (1j * self.omega)
+                    v1 = self.V_diff(pair["p1"], pair["n1"])
+                    v2 = self.V_diff(pair["p2"], pair["n2"])
+                    return Y[1, 0] * v1 + Y[1, 1] * v2
+
         el = self._element_by_name(name, Inductor)
         y = 1.0 / (1j * self.omega * el.inductance)
         return self.V_diff(el.node_p, el.node_n) * y
+
+    def I_transformer_primary(self, name: str) -> complex:
+        """Current phasor entering primary dotted terminal p1."""
+        for pair in self.circuit.get_coupled_pairs():
+            if pair["name"] == name:
+                Y = pair["Gamma"] / (1j * self.omega)
+                v1 = self.V_diff(pair["p1"], pair["n1"])
+                v2 = self.V_diff(pair["p2"], pair["n2"])
+                return Y[0, 0] * v1 + Y[0, 1] * v2
+        raise KeyError(f"Transformer '{name}' not found.")
+
+    def I_transformer_secondary(self, name: str) -> complex:
+        """Current phasor entering secondary dotted terminal p2."""
+        for pair in self.circuit.get_coupled_pairs():
+            if pair["name"] == name:
+                Y = pair["Gamma"] / (1j * self.omega)
+                v1 = self.V_diff(pair["p1"], pair["n1"])
+                v2 = self.V_diff(pair["p2"], pair["n2"])
+                return Y[1, 0] * v1 + Y[1, 1] * v2
+        raise KeyError(f"Transformer '{name}' not found.")
 
     # ------------------------------------------------------------------
     # Power
     # ------------------------------------------------------------------
 
     def complex_power(self, name: str) -> complex:
-        """Complex power S = (1/2) * V * conj(I) absorbed by a two-terminal element."""
+        """Complex power S = (1/2) * V * conj(I) absorbed by an element."""
         for el in self.circuit.elements:
             if el.name == name:
+                if isinstance(el, Transformer):
+                    v1 = self.V_diff(el.p1, el.n1)
+                    i1 = self.I_transformer_primary(name)
+                    v2 = self.V_diff(el.p2, el.n2)
+                    i2 = self.I_transformer_secondary(name)
+                    return 0.5 * (v1 * np.conj(i1) + v2 * np.conj(i2))
                 v = self.V_diff(getattr(el, "node_p", "0"), getattr(el, "node_n", "0"))
                 if isinstance(el, Resistor):
                     i = self.I_resistor(name)
@@ -188,6 +230,11 @@ class ACSolution:
                 mag_i = abs(i)
                 deg_i = np.degrees(cmath.phase(i))
                 lines.append(f"  I({el.name:>6}) = {mag_i*1e3:>10.4f} mA ∠ {deg_i:>7.2f}°")
+            elif isinstance(el, Transformer):
+                i1 = self.I_transformer_primary(el.name)
+                i2 = self.I_transformer_secondary(el.name)
+                lines.append(f"  I({el.name:>4}_p) = {abs(i1)*1e3:>10.4f} mA ∠ {np.degrees(cmath.phase(i1)):>7.2f}°")
+                lines.append(f"  I({el.name:>4}_s) = {abs(i2)*1e3:>10.4f} mA ∠ {np.degrees(cmath.phase(i2)):>7.2f}°")
             elif isinstance(el, (VoltageSource, VCVS, CCVS, OpAmp)):
                 j = self.I_vsource(el.name)
                 lines.append(f"  I({el.name:>6}) = {abs(j)*1e3:>10.4f} mA ∠ {np.degrees(cmath.phase(j)):>7.2f}°")
@@ -222,6 +269,7 @@ def solve_ac(circuit: Circuit, frequency: float) -> ACSolution:
     n = circuit.size
     A = np.zeros((n, n), dtype=np.complex128)
     z = np.zeros(n, dtype=np.complex128)
+    coupled_names = circuit.get_coupled_inductor_names()
 
     def idx(node: str) -> int | None:
         return circuit.node_index(node)
@@ -256,6 +304,8 @@ def solve_ac(circuit: Circuit, frequency: float) -> ACSolution:
 
         # Inductor: Y = 1 / (j*omega*L) = -j / (omega*L)
         elif isinstance(el, Inductor):
+            if el.name in coupled_names:
+                continue
             y = 1.0 / (1j * omega * el.inductance)
             p, n_node = idx(el.node_p), idx(el.node_n)
             if p is not None:
@@ -369,6 +419,41 @@ def solve_ac(circuit: Circuit, frequency: float) -> ACSolution:
             if in_n is not None:
                 A[k, in_n] -= 1.0
             z[k] = 0.0
+
+    # Stamp coupled inductor pairs and transformers
+    for pair in circuit.get_coupled_pairs():
+        Y = pair["Gamma"] / (1j * omega)
+        p1, n1 = idx(pair["p1"]), idx(pair["n1"])
+        p2, n2 = idx(pair["p2"]), idx(pair["n2"])
+
+        # Port 1 self
+        y11 = Y[0, 0]
+        if p1 is not None: A[p1, p1] += y11
+        if n1 is not None: A[n1, n1] += y11
+        if p1 is not None and n1 is not None:
+            A[p1, n1] -= y11
+            A[n1, p1] -= y11
+
+        # Port 2 self
+        y22 = Y[1, 1]
+        if p2 is not None: A[p2, p2] += y22
+        if n2 is not None: A[n2, n2] += y22
+        if p2 is not None and n2 is not None:
+            A[p2, n2] -= y22
+            A[n2, p2] -= y22
+
+        # Mutual cross
+        y12 = Y[0, 1]
+        y21 = Y[1, 0]
+        if p1 is not None and p2 is not None: A[p1, p2] += y12
+        if p1 is not None and n2 is not None: A[p1, n2] -= y12
+        if n1 is not None and p2 is not None: A[n1, p2] -= y12
+        if n1 is not None and n2 is not None: A[n1, n2] += y12
+
+        if p2 is not None and p1 is not None: A[p2, p1] += y21
+        if p2 is not None and n1 is not None: A[p2, n1] -= y21
+        if n2 is not None and p1 is not None: A[n2, p1] -= y21
+        if n2 is not None and n1 is not None: A[n2, n1] += y21
 
     try:
         x = np.linalg.solve(A, z)

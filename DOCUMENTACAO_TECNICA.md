@@ -202,6 +202,45 @@ A análise de ponto de operação estático (.op) calcula as grandezas elétrica
 
 ---
 
+### 1.9 Transformadores e Acoplamento Magnético Mútuo (Elemento K do SPICE — Alexander & Sadiku Cap. 13)
+
+Circuito com indutores acoplados magneticamente por fluxo compartilhado (transformadores de dois enrolamentos e elemento de acoplamento mútuo SPICE `K`):
+
+1. **Equações Constitutivas e Indutância Mútua:**
+   A indutância mútua $M$ entre duas bobinas $L_1$ e $L_2$ com coeficiente de acoplamento magnético $k$ ($-1.0 \le k \le 1.0$) é regida por:
+   $$M = k \sqrt{L_1 L_2}$$
+   No domínio do tempo:
+   $$\begin{bmatrix} v_1(t) \\ v_2(t) \end{bmatrix} = \begin{bmatrix} L_1 & M \\ M & L_2 \end{bmatrix} \frac{d}{dt}\begin{bmatrix} i_1(t) \\ i_2(t) \end{bmatrix} = \mathbf{L} \frac{d\mathbf{i}}{dt}$$
+   A matriz de indutância inversa $\mathbf{\Gamma} = \mathbf{L}^{-1}$ (unidade $\text{H}^{-1}$) é dada por:
+   $$\det(\mathbf{L}) = L_1 L_2 - M^2 = L_1 L_2 (1 - k^2)$$
+   $$\mathbf{\Gamma} = \frac{1}{\det(\mathbf{L})} \begin{bmatrix} L_2 & -M \\ -M & L_1 \end{bmatrix}$$
+   Para prevenir singularidade numérica quando $|k| = 1.0$, o solver aplica clamp $|k| \le 0.9999999$.
+
+2. **Estampagem de Admitância AC (Regime Permanente Senoidal):**
+   No domínio fasorial:
+   $$\mathbf{I} = \frac{1}{j\omega} \mathbf{\Gamma} \mathbf{V} = \mathbf{Y}_{coupled} \mathbf{V}$$
+   onde $\mathbf{Y}_{coupled} = -j \frac{\mathbf{\Gamma}}{\omega}$. A matriz de duas portas é estampada na matriz nodal MNA considerando os nós do primário $(p_1, n_1)$ e do secundário $(p_2, n_2)$:
+   * Auto-admitância primário: $+Y_{11}$ em $(p_1, p_1)$ e $(n_1, n_1)$; $-Y_{11}$ em $(p_1, n_1)$ e $(n_1, p_1)$.
+   * Auto-admitância secundário: $+Y_{22}$ em $(p_2, p_2)$ e $(n_2, n_2)$; $-Y_{22}$ em $(p_2, n_2)$ e $(n_2, p_2)$.
+   * Acoplamento cruzado mútuo:
+     $$\mathbf{A}[p_1, p_2] \mathrel{+}= Y_{12}, \quad \mathbf{A}[p_1, n_2] \mathrel{-}= Y_{12}, \quad \mathbf{A}[n_1, p_2] \mathrel{-}= Y_{12}, \quad \mathbf{A}[n_1, n_2] \mathrel{+}= Y_{12}$$
+     $$\mathbf{A}[p_2, p_1] \mathrel{+}= Y_{21}, \quad \mathbf{A}[p_2, n_1] \mathrel{-}= Y_{21}, \quad \mathbf{A}[n_2, p_1] \mathrel{-}= Y_{21}, \quad \mathbf{A}[n_2, n_1] \mathrel{+}= Y_{21}$$
+
+3. **Modelo Companheiro Transiente (Domínio do Tempo):**
+   Integrando numericamente $\frac{d\mathbf{i}}{dt} = \mathbf{\Gamma} \mathbf{v}(t)$ com passo $\Delta t$:
+   $$\mathbf{G}_{eq} = \begin{cases} \frac{\Delta t}{2} \mathbf{\Gamma} & \text{(Regra Trapezoidal)} \\ \Delta t \mathbf{\Gamma} & \text{(Backward Euler)} \end{cases}$$
+   $$\mathbf{I}_{eq, k} = \begin{cases} \mathbf{i}_{k-1} + \mathbf{G}_{eq} \mathbf{v}_{k-1} & \text{(Regra Trapezoidal)} \\ \mathbf{i}_{k-1} & \text{(Backward Euler)} \end{cases}$$
+   A matriz $\mathbf{G}_{eq}$ é estampada invariantemente no tempo na matriz $\mathbf{A}$, e o vetor de correntes históricas $\mathbf{I}_{eq}$ é injetado no vetor $\mathbf{z}$ a cada passo de tempo ($-I_{eq, 1}$ em $p_1$, $+I_{eq, 1}$ em $n_1$; $-I_{eq, 2}$ em $p_2$, $+I_{eq, 2}$ em $n_2$).
+
+4. **Regime Permanente DC:**
+   Em corrente contínua estática ($\omega = 0$), os enrolamentos de indutores ideais comportam-se como curto-circuitos perfeitos (condutância parasita $g = 10^6\ \Omega^{-1}$).
+
+5. **Sintaxe SPICE Suportada:**
+   * Acoplamento mútuo entre dois indutores: `K<name> <L1> <L2> <k>` (ex: `K1 L1 L2 0.999`)
+   * Transformador integrado de 2 enrolamentos: `T<name> <p1> <n1> <p2> <n2> <L1> <L2> [k]` (ex: `T1 1 0 2 0 10m 2.5m 0.999`)
+
+---
+
 ## 2. 🛡️ Validação Topológica e Teoria dos Grafos (`validator.py`)
 
 A maior causa de falha em simuladores de circuitos (inclusive no SPICE original) são circuitos fisicamente incoerentes que resultam em matrizes singulares (`LinAlgError`). O `pycircuit-solver` intercepta esses problemas **antes** de montar as matrizes através de algoritmos de Teoria dos Grafos:
