@@ -149,7 +149,9 @@ def _cmd_tran(args: argparse.Namespace) -> int:
         dt=dt,
         method=args.method,
         uic=args.uic,
+        backend=getattr(args, "backend", "auto"),
     )
+
     print(sol.summary())
 
     if args.plot or args.save:
@@ -285,7 +287,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_tran.add_argument("--node", type=str, default=None, help="Nó específico para plotar")
     p_tran.add_argument("--element", type=str, default=None, help="Elemento para plotar corrente")
     p_tran.add_argument("--uic", action="store_true", help="Usar condições iniciais dos elementos (UIC)")
+    p_tran.add_argument("--backend", choices=["auto", "rust", "python"], default="auto",
+                        help="Motor de execução: 'auto' (Rust se disponível), 'rust', ou 'python'")
     p_tran.add_argument("--plot", action="store_true", help="Exibir gráfico das formas de onda")
+
     p_tran.add_argument("--save", type=str, default=None, help="Salvar gráfico das formas de onda em arquivo")
 
     # dc

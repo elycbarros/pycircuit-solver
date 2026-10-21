@@ -120,3 +120,109 @@ pub struct RustCircuit {
     pub opamps: Vec<RustOpAmp>,
     pub inductors_dc: Vec<RustInductorDC>,
 }
+
+// ---------------------------------------------------------------------------
+// Transient Time-Domain Dynamic Elements & Waveforms
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub enum RustWaveform {
+    DC(f64),
+    Step { v1: f64, v2: f64, t_step: f64 },
+    Pulse { v1: f64, v2: f64, td: f64, tr: f64, tf: f64, pw: f64, per: f64 },
+    Sine { vo: f64, va: f64, freq: f64, td: f64, theta: f64 },
+}
+
+impl RustWaveform {
+    #[inline]
+    pub fn eval(&self, t: f64) -> f64 {
+        match *self {
+            RustWaveform::DC(val) => val,
+            RustWaveform::Step { v1, v2, t_step } => {
+                if t < t_step { v1 } else { v2 }
+            }
+            RustWaveform::Pulse { v1, v2, td, tr, tf, pw, per } => {
+                if t < td {
+                    return v1;
+                }
+                let t_rel = if per > 0.0 { (t - td) % per } else { t - td };
+                if t_rel < tr {
+                    v1 + (v2 - v1) * (t_rel / tr.max(1e-15))
+                } else if t_rel < tr + pw {
+                    v2
+                } else if t_rel < tr + pw + tf {
+                    v2 - (v2 - v1) * ((t_rel - tr - pw) / tf.max(1e-15))
+                } else {
+                    v1
+                }
+            }
+            RustWaveform::Sine { vo, va, freq, td, theta } => {
+                if t < td {
+                    vo + va * (theta.to_radians()).sin()
+                } else {
+                    let angle = 2.0 * std::f64::consts::PI * freq * (t - td) + theta.to_radians();
+                    vo + va * angle.sin()
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RustCapacitor {
+    pub capacitance: f64,
+    pub ic: f64,
+    pub node_p_idx: Option<usize>,
+    pub node_n_idx: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RustInductor {
+    pub inductance: f64,
+    pub ic: f64,
+    pub node_p_idx: Option<usize>,
+    pub node_n_idx: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RustCoupledInductorPair {
+    pub l1: f64,
+    pub l2: f64,
+    pub k: f64,
+    pub p1_idx: Option<usize>,
+    pub n1_idx: Option<usize>,
+    pub p2_idx: Option<usize>,
+    pub n2_idx: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RustVSourceTran {
+    pub waveform: RustWaveform,
+    pub node_p_idx: Option<usize>,
+    pub node_n_idx: Option<usize>,
+    pub aux_idx: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct RustISourceTran {
+    pub waveform: RustWaveform,
+    pub node_p_idx: Option<usize>,
+    pub node_n_idx: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RustTransientCircuit {
+    pub n_nodes: usize,
+    pub size: usize,
+    pub resistors: Vec<RustResistorStamped>,
+    pub vsources: Vec<RustVSourceTran>,
+    pub isources: Vec<RustISourceTran>,
+    pub vcvs: Vec<RustVCVS>,
+    pub vccs: Vec<RustVCCS>,
+    pub cccs: Vec<RustCCCS>,
+    pub ccvs: Vec<RustCCVS>,
+    pub opamps: Vec<RustOpAmp>,
+    pub capacitors: Vec<RustCapacitor>,
+    pub inductors: Vec<RustInductor>,
+    pub coupled: Vec<RustCoupledInductorPair>,
+}

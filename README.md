@@ -33,8 +33,10 @@ O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contr
 * **Semicondutores & Solver de Newton-Raphson:** Resolução iterativa de circuitos não-lineares ($Q$-point) com Diodos de Junção (Equação de Shockley), Diodos Zener (regulação de tensão reversa), Transistores BJT (Ebers-Moll ativo e saturado) e MOSFETs (modelo quadrático de corte, triodo e saturação), amortecimento numérico SPICE (`pnjlim`, `fetlim`) e convergência estrita de resíduos ($\epsilon < 10^{-6}$).
 * **Análise Transitória no Domínio do Tempo (`.tran`):** Simulação dinâmica de carga e descarga em capacitores e indutores (circuitos RC, RL e RLC de 2ª ordem) via modelos companheiros de integração implícita (**Trapezoidal Rule** e **Backward Euler**) com formas de onda `PULSE`, `SIN` e `STEP`.
 * **Fontes Dependentes Completas:** Suporte integral aos elementos SPICE $E$ (VCVS), $G$ (VCCS), $F$ (CCCS) e $H$ (CCVS).
-* **Elementos Reativos (L e C):** Modelagem de capacitores e indutores em regime permanente senoidal e curto-circuito indutivo em CC.
-* **CLI Integrada (`pycircuit`):** Resolução, Thévenin, Monte Carlo e análise CA diretamente no terminal.
+* **Motor Transiente de Alta Performance em Rust (>1.000.000 passos/s):** Simulação ultra-rápida no domínio do tempo com modelos companion (Trapezoidal Rule e Backward Euler). A matriz MNA é fatorada uma única vez via LU ($O(N^3)$) e cada passo temporal é resolvido em $O(N^2)$ por substituição em código Rust compilado. Inclui auditoria em tempo real de conservação de energia ($E_{\text{stored}}(t) = \frac{1}{2}\sum C v_c^2 + \frac{1}{2}\sum L i_l^2$ e $P_{\text{diss}}(t) = \sum v_r^2/R$) e despacho transparente com fallback automático.
+* **Subcircuitos SPICE Hierárquicos (.subckt / .ends):** Suporte nativo a subcircuitos com hierarquia aninhada arbitrária, avaliação paramétrica (`PARAMS:`) com expressões matemáticas `{...}`, biblioteca pedagógica embutida (LM741, inversor CMOS, Sallen-Key), introspecção White-Box e comandos `pycircuit explain` e `pycircuit hierarchy`.
+* **Análise CA de Pequenos Sinais com Semicondutores:** Ponto de operação DC ($Q$-point) com Newton-Raphson e linearização analítica automática para Diodos ($r_d$), BJTs (modelo híbrido-$\pi$: $g_m, r_\pi, r_o$) e MOSFETs ($g_m, r_{ds}$), permitindo traçar diagramas de Bode de amplificadores transistorizados.
+* **CLI Integrada (`pycircuit`):** Resolução, Thévenin, Monte Carlo, análise CA, transiente (`pycircuit tran --backend rust`), ponto de operação (`pycircuit op`) e inspeção de macromodelos (`pycircuit explain`) diretamente no terminal.
 * **Validador Topológico Pré-Solver (`validator.py`):** Checagem por busca em largura (BFS) de conectividade com o terra, detecção de loops ilegais de fontes de tensão por DFS, impedância de controle de fontes dependentes e nós flutuantes.
 * **Conversor de Sufixos de Engenharia:** Leitura nativa de notações laboratoriais (`"4.7k"`, `"10mA"`, `"220u"`, `"4k7"`, `"1MEG"`).
 * **Extrator de Thévenin/Norton Dual:** Método híbrido (injeção de tensão e injeção de corrente) que resolve casos degenerados como fontes ideais nos terminais ($R_{th} = 0\ \Omega$) ou terminais abertos ($R_{th} \to \infty$).
@@ -65,35 +67,40 @@ pycircuit-solver/
 │   ├── cli.py                           # Interface de Linha de Comando (CLI pycircuit)
 │   ├── core/
 │   │   ├── __init__.py
-│   │   ├── elements.py                  # Dataclasses (R, C, L, V, I, VCVS, VCCS, CCCS, CCVS, OpAmp)
+│   │   ├── elements.py                  # Dataclasses (R, C, L, V, I, VCVS, VCCS, CCCS, CCVS, OpAmp, Diodos, BJT, MOS)
 │   │   ├── circuit.py                   # Container de topologia e mapeamento de nós
 │   │   ├── validator.py                 # Validador topológico (BFS, detecção de loops KVL e sufixos)
-│   │   └── solution.py                  # Processamento de tensões, correntes e balanço de Tellegen
+│   │   ├── solution.py                  # Processamento de tensões, correntes e balanço de Tellegen
+│   │   ├── subcircuit.py                # Expansão hierárquica e introspecção White-Box
+│   │   └── builtin_library.py           # Biblioteca didática de macromodelos (741, CMOS, Sallen-Key)
 │   │
 │   ├── engine/
 │   │   ├── __init__.py
 │   │   ├── mna.py                       # Algoritmo MNA estático (DC) em NumPy
 │   │   ├── ac.py                        # Motor fasorial e resposta em frequência (CA) em complex128
-│   │   ├── transient.py                 # Motor de análise transitória no tempo (Trapezoidal e Euler)
+│   │   ├── small_signal.py              # Análise CA de pequenos sinais com linearização de semicondutores
+│   │   ├── transient.py                 # Motor de análise transitória com auto-dispatch para Rust
+│   │   ├── transient_rust.py            # Ponte Python ↔ Rust para simulação transiente ultra-rápida
 │   │   ├── thevenin.py                  # Extração dual de Thévenin, Norton e Máxima Potência
 │   │   ├── monte_carlo.py               # Varredura estatística em Python puro (fallback)
 │   │   └── monte_carlo_rust.py          # Ponte de alta performance Python ↔ Rust (PyO3)
 │   │
 │   ├── io/
 │   │   ├── __init__.py
-│   │   └── parser.py                    # Leitor de arquivos Netlist SPICE (.cir) com PULSE e SIN
+│   │   └── parser.py                    # Leitor de netlists SPICE com .subckt, .include, PULSE e SIN
 │   │
 │   └── visualization/
 │       ├── __init__.py
 │       └── plots.py                     # Gráficos de potência, Monte Carlo, Bode e Transiente
 │
 ├── rust_core/                           # Núcleo de cálculo de alta performance em Rust (PyO3 + rayon)
-│   ├── Cargo.toml                       # Manifesto Rust com rayon, nalgebra, numpy e pyo3
+│   ├── Cargo.toml                       # Manifesto Rust com rayon, nalgebra, faer e pyo3
 │   └── src/
 │       ├── lib.rs                       # Interface CPython/PyO3 e funções exportadas
 │       ├── types.rs                     # Estruturas de dados pré-resolvidas sem overhead de strings
-│       ├── mna_core.rs                  # Montagem MNA e resolução LU com pivotamento total
-│       └── monte_carlo.rs               # Simulação de Monte Carlo com paralelismo real via rayon (sem GIL)
+│       ├── mna_core.rs                  # Montagem MNA e resolução LU densa e esparsa (Faer)
+│       ├── monte_carlo.rs               # Simulação de Monte Carlo com paralelismo real via rayon
+│       └── transient.rs                 # Motor de integração implícita transiente (>1M steps/s)
 │
 ├── examples/                            # Scripts de problemas clássicos resolvidos
 │   ├── cap02_ponte_wheatstone.py        # Ponte de Wheatstone desbalanceada + Monte Carlo
@@ -102,19 +109,23 @@ pycircuit-solver/
 │   ├── cap07_transiente_rlc.py          # Resposta ao degrau de RLC de 2ª ordem e overshoot
 │   └── cap09_filtro_rc_fasores.py       # Filtro passa-baixas RC, fasores e Diagrama de Bode
 │
-└── tests/                               # Suíte de testes automatizados (101 testes pytest)
+└── tests/                               # Suíte de testes automatizados (129 testes pytest)
+    ├── test_rust_transient.py           # Testes do motor transiente em Rust, conservação de energia e speedup
+    ├── test_small_signal_ac.py          # Testes de pequenos sinais com diodos, BJT e MOSFET
+    ├── test_subcircuits.py              # Testes de subcircuitos SPICE (.subckt), parâmetros e introspecção
     ├── test_textbook_benchmarks.py      # Validação analítica multi-livros (Sadiku, Nilsson, Boylestad, Dorf)
     ├── test_coupled_inductors.py        # Acoplamento magnético mútuo, transformador e Sadiku Cap. 13
     ├── test_nonlinear.py                # Semicondutores não-lineares e Newton-Raphson (Diodo, Zener, BJT, MOSFET)
     ├── test_dc_sweep.py                 # Varredura paramétrica DC (.dc sweep), curvas IV e famílias 2D
     ├── test_transient.py                # Testes analíticos de transitório RC, RL, RLC e formas de onda
     ├── test_rust_monte_carlo.py         # Testes de correção, reprodutibilidade e speedup do motor Rust
+    ├── test_sparse_and_rust.py          # Testes de MNA esparso (Faer / SciPy) e grandes circuitos
     ├── test_robustness_edge_cases.py    # Testes de robustez, BFS, loops KVL, R_th=0 e parser
     ├── test_validator.py                # Testes de validação topológica e sufixos
     ├── test_mna_engine.py               # Testes analíticos do motor MNA e 4 fontes dependentes
-    ├── test_thevenin.py                 # Testes de Thévenin/Norton e máxima transferência
     ├── test_ac_engine.py                # Testes de análise CA, ressonância e corte
     └── test_cli.py                      # Testes da interface de terminal pycircuit
+
 ```
 
 ---

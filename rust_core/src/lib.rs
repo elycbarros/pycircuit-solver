@@ -18,6 +18,7 @@ use numpy::{IntoPyArray, PyArray1, PyArray2};
 mod types;
 mod mna_core;
 mod monte_carlo;
+mod transient;
 
 use crate::types::{
     RustCircuit, RustResistorStamped, RustVSource, RustISource,
@@ -189,6 +190,110 @@ impl PyInductorDC {
     #[new]
     fn new(node_p_idx: i64, node_n_idx: i64) -> Self {
         PyInductorDC { node_p_idx, node_n_idx }
+    }
+}
+
+/// Capacitor descriptor for transient analysis.
+#[pyclass]
+#[derive(Clone)]
+pub struct PyCapacitor {
+    #[pyo3(get, set)] pub capacitance: f64,
+    #[pyo3(get, set)] pub ic: f64,
+    #[pyo3(get, set)] pub node_p_idx: i64,
+    #[pyo3(get, set)] pub node_n_idx: i64,
+}
+
+#[pymethods]
+impl PyCapacitor {
+    #[new]
+    fn new(capacitance: f64, ic: f64, node_p_idx: i64, node_n_idx: i64) -> Self {
+        PyCapacitor { capacitance, ic, node_p_idx, node_n_idx }
+    }
+}
+
+/// Inductor descriptor for transient analysis.
+#[pyclass]
+#[derive(Clone)]
+pub struct PyInductor {
+    #[pyo3(get, set)] pub inductance: f64,
+    #[pyo3(get, set)] pub ic: f64,
+    #[pyo3(get, set)] pub node_p_idx: i64,
+    #[pyo3(get, set)] pub node_n_idx: i64,
+}
+
+#[pymethods]
+impl PyInductor {
+    #[new]
+    fn new(inductance: f64, ic: f64, node_p_idx: i64, node_n_idx: i64) -> Self {
+        PyInductor { inductance, ic, node_p_idx, node_n_idx }
+    }
+}
+
+/// Coupled inductors pair descriptor.
+#[pyclass]
+#[derive(Clone)]
+pub struct PyCoupledPair {
+    #[pyo3(get, set)] pub l1: f64,
+    #[pyo3(get, set)] pub l2: f64,
+    #[pyo3(get, set)] pub k: f64,
+    #[pyo3(get, set)] pub p1_idx: i64,
+    #[pyo3(get, set)] pub n1_idx: i64,
+    #[pyo3(get, set)] pub p2_idx: i64,
+    #[pyo3(get, set)] pub n2_idx: i64,
+}
+
+#[pymethods]
+impl PyCoupledPair {
+    #[new]
+    fn new(l1: f64, l2: f64, k: f64, p1_idx: i64, n1_idx: i64, p2_idx: i64, n2_idx: i64) -> Self {
+        PyCoupledPair { l1, l2, k, p1_idx, n1_idx, p2_idx, n2_idx }
+    }
+}
+
+/// Source with waveform descriptor for transient analysis.
+#[pyclass]
+#[derive(Clone)]
+pub struct PySourceTran {
+    #[pyo3(get, set)] pub kind: u8,
+    #[pyo3(get, set)] pub params: Vec<f64>,
+    #[pyo3(get, set)] pub node_p_idx: i64,
+    #[pyo3(get, set)] pub node_n_idx: i64,
+    #[pyo3(get, set)] pub aux_idx: usize,
+}
+
+#[pymethods]
+impl PySourceTran {
+    #[new]
+    fn new(kind: u8, params: Vec<f64>, node_p_idx: i64, node_n_idx: i64, aux_idx: usize) -> Self {
+        PySourceTran { kind, params, node_p_idx, node_n_idx, aux_idx }
+    }
+}
+
+fn to_rust_waveform(kind: u8, p: &[f64]) -> crate::types::RustWaveform {
+    match kind {
+        0 => crate::types::RustWaveform::DC(p.get(0).copied().unwrap_or(0.0)),
+        1 => crate::types::RustWaveform::Step {
+            v1: p.get(0).copied().unwrap_or(0.0),
+            v2: p.get(1).copied().unwrap_or(1.0),
+            t_step: p.get(2).copied().unwrap_or(0.0),
+        },
+        2 => crate::types::RustWaveform::Pulse {
+            v1: p.get(0).copied().unwrap_or(0.0),
+            v2: p.get(1).copied().unwrap_or(1.0),
+            td: p.get(2).copied().unwrap_or(0.0),
+            tr: p.get(3).copied().unwrap_or(1e-9),
+            tf: p.get(4).copied().unwrap_or(1e-9),
+            pw: p.get(5).copied().unwrap_or(1.0),
+            per: p.get(6).copied().unwrap_or(2.0),
+        },
+        3 => crate::types::RustWaveform::Sine {
+            vo: p.get(0).copied().unwrap_or(0.0),
+            va: p.get(1).copied().unwrap_or(1.0),
+            freq: p.get(2).copied().unwrap_or(60.0),
+            td: p.get(3).copied().unwrap_or(0.0),
+            theta: p.get(4).copied().unwrap_or(0.0),
+        },
+        _ => crate::types::RustWaveform::DC(0.0),
     }
 }
 
@@ -454,6 +559,219 @@ fn solve_mna_sparse<'py>(
     }
 }
 
+fn to_rust_transient_circuit(
+    n_nodes: usize,
+    size: usize,
+    resistors: &[PyResistor],
+    vsources: &[PySourceTran],
+    isources: &[PySourceTran],
+    capacitors: &[PyCapacitor],
+    inductors: &[PyInductor],
+    coupled: Option<&[PyCoupledPair]>,
+    vcvs: Option<&[PyVCVS]>,
+    vccs: Option<&[PyVCCS]>,
+    cccs: Option<&[PyCCCS]>,
+    ccvs: Option<&[PyCCVS]>,
+    opamps: Option<&[PyOpAmp]>,
+) -> crate::types::RustTransientCircuit {
+    crate::types::RustTransientCircuit {
+        n_nodes,
+        size,
+        resistors: resistors.iter().map(|r| RustResistorStamped {
+            resistance: r.resistance,
+            tolerance: r.tolerance,
+            node_p_idx: opt_idx(r.node_p_idx),
+            node_n_idx: opt_idx(r.node_n_idx),
+        }).collect(),
+        vsources: vsources.iter().map(|v| crate::types::RustVSourceTran {
+            waveform: to_rust_waveform(v.kind, &v.params),
+            node_p_idx: opt_idx(v.node_p_idx),
+            node_n_idx: opt_idx(v.node_n_idx),
+            aux_idx: v.aux_idx,
+        }).collect(),
+        isources: isources.iter().map(|i| crate::types::RustISourceTran {
+            waveform: to_rust_waveform(i.kind, &i.params),
+            node_p_idx: opt_idx(i.node_p_idx),
+            node_n_idx: opt_idx(i.node_n_idx),
+        }).collect(),
+        vcvs: vcvs.unwrap_or(&[]).iter().map(|e| crate::types::RustVCVS {
+            gain: e.gain,
+            node_p_idx: opt_idx(e.node_p_idx),
+            node_n_idx: opt_idx(e.node_n_idx),
+            ctrl_p_idx: opt_idx(e.ctrl_p_idx),
+            ctrl_n_idx: opt_idx(e.ctrl_n_idx),
+            aux_idx: e.aux_idx,
+        }).collect(),
+        vccs: vccs.unwrap_or(&[]).iter().map(|g| crate::types::RustVCCS {
+            gm: g.gm,
+            node_p_idx: opt_idx(g.node_p_idx),
+            node_n_idx: opt_idx(g.node_n_idx),
+            ctrl_p_idx: opt_idx(g.ctrl_p_idx),
+            ctrl_n_idx: opt_idx(g.ctrl_n_idx),
+        }).collect(),
+        cccs: cccs.unwrap_or(&[]).iter().map(|f| crate::types::RustCCCS {
+            gain: f.gain,
+            node_p_idx: opt_idx(f.node_p_idx),
+            node_n_idx: opt_idx(f.node_n_idx),
+            vctrl_aux_idx: f.vctrl_aux_idx,
+        }).collect(),
+        ccvs: ccvs.unwrap_or(&[]).iter().map(|h| crate::types::RustCCVS {
+            transresistance: h.transresistance,
+            node_p_idx: opt_idx(h.node_p_idx),
+            node_n_idx: opt_idx(h.node_n_idx),
+            aux_idx: h.aux_idx,
+            vctrl_aux_idx: h.vctrl_aux_idx,
+        }).collect(),
+        opamps: opamps.unwrap_or(&[]).iter().map(|op| crate::types::RustOpAmp {
+            in_p_idx: opt_idx(op.in_p_idx),
+            in_n_idx: opt_idx(op.in_n_idx),
+            out_idx: opt_idx(op.out_idx),
+            gnd_idx: opt_idx(op.gnd_idx),
+            aux_idx: op.aux_idx,
+        }).collect(),
+        capacitors: capacitors.iter().map(|c| crate::types::RustCapacitor {
+            capacitance: c.capacitance,
+            ic: c.ic,
+            node_p_idx: opt_idx(c.node_p_idx),
+            node_n_idx: opt_idx(c.node_n_idx),
+        }).collect(),
+        inductors: inductors.iter().map(|l| crate::types::RustInductor {
+            inductance: l.inductance,
+            ic: l.ic,
+            node_p_idx: opt_idx(l.node_p_idx),
+            node_n_idx: opt_idx(l.node_n_idx),
+        }).collect(),
+        coupled: coupled.unwrap_or(&[]).iter().map(|cp| crate::types::RustCoupledInductorPair {
+            l1: cp.l1,
+            l2: cp.l2,
+            k: cp.k,
+            p1_idx: opt_idx(cp.p1_idx),
+            n1_idx: opt_idx(cp.n1_idx),
+            p2_idx: opt_idx(cp.p2_idx),
+            n2_idx: opt_idx(cp.n2_idx),
+        }).collect(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Exported Python function: solve_transient_rust
+// ---------------------------------------------------------------------------
+
+/// Solve high-performance time-domain transient simulation in Rust.
+#[pyfunction]
+#[pyo3(signature = (n_nodes, size, resistors, vsources, isources, capacitors, inductors, t_stop, dt, method=0, uic=false, coupled=None, vcvs=None, vccs=None, cccs=None, ccvs=None, opamps=None))]
+fn solve_transient_rust<'py>(
+    py: Python<'py>,
+    n_nodes: usize,
+    size: usize,
+    resistors: Vec<PyResistor>,
+    vsources: Vec<PySourceTran>,
+    isources: Vec<PySourceTran>,
+    capacitors: Vec<PyCapacitor>,
+    inductors: Vec<PyInductor>,
+    t_stop: f64,
+    dt: f64,
+    method: u8,
+    uic: bool,
+    coupled: Option<Vec<PyCoupledPair>>,
+    vcvs: Option<Vec<PyVCVS>>,
+    vccs: Option<Vec<PyVCCS>>,
+    cccs: Option<Vec<PyCCCS>>,
+    ccvs: Option<Vec<PyCCVS>>,
+    opamps: Option<Vec<PyOpAmp>>,
+) -> PyResult<(
+    Bound<'py, PyArray1<f64>>,  // time_vec (n_steps)
+    Bound<'py, PyArray2<f64>>,  // node_voltages (n_nodes, n_steps)
+    Bound<'py, PyArray2<f64>>,  // cap_currents (n_caps, n_steps)
+    Bound<'py, PyArray2<f64>>,  // ind_currents (n_inds, n_steps)
+    Bound<'py, PyArray2<f64>>,  // coupled_currents (2 * n_coupled, n_steps)
+    Bound<'py, PyArray2<f64>>,  // vsource_currents (n_vsources, n_steps)
+    Bound<'py, PyArray1<f64>>,  // energy_stored (n_steps)
+    Bound<'py, PyArray1<f64>>,  // power_dissipated (n_steps)
+    u64,                        // lu_factor_time_ns
+    u64,                        // step_loop_time_ns
+)> {
+    let circuit = to_rust_transient_circuit(
+        n_nodes,
+        size,
+        &resistors,
+        &vsources,
+        &isources,
+        &capacitors,
+        &inductors,
+        coupled.as_deref(),
+        vcvs.as_deref(),
+        vccs.as_deref(),
+        cccs.as_deref(),
+        ccvs.as_deref(),
+        opamps.as_deref(),
+    );
+
+    let out = transient::run_transient(&circuit, t_stop, dt, method, uic)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+
+    let n_steps = out.time_vec.len();
+    let n_caps = circuit.capacitors.len();
+    let n_inds = circuit.inductors.len();
+
+    let node_voltages_arr = if n_nodes > 0 && n_steps > 0 {
+        ndarray::Array2::from_shape_vec((n_nodes, n_steps), out.node_voltages)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+            .into_pyarray(py)
+    } else {
+        ndarray::Array2::<f64>::zeros((0, n_steps)).into_pyarray(py)
+    };
+
+    let cap_currents_arr = if n_caps > 0 && n_steps > 0 {
+        ndarray::Array2::from_shape_vec((n_caps, n_steps), out.cap_currents)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+            .into_pyarray(py)
+    } else {
+        ndarray::Array2::<f64>::zeros((0, n_steps)).into_pyarray(py)
+    };
+
+    let ind_currents_arr = if n_inds > 0 && n_steps > 0 {
+        ndarray::Array2::from_shape_vec((n_inds, n_steps), out.ind_currents)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+            .into_pyarray(py)
+    } else {
+        ndarray::Array2::<f64>::zeros((0, n_steps)).into_pyarray(py)
+    };
+
+    let n_coupled = circuit.coupled.len();
+    let n_vsources = circuit.vsources.len();
+
+    let coupled_currents_arr = if n_coupled > 0 && n_steps > 0 {
+        ndarray::Array2::from_shape_vec((2 * n_coupled, n_steps), out.coupled_currents)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+            .into_pyarray(py)
+    } else {
+        ndarray::Array2::<f64>::zeros((0, n_steps)).into_pyarray(py)
+    };
+
+    let vsource_currents_arr = if n_vsources > 0 && n_steps > 0 {
+        ndarray::Array2::from_shape_vec((n_vsources, n_steps), out.vsource_currents)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+            .into_pyarray(py)
+    } else {
+        ndarray::Array2::<f64>::zeros((0, n_steps)).into_pyarray(py)
+    };
+
+    Ok((
+        out.time_vec.into_pyarray(py),
+        node_voltages_arr,
+        cap_currents_arr,
+        ind_currents_arr,
+        coupled_currents_arr,
+        vsource_currents_arr,
+        out.energy_stored.into_pyarray(py),
+        out.power_dissipated.into_pyarray(py),
+        out.lu_factor_time_ns,
+        out.step_loop_time_ns,
+    ))
+}
+
+
 // ---------------------------------------------------------------------------
 // Module registration
 // ---------------------------------------------------------------------------
@@ -469,8 +787,14 @@ fn pycircuit_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyCCVS>()?;
     m.add_class::<PyOpAmp>()?;
     m.add_class::<PyInductorDC>()?;
+    m.add_class::<PyCapacitor>()?;
+    m.add_class::<PyInductor>()?;
+    m.add_class::<PyCoupledPair>()?;
+    m.add_class::<PySourceTran>()?;
     m.add_function(wrap_pyfunction!(monte_carlo_run, m)?)?;
     m.add_function(wrap_pyfunction!(solve_mna_single, m)?)?;
     m.add_function(wrap_pyfunction!(solve_mna_sparse, m)?)?;
+    m.add_function(wrap_pyfunction!(solve_transient_rust, m)?)?;
     Ok(())
 }
+

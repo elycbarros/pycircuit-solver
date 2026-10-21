@@ -17,6 +17,7 @@ from typing import Literal, Sequence
 import numpy as np
 from scipy import linalg
 
+import time
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (
     Resistor,
@@ -35,8 +36,13 @@ from circuit_solver.core.elements import (
 )
 from circuit_solver.core.transient_solution import TransientSolution
 from circuit_solver.engine.mna import build_mna, solve as solve_dc
+from circuit_solver.engine.transient_rust import (
+    solve_transient_rust,
+    can_run_in_rust,
+    RUST_AVAILABLE,
+)
 
-__all__ = ["solve_transient"]
+__all__ = ["solve_transient", "RUST_AVAILABLE"]
 
 
 def solve_transient(
@@ -46,6 +52,7 @@ def solve_transient(
     dt: float,
     method: Literal["trapezoidal", "euler"] = "trapezoidal",
     uic: bool = False,
+    backend: Literal["auto", "rust", "python"] = "auto",
 ) -> TransientSolution:
     """Run time-domain transient simulation on a linear circuit.
 
@@ -62,6 +69,9 @@ def solve_transient(
     uic : bool, optional
         Use Initial Conditions: if True, start from the elements' ``ic``
         attributes; if False, calculate DC operating point at t=0.
+    backend : {"auto", "rust", "python"}, optional
+        Execution backend. "auto" uses compiled Rust if available and topology
+        is supported, falling back seamlessly to Python.
 
     Returns
     -------
@@ -72,6 +82,16 @@ def solve_transient(
         raise ValueError(f"t_stop must be positive, got {t_stop}")
     if dt <= 0 or dt > t_stop:
         raise ValueError(f"dt must be positive and <= t_stop, got {dt}")
+
+    if backend == "rust":
+        return solve_transient_rust(circuit, t_stop=t_stop, dt=dt, method=method, uic=uic)
+
+    if backend == "auto" and RUST_AVAILABLE:
+        ok, _ = can_run_in_rust(circuit)
+        if ok:
+            return solve_transient_rust(circuit, t_stop=t_stop, dt=dt, method=method, uic=uic)
+
+    t_py_start = time.perf_counter()
 
     time_vec = np.arange(0.0, t_stop + 0.5 * dt, dt)
     n_steps = len(time_vec)
@@ -483,9 +503,39 @@ def solve_transient(
             elif isinstance(el, VoltageSource):
                 branch_currents[el.name][k] = x[aux(el.name)]
 
+    t_py_end = time.perf_counter()
+    total_py_time = t_py_end - t_py_start
+    steps_per_sec = (n_steps / total_py_time) if total_py_time > 0 else 0.0
+
+    # Pedagogical energy & power profile
+    e_stored = np.zeros(n_steps, dtype=float)
+    for c in capacitors:
+        vp = node_voltages[c.node_p] if c.node_p != "0" else np.zeros(n_steps)
+        vn = node_voltages[c.node_n] if c.node_n != "0" else np.zeros(n_steps)
+        e_stored += 0.5 * c.capacitance * ((vp - vn) ** 2)
+    for ind in inductors:
+        e_stored += 0.5 * ind.inductance * (branch_currents[ind.name] ** 2)
+
+    p_diss = np.zeros(n_steps, dtype=float)
+    for el in circuit.elements:
+        if isinstance(el, Resistor):
+            vp = node_voltages[el.node_p] if el.node_p != "0" else np.zeros(n_steps)
+            vn = node_voltages[el.node_n] if el.node_n != "0" else np.zeros(n_steps)
+            p_diss += ((vp - vn) ** 2) / el.resistance
+
+    execution_metrics = {
+        "backend": "Python (SciPy LU)",
+        "total_time_s": total_py_time,
+        "steps_per_sec": steps_per_sec,
+    }
+
     return TransientSolution(
         circuit=circuit,
         time=time_vec,
         node_voltages=node_voltages,
         branch_currents=branch_currents,
+        energy_stored=e_stored,
+        power_dissipated=p_diss,
+        execution_metrics=execution_metrics,
     )
+

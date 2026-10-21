@@ -35,6 +35,9 @@ class TransientSolution:
     time: np.ndarray
     node_voltages: dict[str, np.ndarray]
     branch_currents: dict[str, np.ndarray] = field(default_factory=dict)
+    energy_stored: np.ndarray | None = None
+    power_dissipated: np.ndarray | None = None
+    execution_metrics: dict[str, float | str] | None = None
 
     def V(self, node: str) -> np.ndarray:
         """Return the voltage waveform V(t) at ``node`` in Volts.
@@ -103,6 +106,34 @@ class TransientSolution:
         """Final simulation time in seconds."""
         return float(self.time[-1]) if len(self.time) > 0 else 0.0
 
+    def E_stored(self) -> np.ndarray:
+        """Return total instantaneous energy stored in reactive components (C and L) in Joules."""
+        if self.energy_stored is not None:
+            return self.energy_stored
+
+        # Fallback calculation if not pre-computed by solver
+        e_total = np.zeros(self.n_steps, dtype=float)
+        for el in self.circuit.elements:
+            if hasattr(el, "capacitance") and hasattr(el, "node_p") and hasattr(el, "node_n"):
+                vc = self.V(el.node_p) - self.V(el.node_n)
+                e_total += 0.5 * el.capacitance * (vc ** 2)
+            elif hasattr(el, "inductance") and el.name in self.branch_currents:
+                il = self.I(el.name)
+                e_total += 0.5 * el.inductance * (il ** 2)
+        return e_total
+
+    def P_dissipated(self) -> np.ndarray:
+        """Return total instantaneous Joule dissipation across all resistors in Watts."""
+        if self.power_dissipated is not None:
+            return self.power_dissipated
+
+        p_total = np.zeros(self.n_steps, dtype=float)
+        for el in self.circuit.elements:
+            if hasattr(el, "resistance") and hasattr(el, "node_p") and hasattr(el, "node_n"):
+                vr = self.V(el.node_p) - self.V(el.node_n)
+                p_total += (vr ** 2) / el.resistance
+        return p_total
+
     def summary(self) -> str:
         """Format a concise overview of the transient run."""
         lines = [
@@ -111,10 +142,23 @@ class TransientSolution:
             "=" * 72,
             f"  Time span: 0.0 s -> {self.t_stop:.6e} s  ({self.n_steps} steps)",
             f"  Nodes tracked: {len(self.node_voltages)}",
+        ]
+        if self.execution_metrics:
+            backend = self.execution_metrics.get("backend", "Unknown")
+            steps_per_sec = self.execution_metrics.get("steps_per_sec", 0.0)
+            total_time = self.execution_metrics.get("total_time_s", 0.0)
+            lines.append(f"  Backend: {backend} | Total time: {total_time * 1e3:.2f} ms | Throughput: {steps_per_sec:,.0f} steps/s")
+
+        if self.energy_stored is not None:
+            e_peak = float(np.max(self.energy_stored))
+            p_peak = float(np.max(self.power_dissipated)) if self.power_dissipated is not None else 0.0
+            lines.append(f"  Peak Energy Stored: {e_peak:.6e} J | Peak Joule Dissipation: {p_peak:.6e} W")
+
+        lines.extend([
             "-" * 72,
             f"  {'Node':>8}  {'V_final (V)':>14}  {'V_min (V)':>12}  {'V_max (V)':>12}",
             "-" * 72,
-        ]
+        ])
         for node, v_arr in self.node_voltages.items():
             lines.append(
                 f"  {node:>8}  {v_arr[-1]:>14.6f}  {np.min(v_arr):>12.6f}  {np.max(v_arr):>12.6f}"
