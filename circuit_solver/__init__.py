@@ -35,6 +35,17 @@ from circuit_solver.engine.transient import solve_transient
 from circuit_solver.engine.thevenin import thevenin_norton
 from circuit_solver.engine.monte_carlo import monte_carlo
 from circuit_solver.engine.dc_sweep import dc_sweep, DCSweepResult
+from circuit_solver.core.subcircuit import (
+    SubcircuitDefinition,
+    SubcircuitInstance,
+    HierarchyTree,
+)
+from circuit_solver.io.parser import (
+    parse_netlist,
+    parse_netlist_string,
+    parse_netlist_with_hierarchy,
+    parse_dc_directive,
+)
 from circuit_solver.visualization.plots import (
     plot_power_transfer,
     plot_monte_carlo,
@@ -69,6 +80,12 @@ __all__ = [
     "ACSolution",
     "TransientSolution",
     "DCSweepResult",
+    "SubcircuitDefinition",
+    "SubcircuitInstance",
+    "HierarchyTree",
+    "parse_netlist",
+    "parse_netlist_string",
+    "parse_netlist_with_hierarchy",
     "solve",
     "solve_nonlinear",
     "solve_ac",

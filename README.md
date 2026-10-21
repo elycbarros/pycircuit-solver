@@ -141,6 +141,12 @@ pycircuit ac circuito.cir --sweep 10 100000 100 --node out --plot
 
 # Análise transitória no tempo (0 a 10 ms com passo de 10 μs e gráfico)
 pycircuit tran circuito.cir --tstop 0.01 --dt 1e-5 --node out --plot
+
+# Relatório didático White-Box de subcircuitos e impacto matricial MNA
+pycircuit explain circuito.cir
+
+# Árvore ASCII de hierarquia de subcircuitos
+pycircuit hierarchy circuito.cir
 ```
 
 ---

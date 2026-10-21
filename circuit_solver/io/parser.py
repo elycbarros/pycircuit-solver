@@ -70,8 +70,9 @@ from circuit_solver.core.elements import (
     _Element,
 )
 from circuit_solver.core.validator import parse_value
+from circuit_solver.core.subcircuit import HierarchyTree, SubcircuitExpander, tokenize_spice_line
 
-__all__ = ["parse_netlist", "parse_netlist_string", "parse_dc_directive"]
+__all__ = ["parse_netlist", "parse_netlist_string", "parse_netlist_with_hierarchy", "parse_dc_directive"]
 
 
 def _strip_comment(line: str) -> str:
@@ -117,9 +118,10 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
     if not line:
         return None
 
-    tokens = line.split()
+    tokens = tokenize_spice_line(line)
     designator = tokens[0].upper()
-    prefix = designator[0]
+    base_name = designator.split(".")[-1]
+    prefix = base_name[0]
 
     try:
         if prefix == "R":
@@ -344,27 +346,42 @@ def _parse_line(line: str, lineno: int) -> _Element | None:
         ) from exc
 
 
-def parse_netlist_string(text: str) -> list[_Element]:
-    """Parse a SPICE netlist from a multi-line string.
+def parse_netlist_with_hierarchy(
+    text_or_path: str | Path,
+    base_dir: Path | None = None,
+) -> tuple[list[_Element], HierarchyTree]:
+    """Parse a SPICE netlist string or file, expanding all .SUBCKT blocks into elements
+    while constructing a White-Box HierarchyTree for pedagogical introspection.
 
     Parameters
     ----------
-    text : str
-        Full netlist content as a string.
+    text_or_path : str or Path
+        Netlist content as string, or path to a .cir/.net/.sp file.
+    base_dir : Path | None, optional
+        Base directory for resolving .include directives.
 
     Returns
     -------
-    list[_Element]
-        Ordered list of circuit elements.
+    tuple[list[_Element], HierarchyTree]
+        Flattened elements and the pedagogical hierarchy tree.
     """
-    elements: list[_Element] = []
-    lines = text.splitlines()
-    # First line is always the title — skip it
-    body = lines[1:] if lines else []
+    path_candidate = Path(str(text_or_path))
+    if path_candidate.exists() and path_candidate.is_file():
+        text = path_candidate.read_text(encoding="utf-8")
+        if base_dir is None:
+            base_dir = path_candidate.parent
+    else:
+        text = str(text_or_path)
+
+    raw_lines = text.splitlines()
+    idx_title = 0
+    while idx_title < len(raw_lines) and not raw_lines[idx_title].strip():
+        idx_title += 1
+    body = raw_lines[idx_title + 1:] if idx_title < len(raw_lines) else []
 
     # Pre-process: merge continuation lines starting with '+'
     logical_lines: list[tuple[int, str]] = []
-    for lineno, raw in enumerate(body, start=2):
+    for lineno, raw in enumerate(body, start=idx_title + 2):
         stripped = raw.strip()
         if not stripped or stripped.startswith("*"):
             continue
@@ -376,18 +393,39 @@ def parse_netlist_string(text: str) -> list[_Element]:
             continue
         logical_lines.append((lineno, stripped))
 
-    for lineno, line in logical_lines:
-        # Stop at .end
+    raw_logical = [l for _, l in logical_lines]
+    expander = SubcircuitExpander()
+    expanded_lines, hierarchy = expander.expand(raw_logical, base_dir=base_dir)
+
+    elements: list[_Element] = []
+    for lineno, line in enumerate(expanded_lines, start=1):
         if line.lower().startswith(".end"):
             break
-        # Skip other directives (.tran, .ac, .op, .model, etc.)
         if line.startswith("."):
             continue
-
         el = _parse_line(line, lineno)
         if el is not None:
             elements.append(el)
 
+    return elements, hierarchy
+
+
+def parse_netlist_string(text: str, base_dir: Path | None = None) -> list[_Element]:
+    """Parse a SPICE netlist from a multi-line string.
+
+    Parameters
+    ----------
+    text : str
+        Full netlist content as a string.
+    base_dir : Path | None, optional
+        Base directory for resolving .include directives.
+
+    Returns
+    -------
+    list[_Element]
+        Ordered list of circuit elements.
+    """
+    elements, _ = parse_netlist_with_hierarchy(text, base_dir=base_dir)
     return elements
 
 
@@ -414,7 +452,8 @@ def parse_netlist(path: str | Path) -> list[_Element]:
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"Netlist file not found: '{path}'")
-    return parse_netlist_string(p.read_text(encoding="utf-8"))
+    elements, _ = parse_netlist_with_hierarchy(p, base_dir=p.parent)
+    return elements
 
 
 def parse_dc_directive(text_or_path: str | Path) -> dict[str, object] | None:

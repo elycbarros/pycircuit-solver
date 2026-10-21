@@ -35,10 +35,21 @@ from circuit_solver.visualization.plots import (
 
 
 def _cmd_solve(args: argparse.Namespace) -> int:
-    elements = parse_netlist(args.netlist)
-    circuit = Circuit(elements)
+    circuit = Circuit.from_netlist(args.netlist)
     solution = solve(circuit)
     print(solution.summary())
+    return 0
+
+
+def _cmd_explain(args: argparse.Namespace) -> int:
+    circuit = Circuit.from_netlist(args.netlist)
+    print(circuit.explain_hierarchy())
+    return 0
+
+
+def _cmd_hierarchy(args: argparse.Namespace) -> int:
+    circuit = Circuit.from_netlist(args.netlist)
+    print(circuit.hierarchy_tree())
     return 0
 
 
@@ -281,6 +292,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_dc.add_argument("--plot", action="store_true", help="Exibir gráfico da curva característica")
     p_dc.add_argument("--save", type=str, default=None, help="Salvar gráfico da curva em arquivo")
 
+    # explain
+    p_exp = subparsers.add_parser("explain", help="Relatório pedagógico white-box de expansão hierárquica e impacto MNA")
+    p_exp.add_argument("netlist", type=str, help="Caminho do arquivo netlist SPICE (.cir)")
+
+    # hierarchy
+    p_hier = subparsers.add_parser("hierarchy", help="Exibe a árvore ASCII de instâncias e subcircuitos")
+    p_hier.add_argument("netlist", type=str, help="Caminho do arquivo netlist SPICE (.cir)")
+
     return parser
 
 
@@ -295,6 +314,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "solve":
             return _cmd_solve(args)
+        elif args.command == "explain":
+            return _cmd_explain(args)
+        elif args.command == "hierarchy":
+            return _cmd_hierarchy(args)
         elif args.command == "thevenin":
             return _cmd_thevenin(args)
         elif args.command == "monte-carlo":

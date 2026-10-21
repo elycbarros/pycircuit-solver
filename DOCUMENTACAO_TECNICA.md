@@ -475,3 +475,41 @@ Para redes de grande porte (malhas de distribuição, chips VLSI, escadas R-2R d
 4. **Despacho Automático (`solver="auto"`):**
    * O solver `solve(circuit, solver="auto", sparse_threshold=500)` automaticamente ativa o solver esparso quando o número de incógnitas atinge o limiar configurado (padrão 500 nós).
 
+---
+
+## 8. 🧩 Suporte a Subcircuitos SPICE Hierárquicos e Mecanismo White-Box Pedagógico
+
+### 8.1 Compatibilidade Industrial Padrão SPICE (.subckt / .ends e Elementos X)
+O `pycircuit` implementa o mecanismo de modularização hierárquica compatível com as ferramentas comerciais de EDA (SPICE, LTspice, HSPICE, PSpice):
+1. **Definição de Macromodelos:**
+   Blocos reutilizáveis definidos por `.SUBCKT <nome> <pinos...> [PARAMS: p1=v1 ...]`, encerrados por `.ENDS [<nome>]`.
+2. **Instanciação Modular:**
+   Instâncias `X<nome> <nós_conectados...> <modelo> [PARAMS: p1=v1 ...]`.
+3. **Avaliação Paramétrica e Expressões Matemáticas:**
+   Suporte a parâmetros padrão, sobrescrita de instância e fórmulas matemáticas SPICE entre chaves `{...}` (ex: `{1 / (2 * pi * FC * C)}`, `{R1 * 2}`), com suporte a sufixos de engenharia (`k`, `u`, `n`, `p`, `MEG`, etc.) e funções elementares (`sin`, `cos`, `sqrt`, `exp`, etc.).
+4. **Subcircuitos Aninhados Recursivos (*Nested Subcircuits*):**
+   Suporte a múltiplos níveis de hierarquia (subcircuitos que instanciam outros subcircuitos), com qualificação correta de escopo (`X_BLOCO.X_ESTAGIO.R1`).
+5. **Diretiva de Inclusão de Arquivos Externos:**
+   Suporte a `.INCLUDE "<arquivo.lib>"` e `.INC "<arquivo.cir>"`, permitindo carregar modelos de fabricantes comerciais e bibliotecas acadêmicas.
+
+### 8.2 Arquitetura Pedagógica de Introspecção (*White-Box Hierarchy Engine*)
+Projetado especificamente para pesquisa acadêmica, dissertações de mestrado e ensino de Engenharia Elétrica, eliminando o comportamento "caixa-preta" (*black box*) dos simuladores proprietários:
+1. **Árvore Hierárquica Inspecionável (`HierarchyTree`):**
+   Acesso em tempo de execução via Python (`circuit.hierarchy_tree()`) e via linha de comando (`pycircuit hierarchy circuito.cir`).
+2. **Relatório Didático Passo a Passo (`circuit.explain_hierarchy()` / `pycircuit explain`):**
+   * Tabela visual "Pino Formal $\rightarrow$ Nó Global".
+   * Resolução detalhada de cada parâmetro e fórmula.
+   * Lista de nós internos privados criados (`X1.int1`).
+   * **Análise de Impacto Dimensional MNA:** Quantifica exatamente quantos nós nodais e variáveis de corrente auxiliar cada subcircuito adicionou e o crescimento da ordem da matriz $\mathbf{A}$.
+3. **Sondagem de Grandezas Internas (*Scoped Probing*):**
+   Permite medir grandezas internas de qualquer bloco com notação de ponto: `sol.V("X1.diff_pair")` ou gerar raio-X completo do bloco com `sol.subcircuit_summary("X1")`.
+
+### 8.3 Biblioteca Pedagógica Embutida (*Textbook Library*)
+O módulo `circuit_solver.core.builtin_library` disponibiliza macromodelos de livros-texto consagrados (Alexander & Sadiku, Sedra & Smith):
+* `OPAMP_741`: Macromodel clássico do LM741 com resistência de entrada diferencial ($R_{in} = 2\text{ M}\Omega$), ganho em malha aberta finito ($A_{OL} = 200.000$) e impedância de saída ($R_{out} = 75\ \Omega$).
+* `OPAMP_IDEAL`: Curto-circuito virtual ideal com ganho infinito.
+* `RC_LOWPASS`: Filtro passa-baixa paramétrico de 1ª ordem.
+* `SALLEN_KEY_LP`: Filtro ativo passa-baixas de 2ª ordem com topologia Sallen-Key.
+* `CMOS_INVERTER`: Célula lógica digital inversora CMOS com par complementar NMOS/PMOS.
+* `BJT_DIFF_PAIR`: Par diferencial básico a transistor bipolar com resistores de cauda e carga.
+

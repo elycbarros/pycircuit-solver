@@ -274,6 +274,58 @@ class Solution:
         lines.append("=" * 56)
         return "\n".join(lines)
 
+    def subcircuit_summary(self, instance_name: str) -> str:
+        """Return a pedagogical and diagnostic summary of a specific subcircuit instance.
+
+        Lists all internal and boundary node voltages, element currents, and
+        power dissipated/generated inside the block.
+        """
+        inst_prefix = instance_name.upper().strip()
+        lines = [
+            "=" * 60,
+            f"  Subcircuit Scope Analysis: [{inst_prefix}]",
+            "=" * 60,
+        ]
+
+        # Filter nodes belonging to this instance
+        inst_nodes = {
+            k: v for k, v in self.voltages.items()
+            if k.upper().startswith(f"{inst_prefix}.")
+        }
+
+        # Also find boundary pins if hierarchy metadata is available
+        if getattr(self._circuit, "hierarchy", None) is not None:
+            inst_obj = self._circuit.hierarchy.find_instance(inst_prefix)
+            if inst_obj is not None:
+                lines.append(f"  Model: <{inst_obj.subckt_name}>")
+                lines.append("  Terminal Pin Voltages:")
+                for pin, node in inst_obj.pin_mapping.items():
+                    v_node = self.V(node)
+                    lines.append(f"    Pino '{pin.upper()}' (nó '{node}') = {v_node:12.6f} V")
+
+        if inst_nodes:
+            lines.append("\n  Internal Node Voltages:")
+            for node, v in sorted(inst_nodes.items()):
+                lines.append(f"    V({node}) = {v:12.6f} V")
+
+        # Elements inside the instance
+        inst_elements = [
+            el for el in self._circuit.elements
+            if el.name.upper().startswith(f"{inst_prefix}.")
+        ]
+        if inst_elements:
+            lines.append("\n  Internal Element Operating Conditions:")
+            for el in inst_elements:
+                try:
+                    p = self.P(el.name)
+                    p_str = f" | P = {p:10.4e} W"
+                except Exception:
+                    p_str = ""
+                lines.append(f"    * {el.name} ({type(el).__name__}){p_str}")
+
+        lines.append("=" * 60)
+        return "\n".join(lines)
+
     def __repr__(self) -> str:
         v = ", ".join(f"V({k})={val:.4f}" for k, val in self.voltages.items() if k != "0")
         return f"Solution({v})"

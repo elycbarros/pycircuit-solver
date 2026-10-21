@@ -42,6 +42,7 @@ from circuit_solver.core.elements import (
     _Element,
 )
 from circuit_solver.core.validator import CircuitValidator, parse_value
+from circuit_solver.core.subcircuit import HierarchyTree
 
 __all__ = ["Circuit"]
 
@@ -57,6 +58,8 @@ class Circuit:
         before constructing elements, or use :meth:`from_elements`.
     validate : bool
         If ``True`` (default) run :class:`CircuitValidator` before returning.
+    hierarchy : HierarchyTree | None, optional
+        Hierarchical subcircuit tree metadata if expanded from SPICE netlist.
 
     Attributes
     ----------
@@ -73,6 +76,9 @@ class Circuit:
         Number of auxiliary current variables.
     size : int
         Total size of the MNA system: ``n_nodes + n_aux``.
+    hierarchy : HierarchyTree | None
+        Hierarchy tree containing subcircuit definitions, instances, and
+        pedagogical white-box trace.
     """
 
     def __init__(
@@ -82,8 +88,10 @@ class Circuit:
         *,
         allow_floating: bool = False,
         allowed_open_nodes: Sequence[str] | None = None,
+        hierarchy: HierarchyTree | None = None,
     ) -> None:
         self.elements: list[_Element] = list(elements)
+        self.hierarchy: HierarchyTree | None = hierarchy
 
         if validate:
             CircuitValidator(
@@ -95,6 +103,43 @@ class Circuit:
         self.node_map: dict[str, int] = {}
         self.auxiliary_map: dict[str, int] = {}
         self._build_maps()
+
+    @classmethod
+    def from_netlist(
+        cls,
+        path_or_text: str | Path,
+        validate: bool = True,
+        *,
+        allow_floating: bool = False,
+        allowed_open_nodes: Sequence[str] | None = None,
+    ) -> "Circuit":
+        """Construct a Circuit directly from a SPICE netlist file or string.
+
+        Automatically expands all .SUBCKT definitions and 'X' instances while
+        preserving hierarchical pedagogical metadata.
+        """
+        from circuit_solver.io.parser import parse_netlist_with_hierarchy
+
+        elements, hierarchy = parse_netlist_with_hierarchy(path_or_text)
+        return cls(
+            elements,
+            validate=validate,
+            allow_floating=allow_floating,
+            allowed_open_nodes=allowed_open_nodes,
+            hierarchy=hierarchy,
+        )
+
+    def explain_hierarchy(self) -> str:
+        """Pedagogical white-box explanation of subcircuit expansion."""
+        if self.hierarchy is not None:
+            return self.hierarchy.explain(self)
+        return "Circuito Plano (Sem subcircuitos hierárquicos)."
+
+    def hierarchy_tree(self) -> str:
+        """ASCII tree visualization of circuit hierarchy."""
+        if self.hierarchy is not None:
+            return self.hierarchy.tree_view()
+        return "Circuito Plano (Sem subcircuitos hierárquicos)."
 
     # ------------------------------------------------------------------
     # Internal
