@@ -31,6 +31,13 @@ from circuit_solver.core.elements import (
     Resistor,
     VoltageSource,
     CurrentSource,
+    VCVS,
+    VCCS,
+    CCCS,
+    CCVS,
+    OpAmp,
+    Inductor,
+    Transformer,
     _Element,
 )
 from circuit_solver.engine.monte_carlo import MonteCarloResult
@@ -58,7 +65,7 @@ def _build_rust_descriptors(circuit: Circuit) -> tuple:
 
     Returns
     -------
-    n_nodes, size, resistors, vsources, isources
+    n_nodes, size, resistors, vsources, isources, vcvs, vccs, cccs, ccvs, opamps, inductors
     """
     node_idx = circuit.node_index      # str → int | None
     aux_idx  = circuit.aux_index       # str → int
@@ -66,6 +73,12 @@ def _build_rust_descriptors(circuit: Circuit) -> tuple:
     py_resistors: list = []
     py_vsources:  list = []
     py_isources:  list = []
+    py_vcvs:      list = []
+    py_vccs:      list = []
+    py_cccs:      list = []
+    py_ccvs:      list = []
+    py_opamps:    list = []
+    py_inductors: list = []
 
     for el in circuit.elements:
         if isinstance(el, Resistor):
@@ -103,7 +116,92 @@ def _build_rust_descriptors(circuit: Circuit) -> tuple:
                     n if n is not None else -1,
                 )
             )
-        # Dependent sources / OpAmps are left to the Python fallback for now.
+
+        elif isinstance(el, VCVS):
+            p = node_idx(el.node_p)
+            n = node_idx(el.node_n)
+            cp = node_idx(el.ctrl_p)
+            cn = node_idx(el.ctrl_n)
+            aux = aux_idx(el.name)
+            py_vcvs.append(
+                _rust.PyVCVS(
+                    el.gain,
+                    p if p is not None else -1,
+                    n if n is not None else -1,
+                    cp if cp is not None else -1,
+                    cn if cn is not None else -1,
+                    aux,
+                )
+            )
+
+        elif isinstance(el, VCCS):
+            p = node_idx(el.node_p)
+            n = node_idx(el.node_n)
+            cp = node_idx(el.ctrl_p)
+            cn = node_idx(el.ctrl_n)
+            py_vccs.append(
+                _rust.PyVCCS(
+                    el.transconductance,
+                    p if p is not None else -1,
+                    n if n is not None else -1,
+                    cp if cp is not None else -1,
+                    cn if cn is not None else -1,
+                )
+            )
+
+        elif isinstance(el, CCCS):
+            p = node_idx(el.node_p)
+            n = node_idx(el.node_n)
+            k_vctrl = aux_idx(el.vctrl_name)
+            py_cccs.append(
+                _rust.PyCCCS(
+                    el.gain,
+                    p if p is not None else -1,
+                    n if n is not None else -1,
+                    k_vctrl,
+                )
+            )
+
+        elif isinstance(el, CCVS):
+            p = node_idx(el.node_p)
+            n = node_idx(el.node_n)
+            aux = aux_idx(el.name)
+            k_vctrl = aux_idx(el.vctrl_name)
+            py_ccvs.append(
+                _rust.PyCCVS(
+                    el.transresistance,
+                    p if p is not None else -1,
+                    n if n is not None else -1,
+                    aux,
+                    k_vctrl,
+                )
+            )
+
+        elif isinstance(el, OpAmp):
+            p = node_idx(el.in_p)
+            n = node_idx(el.in_n)
+            out = node_idx(el.out)
+            gnd = node_idx(el.gnd)
+            aux = aux_idx(el.name)
+            py_opamps.append(
+                _rust.PyOpAmp(
+                    p if p is not None else -1,
+                    n if n is not None else -1,
+                    out if out is not None else -1,
+                    gnd if gnd is not None else -1,
+                    aux,
+                )
+            )
+
+        elif isinstance(el, Inductor):
+            p = node_idx(el.node_p)
+            n = node_idx(el.node_n)
+            py_inductors.append(
+                _rust.PyInductorDC(
+                    p if p is not None else -1,
+                    n if n is not None else -1,
+                )
+            )
 
     return (
         circuit.n_nodes,  # non-ground nodes
@@ -111,14 +209,21 @@ def _build_rust_descriptors(circuit: Circuit) -> tuple:
         py_resistors,
         py_vsources,
         py_isources,
+        py_vcvs,
+        py_vccs,
+        py_cccs,
+        py_ccvs,
+        py_opamps,
+        py_inductors,
     )
 
 
 def _has_unsupported_elements(circuit: Circuit) -> bool:
     """Return True if the circuit contains elements not yet in the Rust core."""
-    from circuit_solver.core.elements import VCVS, VCCS, CCCS, CCVS, OpAmp
+    if circuit.has_nonlinear:
+        return True
     for el in circuit.elements:
-        if isinstance(el, (VCVS, VCCS, CCCS, CCVS, OpAmp)):
+        if isinstance(el, Transformer):
             return True
     return False
 
@@ -168,8 +273,8 @@ def monte_carlo(
     else:
         if _RUST_AVAILABLE and _has_unsupported_elements(circuit):
             warnings.warn(
-                "Circuit contains dependent sources / Op-Amps not yet "
-                "supported by the Rust core. Falling back to Python.",
+                "Circuit contains elements not supported by the Rust linear core. "
+                "Falling back to Python.",
                 stacklevel=2,
             )
         from circuit_solver.engine.monte_carlo import monte_carlo as _py_mc
@@ -185,7 +290,19 @@ def _monte_carlo_rust(
     override_tolerance: float | None,
 ) -> MonteCarloResult:
     """Internal: call the Rust Monte Carlo kernel."""
-    n_nodes, size, resistors, vsources, isources = _build_rust_descriptors(circuit)
+    (
+        n_nodes,
+        size,
+        resistors,
+        vsources,
+        isources,
+        vcvs,
+        vccs,
+        cccs,
+        ccvs,
+        opamps,
+        inductors,
+    ) = _build_rust_descriptors(circuit)
 
     rust_seed = int(seed) if seed is not None else 0
 
@@ -198,6 +315,12 @@ def _monte_carlo_rust(
         n_samples,
         rust_seed,
         override_tolerance,
+        vcvs=vcvs,
+        vccs=vccs,
+        cccs=cccs,
+        ccvs=ccvs,
+        opamps=opamps,
+        inductors_dc=inductors,
     )
 
     # samples_2d is already a numpy array (zero-copy from Rust)

@@ -60,7 +60,7 @@ from circuit_solver.core.elements import (
 )
 from circuit_solver.core.solution import Solution
 
-__all__ = ["build_mna", "solve"]
+__all__ = ["build_mna", "build_mna_sparse", "solve"]
 
 
 def build_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
@@ -266,6 +266,142 @@ def build_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
     return A, z
 
 
+def build_mna_sparse(circuit: Circuit):
+    """Stamp all elements into a sparse CSC matrix and RHS vector z.
+
+    Highly memory- and time-efficient for large circuits (> 500 to 1,000+ nodes).
+
+    Parameters
+    ----------
+    circuit : Circuit
+        Pre-validated circuit with node and auxiliary mappings.
+
+    Returns
+    -------
+    A_csc : scipy.sparse.csc_matrix
+        The sparse MNA coefficient matrix.
+    z : np.ndarray
+        The right-hand side vector.
+    """
+    import scipy.sparse as sp
+
+    n = circuit.size
+    idx = circuit.node_index
+    aux = circuit.aux_index
+
+    rows: list[int] = []
+    cols: list[int] = []
+    data: list[float] = []
+    z = np.zeros(n, dtype=float)
+
+    def stamp_g(p, n_node, g):
+        if p is not None:
+            rows.append(p); cols.append(p); data.append(g)
+        if n_node is not None:
+            rows.append(n_node); cols.append(n_node); data.append(g)
+        if p is not None and n_node is not None:
+            rows.append(p); cols.append(n_node); data.append(-g)
+            rows.append(n_node); cols.append(p); data.append(-g)
+
+    for el in circuit.elements:
+        if isinstance(el, Resistor):
+            stamp_g(idx(el.node_p), idx(el.node_n), 1.0 / el.resistance)
+
+        elif isinstance(el, VoltageSource):
+            k = aux(el.name)
+            p, n_node = idx(el.node_p), idx(el.node_n)
+            if p is not None:
+                rows.append(p); cols.append(k); data.append(1.0)
+                rows.append(k); cols.append(p); data.append(1.0)
+            if n_node is not None:
+                rows.append(n_node); cols.append(k); data.append(-1.0)
+                rows.append(k); cols.append(n_node); data.append(-1.0)
+            z[k] = el.voltage
+
+        elif isinstance(el, CurrentSource):
+            p, n_node = idx(el.node_p), idx(el.node_n)
+            if p is not None:
+                z[p] += el.current
+            if n_node is not None:
+                z[n_node] -= el.current
+
+        elif isinstance(el, VCVS):
+            k = aux(el.name)
+            p, n_node = idx(el.node_p), idx(el.node_n)
+            cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
+            if p is not None:
+                rows.append(p); cols.append(k); data.append(1.0)
+                rows.append(k); cols.append(p); data.append(1.0)
+            if n_node is not None:
+                rows.append(n_node); cols.append(k); data.append(-1.0)
+                rows.append(k); cols.append(n_node); data.append(-1.0)
+            if cp is not None:
+                rows.append(k); cols.append(cp); data.append(-el.gain)
+            if cn is not None:
+                rows.append(k); cols.append(cn); data.append(el.gain)
+            z[k] = 0.0
+
+        elif isinstance(el, VCCS):
+            gm = el.transconductance
+            p, n_node = idx(el.node_p), idx(el.node_n)
+            cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
+            if p is not None and cp is not None:
+                rows.append(p); cols.append(cp); data.append(-gm)
+            if p is not None and cn is not None:
+                rows.append(p); cols.append(cn); data.append(gm)
+            if n_node is not None and cp is not None:
+                rows.append(n_node); cols.append(cp); data.append(gm)
+            if n_node is not None and cn is not None:
+                rows.append(n_node); cols.append(cn); data.append(-gm)
+
+        elif isinstance(el, CCCS):
+            k_vctrl = aux(el.vctrl_name)
+            p, n_node = idx(el.node_p), idx(el.node_n)
+            if p is not None:
+                rows.append(p); cols.append(k_vctrl); data.append(el.gain)
+            if n_node is not None:
+                rows.append(n_node); cols.append(k_vctrl); data.append(-el.gain)
+
+        elif isinstance(el, CCVS):
+            k = aux(el.name)
+            k_vctrl = aux(el.vctrl_name)
+            p, n_node = idx(el.node_p), idx(el.node_n)
+            if p is not None:
+                rows.append(p); cols.append(k); data.append(1.0)
+                rows.append(k); cols.append(p); data.append(1.0)
+            if n_node is not None:
+                rows.append(n_node); cols.append(k); data.append(-1.0)
+                rows.append(k); cols.append(n_node); data.append(-1.0)
+            rows.append(k); cols.append(k_vctrl); data.append(el.transresistance)
+            z[k] = 0.0
+
+        elif isinstance(el, OpAmp):
+            k = aux(el.name)
+            out = idx(el.out)
+            gnd = idx(el.gnd)
+            in_p = idx(el.in_p)
+            in_n = idx(el.in_n)
+            if out is not None:
+                rows.append(out); cols.append(k); data.append(1.0)
+            if gnd is not None:
+                rows.append(gnd); cols.append(k); data.append(-1.0)
+            if in_p is not None:
+                rows.append(k); cols.append(in_p); data.append(1.0)
+            if in_n is not None:
+                rows.append(k); cols.append(in_n); data.append(-1.0)
+            z[k] = 0.0
+
+        elif isinstance(el, Inductor):
+            stamp_g(idx(el.node_p), idx(el.node_n), 1e6)
+
+        elif isinstance(el, Transformer):
+            stamp_g(idx(el.p1), idx(el.n1), 1e6)
+            stamp_g(idx(el.p2), idx(el.n2), 1e6)
+
+    A_coo = sp.coo_matrix((data, (rows, cols)), shape=(n, n), dtype=float)
+    return A_coo.tocsc(), z
+
+
 def solve(
     circuit: Circuit,
     *,
@@ -273,6 +409,8 @@ def solve(
     tol: float = 1e-6,
     check_singular: bool = True,
     max_iter: int = 100,
+    solver: str = "auto",
+    sparse_threshold: int = 500,
 ) -> Solution:
     """Solve the MNA system and return a :class:`~circuit_solver.core.solution.Solution`.
 
@@ -291,6 +429,14 @@ def solve(
         Raise a descriptive error if the matrix is numerically singular.
     max_iter : int
         Maximum iterations for non-linear Newton-Raphson solver (default 100).
+    solver : {"auto", "dense", "sparse", "rust_sparse"}
+        Linear equation solver strategy:
+        - "auto": dense for N < sparse_threshold, sparse for N >= sparse_threshold.
+        - "dense": numpy.linalg.solve (dense LU/LAPACK).
+        - "sparse": scipy.sparse.linalg.spsolve (sparse SuperLU).
+        - "rust_sparse": native Rust Faer sparse LU solver.
+    sparse_threshold : int
+        Node count threshold above which "auto" switches to sparse solver (default 500).
 
     Returns
     -------
@@ -311,6 +457,62 @@ def solve(
         from circuit_solver.engine.nonlinear import solve_nonlinear
         return solve_nonlinear(circuit, max_iter=max_iter, tol=tol)
 
+    use_sparse = (
+        solver == "sparse"
+        or solver == "rust_sparse"
+        or (solver == "auto" and circuit.size >= sparse_threshold)
+    )
+
+    if use_sparse:
+        # Check if native Rust sparse solver can be used
+        if solver == "rust_sparse":
+            from circuit_solver.engine.monte_carlo_rust import _build_rust_descriptors, RUST_AVAILABLE
+            if RUST_AVAILABLE:
+                import pycircuit_core as _rust
+                (
+                    n_nodes,
+                    size,
+                    resistors,
+                    vsources,
+                    isources,
+                    vcvs,
+                    vccs,
+                    cccs,
+                    ccvs,
+                    opamps,
+                    inductors,
+                ) = _build_rust_descriptors(circuit)
+                sol = _rust.solve_mna_sparse(
+                    n_nodes,
+                    size,
+                    resistors,
+                    vsources,
+                    isources,
+                    vcvs=vcvs,
+                    vccs=vccs,
+                    cccs=cccs,
+                    ccvs=ccvs,
+                    opamps=opamps,
+                    inductors_dc=inductors,
+                )
+                if sol is not None:
+                    return Solution(circuit, np.asarray(sol))
+
+        # Scipy sparse solver (SuperLU / scipy.sparse.linalg.spsolve)
+        import scipy.sparse.linalg as spla
+        A_csc, z = build_mna_sparse(circuit)
+        try:
+            x = spla.spsolve(A_csc, z)
+            if not np.all(np.isfinite(x)):
+                raise LinAlgError("Sparse MNA matrix solution contains non-finite values (NaN/Inf).")
+        except Exception as exc:
+            raise LinAlgError(
+                f"Could not solve sparse MNA system: {exc}. "
+                "The circuit may be ill-conditioned or improperly specified."
+            ) from exc
+        return Solution(circuit, x)
+
+    # Dense solver
     A, z = build_mna(circuit)
 
     if check_singular:

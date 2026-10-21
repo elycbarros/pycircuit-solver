@@ -42,6 +42,63 @@ pub struct RustResistorStamped {
     pub node_n_idx: Option<usize>,
 }
 
+/// Voltage-Controlled Voltage Source (VCVS / E element).
+#[derive(Debug, Clone)]
+pub struct RustVCVS {
+    pub gain: f64,
+    pub node_p_idx: Option<usize>,
+    pub node_n_idx: Option<usize>,
+    pub ctrl_p_idx: Option<usize>,
+    pub ctrl_n_idx: Option<usize>,
+    pub aux_idx: usize,
+}
+
+/// Voltage-Controlled Current Source (VCCS / G element).
+#[derive(Debug, Clone)]
+pub struct RustVCCS {
+    pub gm: f64,
+    pub node_p_idx: Option<usize>,
+    pub node_n_idx: Option<usize>,
+    pub ctrl_p_idx: Option<usize>,
+    pub ctrl_n_idx: Option<usize>,
+}
+
+/// Current-Controlled Current Source (CCCS / F element).
+#[derive(Debug, Clone)]
+pub struct RustCCCS {
+    pub gain: f64,
+    pub node_p_idx: Option<usize>,
+    pub node_n_idx: Option<usize>,
+    pub vctrl_aux_idx: usize,
+}
+
+/// Current-Controlled Voltage Source (CCVS / H element).
+#[derive(Debug, Clone)]
+pub struct RustCCVS {
+    pub transresistance: f64,
+    pub node_p_idx: Option<usize>,
+    pub node_n_idx: Option<usize>,
+    pub aux_idx: usize,
+    pub vctrl_aux_idx: usize,
+}
+
+/// Ideal Operational Amplifier (Op-Amp / U or A element).
+#[derive(Debug, Clone)]
+pub struct RustOpAmp {
+    pub in_p_idx: Option<usize>,
+    pub in_n_idx: Option<usize>,
+    pub out_idx: Option<usize>,
+    pub gnd_idx: Option<usize>,
+    pub aux_idx: usize,
+}
+
+/// Inductor in DC steady-state (modeled as 1e6 conductance short).
+#[derive(Debug, Clone)]
+pub struct RustInductorDC {
+    pub node_p_idx: Option<usize>,
+    pub node_n_idx: Option<usize>,
+}
+
 /// Complete circuit description suitable for repeated MNA assembly in Rust.
 ///
 /// All string-based node lookups are pre-resolved to integer indices
@@ -56,4 +113,10 @@ pub struct RustCircuit {
     pub resistors: Vec<RustResistorStamped>,
     pub vsources: Vec<RustVSource>,
     pub isources: Vec<RustISource>,
+    pub vcvs: Vec<RustVCVS>,
+    pub vccs: Vec<RustVCCS>,
+    pub cccs: Vec<RustCCCS>,
+    pub ccvs: Vec<RustCCVS>,
+    pub opamps: Vec<RustOpAmp>,
+    pub inductors_dc: Vec<RustInductorDC>,
 }
