@@ -76,7 +76,7 @@ Modelado em malha fechada ideal ($A_{OL} \to \infty, R_{in} \to \infty, R_{out} 
 
 #### F. Indutores e Capacitores em Regime Permanente CC:
 * **Capacitor em CC:** Comporta-se como um circuito aberto ideal ($i_C = C \frac{dv}{dt} = 0$). Não adiciona condutância nem ramo ao MNA.
-* **Indutor em CC:** Comporta-se como um curto-circuito ideal ($v_L = L \frac{di}{dt} = 0$). É modelado via condutância de alta condutividade ($g = 10^6\ \text{S}$, equivalente a resistência parasita de $1\ \mu\Omega$).
+* **Indutor em CC:** Comporta-se como um curto-circuito ideal ($v_L = L \frac{di}{dt} = 0$). É modelado pela restrição exata $V_p-V_n=0$, com uma incógnita de corrente por enrolamento. Não há resistência parasita artificial.
 
 ---
 
@@ -235,7 +235,7 @@ Circuito com indutores acoplados magneticamente por fluxo compartilhado (transfo
    A matriz $\mathbf{G}_{eq}$ é estampada invariantemente no tempo na matriz $\mathbf{A}$, e o vetor de correntes históricas $\mathbf{I}_{eq}$ é injetado no vetor $\mathbf{z}$ a cada passo de tempo ($-I_{eq, 1}$ em $p_1$, $+I_{eq, 1}$ em $n_1$; $-I_{eq, 2}$ em $p_2$, $+I_{eq, 2}$ em $n_2$).
 
 4. **Regime Permanente DC:**
-   Em corrente contínua estática ($\omega = 0$), os enrolamentos de indutores ideais comportam-se como curto-circuitos perfeitos (condutância parasita $g = 10^6\ \Omega^{-1}$).
+   Em corrente contínua estática ($\omega = 0$), os enrolamentos de indutores ideais impõem $V_p-V_n=0$, com correntes resolvidas pela MNA e sem condutância parasita.
 
 5. **Sintaxe SPICE Suportada:**
    * Acoplamento mútuo entre dois indutores: `K<name> <L1> <L2> <k>` (ex: `K1 L1 L2 0.999`)
@@ -465,7 +465,7 @@ pycircuit-solver/
 
 ## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (447 Testes)
 
-A biblioteca é auditada de ponta a ponta por uma suíte de **544 testes automatizados** (534 aprovados, 10 casos numericamente mal condicionados ignorados com diagnóstico) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
+A biblioteca é auditada de ponta a ponta por uma suíte de **610 testes automatizados** (610 aprovados, sem ignorados nesta execução) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
 
 1. **Alexander & Sadiku (*Fundamentos de Circuitos Elétricos*):**
    * Divisores e reduções série-paralelo (Cap. 2, Ex. 2.8).
@@ -606,7 +606,7 @@ O crate `pycircuit_core` (em Rust) foi expandido para cobrir **100% dos elemento
   * CCCS ($F$): Fonte de corrente controlada por corrente ($\beta$).
   * CCVS ($H$): Fonte de tensão controlada por corrente ($r_m$).
 * **Amplificadores Operacionais Ideais:** Elemento $U$/$A$ com curto-circuito virtual ($V_{in+} - V_{in-} = 0$) e ramo de saída auxiliar.
-* **Indutores em DC:** Estampados como curto-circuito ideal com condutância parasita controlada ($10^6\ \Omega^{-1}$).
+* **Indutores em DC:** Estampados com uma restrição exata $V_p-V_n=0$ e uma incógnita de corrente por enrolamento.
 
 Com isso, circuitos ativos complexos (filtros ativos, amplificadores de instrumentação com Op-Amps, circuitos a transistores em pequenos sinais com fontes controladas) rodam diretamente no kernel multi-thread Rayon em Rust, executando 10.000 amostras de Monte Carlo em milissegundos sem recorrer ao fallback Python.
 
@@ -670,7 +670,7 @@ A análise fasorial em regime permanente senoidal clássica aplica-se a redes es
 
 1. **Passo 1: Ponto de Operação DC Estático ($Q$-Point — Newton-Raphson):**
    * Fontes de sinal CA são desativadas temporariamente ($V_{ac} = 0, I_{ac} = 0$).
-   * Capacitores comportam-se como circuitos abertos ($g = 0$) e indutores como curto-circuitos ($g = 10^6\ \Omega^{-1}$).
+   * Capacitores comportam-se como circuitos abertos e indutores como restrições exatas de tensão nula, com correntes auxiliares.
    * O solver de Newton-Raphson com amortecimento `pnjlim` e `fetlim` converge para as tensões dos nós $\mathbf{V}_{DC}$ e as correntes estáticas de cada semicondutor ($I_D, I_C, I_B, I_D$).
 
 2. **Passo 2: Modelagem Incremental de Pequenos Sinais (Jacobiano Analítico):**
@@ -847,7 +847,7 @@ No transitório Python, semicondutores não são simulados: são rejeitados expl
 
 ### Inicialização transitória e fontes controladas por corrente
 
-Python e Rust propagam falhas do ponto DC inicial; iniciar com estado zero exige a escolha explícita de `uic=True` e condições iniciais compatíveis. O ponto inicial sem UIC usa os valores das formas de onda em t=0. O modelo DC atual aproxima cada enrolamento por 1 µΩ; não é um curto ideal exato. Em UIC, cada indutor conserva sua corrente inicial. Rust recebe as duas correntes do par acoplado e contabiliza E=½L1·i1²+M·i1·i2+½L2·i2² desde t=0.
+Python e Rust propagam falhas do ponto DC inicial; iniciar com estado zero exige a escolha explícita de `uic=True` e condições iniciais compatíveis. O ponto inicial sem UIC usa os valores das formas de onda em t=0. O modelo DC usa curto ideal exato por enrolamento e resolve sua corrente como incógnita da MNA. Em UIC, cada indutor conserva sua corrente inicial. Rust recebe as duas correntes do par acoplado e contabiliza E=½L1·i1²+M·i1·i2+½L2·i2² desde t=0.
 
 Para uma CCCS de ganho g, a estampa A[p,ctrl]+=g dá ∂V/∂g=−(y_p−y_n)·Ictrl. Para uma CCVS de transresistência r, A[aux,ctrl]+=r dá ∂V/∂r=−y_aux·Ictrl. A corrente de controle é a incógnita auxiliar da fonte de tensão de controle, com o sinal da MNA. Essas derivadas participam do RSS, Pareto e seleção de cantos quando há tolerância; o padrão das fontes dependentes é tolerância zero.
 
@@ -857,3 +857,14 @@ Para uma CCCS de ganho g, a estampa A[p,ctrl]+=g dá ∂V/∂g=−(y_p−y_n)·I
 `solve_ac` usa fasores de pico; `V_rms` retorna a magnitude dividida por √2 e `complex_power` aplica ½·V·conj(I). `build_three_phase_source(V_rms=...)` converte a entrada RMS para amplitude de pico nas fontes. Antes de chamar `analyze_two_wattmeters`, divida os fasores complexos de tensão e corrente retornados pelo solver por √2. Isso mantém a soma das potências dos componentes igual à leitura dos wattímetros. A correção altera `ac_mag` das fontes geradas por esse construtor; código que usava seus fasores brutos como RMS precisa aplicar a conversão.
 
 O relatório `RELATORIO_ROTEIROS_ESTUDO.md` registra os cinco roteiros, em 19 configurações, com referências independentes e hipóteses explícitas. Reproduza com `.venv/bin/python scripts/validate_study_routes.py`.
+
+
+### Formulação DC com correntes de enrolamento
+
+Para cada indutor ou enrolamento de transformador acrescenta-se uma corrente iL, positiva do terminal p para n. A estampa adiciona +iL à LKC de p, −iL à LKC de n e a equação Vp−Vn=0. O termo diagonal da nova equação é zero; nenhuma resistência é inserida. O acoplamento não altera essas equações de regime permanente: di/dt=0.
+
+`Circuit.size` mantém o bloco comum de nós e fontes, usado em AC e nos modelos companheiros transitórios. `Circuit.dc_size` inclui as correntes extras DC; `dc_inductor_index(name)` localiza o indutor e `dc_inductor_index(name, "p"/"s")` localiza o enrolamento do transformador. O vetor `Solution._x` e as matrizes `build_mna`/`build_mna_sparse` usam `dc_size`. Leia as correntes por `I_inductor`, `I_transformer_primary` e `I_transformer_secondary`. A inicialização transitória lê essas correntes diretamente, com tensão inicial DC zero.
+
+A parte linear do Newton-Raphson usa as mesmas estampas DC. Rust implementa a mesma restrição nos solvers denso/esparso e no ponto inicial transitório. As matrizes companheiras e AC mantêm as próprias dimensões e impedâncias.
+
+`DCConstraintError` é uma subclasse de `numpy.linalg.LinAlgError`. O campo `kind` distingue `inconsistent` (sem ponto DC) e `underdetermined` (sem solução única). A classificação usa ranks após escala de linhas e colunas, para sistemas pequenos ou já densos; sistemas esparsos grandes não são densificados apenas para diagnosticar uma falha. Os ranks numéricos não substituem uma prova topológica; para as 13 sementes de regressão, ambas as verificações concordam. Veja `AUDITORIA_DC_IDEAL.md`.

@@ -37,22 +37,9 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from circuit_solver.core.circuit import Circuit
-from circuit_solver.core.elements import (
-    Resistor,
-    VoltageSource,
-    CurrentSource,
-    VCVS,
-    VCCS,
-    CCCS,
-    CCVS,
-    OpAmp,
-    Inductor,
-    Transformer,
-    Diode,
-    ZenerDiode,
-    BJT,
-    MOSFET,
-)
+from circuit_solver.core.elements import Diode, ZenerDiode, BJT, MOSFET
+from circuit_solver.engine.mna import build_mna
+
 from circuit_solver.core.solution import Solution
 
 __all__ = ["solve_nonlinear", "pnjlim", "fetlim"]
@@ -91,140 +78,8 @@ def fetlim(v_new: float, v_old: float) -> float:
 
 def _build_linear_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
     """Build the static linear portion of the MNA matrix and RHS vector."""
-    n = circuit.size
-    A = np.zeros((n, n), dtype=float)
-    z = np.zeros(n, dtype=float)
-
-    def idx(node: str) -> int | None:
-        return circuit.node_index(node)
-
-    def aux(name: str) -> int:
-        return circuit.aux_index(name)
-
-    for el in circuit.elements:
-        if isinstance(el, Resistor):
-            g = 1.0 / el.resistance
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                A[p, p] += g
-            if n_node is not None:
-                A[n_node, n_node] += g
-            if p is not None and n_node is not None:
-                A[p, n_node] -= g
-                A[n_node, p] -= g
-
-        elif isinstance(el, VoltageSource):
-            k = aux(el.name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                A[p, k] += 1.0
-                A[k, p] += 1.0
-            if n_node is not None:
-                A[n_node, k] -= 1.0
-                A[k, n_node] -= 1.0
-            z[k] = el.voltage
-
-        elif isinstance(el, CurrentSource):
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                z[p] += el.current
-            if n_node is not None:
-                z[n_node] -= el.current
-
-        elif isinstance(el, VCVS):
-            k = aux(el.name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
-            if p is not None:
-                A[p, k] += 1.0
-                A[k, p] += 1.0
-            if n_node is not None:
-                A[n_node, k] -= 1.0
-                A[k, n_node] -= 1.0
-            if cp is not None:
-                A[k, cp] -= el.gain
-            if cn is not None:
-                A[k, cn] += el.gain
-            z[k] = 0.0
-
-        elif isinstance(el, VCCS):
-            gm = el.transconductance
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
-            if p is not None and cp is not None:
-                A[p, cp] += gm
-            if p is not None and cn is not None:
-                A[p, cn] -= gm
-            if n_node is not None and cp is not None:
-                A[n_node, cp] -= gm
-            if n_node is not None and cn is not None:
-                A[n_node, cn] += gm
-
-        elif isinstance(el, CCCS):
-            k_vctrl = aux(el.vctrl_name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            beta = el.gain
-            if p is not None:
-                A[p, k_vctrl] += beta
-            if n_node is not None:
-                A[n_node, k_vctrl] -= beta
-
-        elif isinstance(el, CCVS):
-            k = aux(el.name)
-            k_vctrl = aux(el.vctrl_name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                A[p, k] += 1.0
-                A[k, p] += 1.0
-            if n_node is not None:
-                A[n_node, k] -= 1.0
-                A[k, n_node] -= 1.0
-            A[k, k_vctrl] += el.transresistance
-            z[k] = 0.0
-
-        elif isinstance(el, OpAmp):
-            k = aux(el.name)
-            out = idx(el.out)
-            gnd = idx(el.gnd)
-            in_p = idx(el.in_p)
-            in_n = idx(el.in_n)
-            if out is not None:
-                A[out, k] += 1.0
-            if gnd is not None:
-                A[gnd, k] -= 1.0
-            if in_p is not None:
-                A[k, in_p] += 1.0
-            if in_n is not None:
-                A[k, in_n] -= 1.0
-            z[k] = 0.0
-
-        elif isinstance(el, Inductor):
-            g = 1e6
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                A[p, p] += g
-            if n_node is not None:
-                A[n_node, n_node] += g
-            if p is not None and n_node is not None:
-                A[p, n_node] -= g
-                A[n_node, p] -= g
-
-        elif isinstance(el, Transformer):
-            g = 1e6
-            p1, n1 = idx(el.p1), idx(el.n1)
-            p2, n2 = idx(el.p2), idx(el.n2)
-            if p1 is not None: A[p1, p1] += g
-            if n1 is not None: A[n1, n1] += g
-            if p1 is not None and n1 is not None:
-                A[p1, n1] -= g
-                A[n1, p1] -= g
-            if p2 is not None: A[p2, p2] += g
-            if n2 is not None: A[n2, n2] += g
-            if p2 is not None and n2 is not None:
-                A[p2, n2] -= g
-                A[n2, p2] -= g
-
-    return A, z
+    # Share DC stamps with the linear solvers, including ideal winding currents.
+    return build_mna(circuit)
 
 
 def solve_nonlinear(
@@ -257,14 +112,14 @@ def solve_nonlinear(
     RuntimeError
         If Newton-Raphson iteration fails to converge within ``max_iter``.
     """
-    if circuit.size == 0:
+    if circuit.dc_size == 0:
         raise ValueError("Circuit has no unknown variables to solve.")
 
     def idx(node: str) -> int | None:
         return circuit.node_index(node)
 
     A_lin, z_lin = _build_linear_mna(circuit)
-    x = np.zeros(circuit.size, dtype=float)
+    x = np.zeros(circuit.dc_size, dtype=float)
 
     # History of junction voltages for damping
     v_prev: dict[str, tuple[float, ...]] = {}

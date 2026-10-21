@@ -92,9 +92,10 @@ pub struct RustOpAmp {
     pub aux_idx: usize,
 }
 
-/// Inductor in DC steady-state (modeled as 1e6 conductance short).
+/// Ideal DC winding: zero-voltage constraint with a solved branch current.
 #[derive(Debug, Clone)]
 pub struct RustInductorDC {
+    pub aux_idx: usize,
     pub node_p_idx: Option<usize>,
     pub node_n_idx: Option<usize>,
 }

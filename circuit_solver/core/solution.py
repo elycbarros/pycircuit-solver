@@ -27,6 +27,8 @@ from circuit_solver.core.elements import (
     CCCS,
     CCVS,
     OpAmp,
+    Inductor,
+    Transformer,
     Diode,
     ZenerDiode,
     BJT,
@@ -47,7 +49,7 @@ class Solution:
     circuit : Circuit
         The circuit description used to build the MNA system.
     x : np.ndarray
-        Raw solution vector of length ``circuit.size``.
+        Raw solution vector of length ``circuit.dc_size``.
     iterations : int, optional
         Number of solver iterations performed (default 1).
     """
@@ -105,6 +107,21 @@ class Solution:
         """
         idx = self._circuit.aux_index(name)
         return float(self._x[idx])
+
+    def I_inductor(self, name: str) -> float:
+        """DC winding current from node_p to node_n, solved by the ideal-short MNA."""
+        self._element_by_name(name, Inductor)
+        return float(self._x[self._circuit.dc_inductor_index(name)])
+
+    def I_transformer_primary(self, name: str) -> float:
+        """DC current entering the primary dotted terminal p1."""
+        self._element_by_name(name, Transformer)
+        return float(self._x[self._circuit.dc_inductor_index(name, "p")])
+
+    def I_transformer_secondary(self, name: str) -> float:
+        """DC current entering the secondary dotted terminal p2."""
+        self._element_by_name(name, Transformer)
+        return float(self._x[self._circuit.dc_inductor_index(name, "s")])
 
     def I_resistor(self, name: str) -> float:
         """Current through a resistor (from node_p to node_n)."""
@@ -191,6 +208,8 @@ class Solution:
         for el in self._circuit.elements:
             if isinstance(el, Resistor):
                 powers[el.name] = -self.P_resistor(el.name)  # negative = absorbed
+            elif isinstance(el, (Inductor, Transformer)):
+                powers[el.name] = 0.0  # Ideal winding voltage is zero in DC steady state.
             elif isinstance(el, VoltageSource):
                 powers[el.name] = self.P_vsource(el.name)
             elif isinstance(el, CurrentSource):
@@ -245,12 +264,19 @@ class Solution:
         for label, v in sorted(self.voltages.items()):
             lines.append(f"  V({label:>6}) = {v:>12.6f} V")
 
-        lines.append("\n  Branch Currents (Voltage Sources / VCVS / CCVS / Op-Amps)")
+        lines.append("\n  Branch Currents (Voltage Sources / VCVS / CCVS / Op-Amps / DC Windings)")
         lines.append("  " + "-" * 30)
         for el in self._circuit.elements:
             if isinstance(el, (VoltageSource, VCVS, CCVS, OpAmp)):
                 j = self.I_vsource(el.name)
                 lines.append(f"  I({el.name:>6}) = {j:>12.6f} A")
+
+        for el in self._circuit.elements:
+            if isinstance(el, Inductor):
+                lines.append(f"  I({el.name:>6}) = {self.I_inductor(el.name):>12.6f} A (DC ideal short)")
+            elif isinstance(el, Transformer):
+                lines.append(f"  I({el.name}_p) = {self.I_transformer_primary(el.name):>12.6f} A")
+                lines.append(f"  I({el.name}_s) = {self.I_transformer_secondary(el.name):>12.6f} A")
 
         lines.append("\n  Resistor Currents")
         lines.append("  " + "-" * 30)

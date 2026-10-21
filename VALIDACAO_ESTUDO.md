@@ -68,3 +68,17 @@ As referências são independentes: Ohm/Kirchhoff, exponenciais de primeira orde
 A validação integrada revelou e corrigiu duas inconsistências: `P_resistor` retorna dissipação positiva, embora a auditoria use absorção negativa; e `build_three_phase_source` deve converter a entrada RMS para pico, seguindo a convenção de `solve_ac`. Os consumidores trifásicos agora convertem os fasores resolvidos para RMS antes dos wattímetros; o exercício 47 também mostra corretamente a diferença entre correntes de ramo e linha em delta.
 
 Suíte completa na `.venv`: **534 aprovados e os mesmos 10 descartes numéricos diagnosticados**. Memória regenerada: **164/164 comparações aprovadas**. Ruff e `git diff --check` passaram.
+
+
+## Complemento: curto ideal DC e auditoria dos antigos descartes
+
+A aproximação por 1 µΩ foi substituída pela estampa exata Vp−Vn=0, com uma corrente auxiliar por enrolamento. O índice específico DC (`dc_size`) preserva as dimensões AC/transitórias; as correntes resolvidas alimentam a inicialização transitória. A matriz linear do Newton-Raphson agora reutiliza as mesmas estampas. Python e Rust têm o mesmo modelo, sem conversão de tensão em corrente por uma condutância artificial.
+
+Adicionadas 53 regressões DC: orientação de corrente, resistores entre 1 mΩ e 1 GΩ, enrolamentos flutuantes, duas correntes independentes no transformador, correntes DC estacionárias em Euler/trapézio, condições iniciais em malhas de indutores, AC sem alteração de dimensão/impedância, ponto não linear, varredura, Monte Carlo e chamadas diretas à extensão Rust. Adicionadas 13 testemunhas topológicas das sementes incompatíveis/indeterminadas. Os cinco testes nativos Rust passaram; a extensão foi reconstruída em release para Python 3.12 e instalada na `.venv`.
+
+Os dez descartes anteriores foram reclassificados como sistemas sem ponto DC: a fonte de 1 V é fechada por um caminho de enrolamentos com tensão obrigatoriamente nula. O modelo ideal identifica mais três casos com correntes circulantes não únicas, que antes eram selecionadas pela resistência artificial. Os testes dessas 13 sementes agora exigem a rejeição correta nos três solvers. Os outros 107 circuitos aleatórios têm soluções comparadas normalmente. Não se contabiliza uma rejeição correta como solução física.
+
+Auditoria detalhada: `AUDITORIA_DC_IDEAL.md`. Suíte completa na `.venv`: **610 aprovados, nenhum ignorado**. Memória: **164/164 comparações aprovadas**. Cinco roteiros: **19 configurações aprovadas**. Ruff e `git diff --check` passaram. As contagens e a limitação de 1 µΩ descritas nas seções anteriores registram estados históricos, anteriores a esta alteração.
+
+
+O ensaio de Monte Carlo em uma malha DC de corrente indeterminada também passou a exigir erro quando todas as amostras falham. O adaptador Rust não retorna mais médias e desvios zero para uma coleção vazia de soluções; seu comportamento agora coincide com o Python.

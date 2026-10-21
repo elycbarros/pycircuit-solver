@@ -15,7 +15,7 @@ where
     C  — constraint rows (n_aux × n_nodes)
     D  — usually zeros for independent sources / VCVS (n_aux × n_aux)
     v  — unknown node voltages
-    j  — unknown auxiliary currents (through V-sources, VCVS, Op-Amp outputs)
+    j  — unknown auxiliary currents (V-sources, VCVS, Op-Amp outputs, DC windings)
     i  — current injection vector (from current sources into each node)
     e  — voltage constraint RHS (source voltages / VCVS / op-amp virtual short)
 
@@ -57,7 +57,47 @@ from circuit_solver.core.elements import (
 )
 from circuit_solver.core.solution import Solution
 
-__all__ = ["build_mna", "build_mna_sparse", "solve"]
+__all__ = ["build_mna", "build_mna_sparse", "solve", "DCConstraintError"]
+
+
+class DCConstraintError(LinAlgError):
+    """A DC ideal-constraint system is inconsistent or underdetermined.
+
+    Diagnosis uses ranks after row/column scaling, at floating-point precision.
+    """
+    def __init__(self, kind: str, rank: int, augmented_rank: int, size: int):
+        self.kind = kind
+        self.rank = rank
+        self.augmented_rank = augmented_rank
+        self.size = size
+        explanation = ("no DC operating point satisfies all equations"
+                       if kind == "inconsistent" else
+                       "DC branch currents or node voltages are not uniquely determined; initial conditions may be required")
+        super().__init__(f"{kind.capitalize()} ideal DC system: {explanation} "
+                         f"(rank(A)={rank}, rank([A|z])={augmented_rank}, size={size}, scaled numerical ranks).")
+
+
+def _dc_solve_error(circuit, A, z, message):
+    """Classify failed winding constraints; do not regularize or invent a current."""
+    if circuit.dc_inductor_map and hasattr(A, "toarray"):
+        if circuit.dc_size > 512:
+            return LinAlgError(message + " Ideal winding constraints may be inconsistent or underdetermined.")
+        A = A.toarray()
+    if circuit.dc_inductor_map and np.all(np.isfinite(A)) and np.all(np.isfinite(z)):
+        row_scale = np.max(np.abs(A), axis=1)
+        row_scale[row_scale == 0] = 1
+        scaled = A / row_scale[:, None]
+        rhs = z / row_scale
+        col_scale = np.max(np.abs(scaled), axis=0)
+        col_scale[col_scale == 0] = 1
+        scaled /= col_scale
+        rhs /= max(float(np.max(np.abs(rhs))), np.finfo(float).tiny)
+        rank = int(np.linalg.matrix_rank(scaled))
+        augmented_rank = int(np.linalg.matrix_rank(np.column_stack([scaled, rhs])))
+        if rank < len(A):
+            return DCConstraintError("inconsistent" if augmented_rank > rank else "underdetermined",
+                                     rank, augmented_rank, len(A))
+    return LinAlgError(message)
 
 
 def _dc_stamp_entries(circuit: Circuit):
@@ -66,7 +106,7 @@ def _dc_stamp_entries(circuit: Circuit):
     Fonte única das estampas DC: ``build_mna`` (denso) e ``build_mna_sparse``
     (esparso) derivam daqui, para que não divirjam.
     """
-    n = circuit.size
+    n = circuit.dc_size
     idx = circuit.node_index
     aux = circuit.aux_index
 
@@ -155,12 +195,18 @@ def _dc_stamp_entries(circuit: Circuit):
             add(k, in_n, -1.0)
             z[k] = 0.0
 
-        elif isinstance(el, Inductor):
-            stamp_g(idx(el.node_p), idx(el.node_n), 1e6)
-
-        elif isinstance(el, Transformer):
-            stamp_g(idx(el.p1), idx(el.n1), 1e6)
-            stamp_g(idx(el.p2), idx(el.n2), 1e6)
+        elif isinstance(el, (Inductor, Transformer)):
+            windings = [(None, el.node_p, el.node_n)] if isinstance(el, Inductor) else [
+                ("p", el.p1, el.n1), ("s", el.p2, el.n2)
+            ]
+            for winding, positive, negative in windings:
+                k = circuit.dc_inductor_index(el.name, winding)
+                p, q = idx(positive), idx(negative)
+                add(p, k, 1.0)
+                add(k, p, 1.0)
+                add(q, k, -1.0)
+                add(k, q, -1.0)
+                # v(p)-v(n)=0 exactly. The branch current is solved by KCL.
 
     return rows, cols, vals, z
 
@@ -175,12 +221,12 @@ def build_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
 
     Returns
     -------
-    A : np.ndarray, shape (size, size)
+    A : np.ndarray, shape (dc_size, dc_size)
         The MNA coefficient matrix.
-    z : np.ndarray, shape (size,)
+    z : np.ndarray, shape (dc_size,)
         The right-hand side (current injections + voltage constraints).
     """
-    n = circuit.size
+    n = circuit.dc_size
     rows, cols, vals, z = _dc_stamp_entries(circuit)
     A = np.zeros((n, n), dtype=float)
     np.add.at(
@@ -208,7 +254,7 @@ def build_mna_sparse(circuit: Circuit):
     """
     import scipy.sparse as sp
 
-    n = circuit.size
+    n = circuit.dc_size
     rows, cols, vals, z = _dc_stamp_entries(circuit)
     A_coo = sp.coo_matrix((vals, (rows, cols)), shape=(n, n), dtype=float)
     return A_coo.tocsc(), z
@@ -262,7 +308,7 @@ def solve(
     numpy.linalg.LinAlgError
         If the MNA matrix is singular (open circuit, missing ground, etc.).
     """
-    if circuit.size == 0:
+    if circuit.dc_size == 0:
         raise ValueError("Circuit has no unknown variables to solve.")
 
     if circuit.has_nonlinear:
@@ -272,10 +318,16 @@ def solve(
     use_sparse = (
         solver == "sparse"
         or solver == "rust_sparse"
-        or (solver == "auto" and circuit.size >= sparse_threshold)
+        or (solver == "auto" and circuit.dc_size >= sparse_threshold)
     )
 
     if use_sparse:
+        # Small ideal-winding systems get the same constraint diagnosis as dense
+        # solves. Large sparse systems retain sparse assembly/factorization.
+        if check_singular and circuit.dc_inductor_map and circuit.dc_size < sparse_threshold:
+            A, z = build_mna(circuit)
+            if np.linalg.cond(A) > 1e12:
+                raise _dc_solve_error(circuit, A, z, "Sparse DC system is numerically singular.")
         # Check if native Rust sparse solver can be used
         if solver == "rust_sparse":
             from circuit_solver.engine.monte_carlo_rust import (
@@ -320,10 +372,8 @@ def solve(
             if not np.all(np.isfinite(x)):
                 raise LinAlgError("Sparse MNA matrix solution contains non-finite values (NaN/Inf).")
         except Exception as exc:
-            raise LinAlgError(
-                f"Could not solve sparse MNA system: {exc}. "
-                "The circuit may be ill-conditioned or improperly specified."
-            ) from exc
+            raise _dc_solve_error(circuit, A_csc, z,
+                                  f"Could not solve sparse MNA system: {exc}.") from exc
         return Solution(circuit, x)
 
     # Dense solver
@@ -332,18 +382,13 @@ def solve(
     if check_singular:
         cond = np.linalg.cond(A)
         if cond > 1e12:
-            raise LinAlgError(
-                f"MNA matrix is numerically singular (condition number ≈ {cond:.2e}). "
-                "Check for: missing ground reference, floating nodes, or "
-                "short-circuited ideal voltage source loops."
-            )
+            raise _dc_solve_error(circuit, A, z,
+                                  f"MNA matrix is numerically singular (condition number ≈ {cond:.2e}). "
+                                  "Check ground references, floating nodes and ideal voltage loops.")
 
     try:
         x = np.linalg.solve(A, z)
     except LinAlgError as exc:
-        raise LinAlgError(
-            f"Could not solve MNA system: {exc}. "
-            "The circuit may be ill-conditioned or improperly specified."
-        ) from exc
+        raise _dc_solve_error(circuit, A, z, f"Could not solve MNA system: {exc}.") from exc
 
     return Solution(circuit, x)

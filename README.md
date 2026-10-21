@@ -381,15 +381,15 @@ circuit = Circuit([
 
 # Execução nativa em Rust (>1.000.000 passos/s)
 res = solve_transient(circuit, t_stop=0.05, dt=1e-5, backend="rust")
-print(f"Passos calculados: {len(res.t)}")
-print(f"Energia armazenada final: {res.stored_energy[-1] * 1e6:.2f} µJ")
+print(f"Passos calculados: {len(res.time)}")
+print(f"Energia armazenada final: {res.E_stored()[-1] * 1e6:.2f} µJ")
 ```
 
 ---
 
 ## 🧪 Executando os Testes Automatizados
 
-Para rodar toda a suíte de **447 testes automatizados** com listagem explícita de testes ignorados:
+Para rodar toda a suíte de **610 testes automatizados** com diagnósticos explícitos:
 ```bash
 pytest -rs
 ```
@@ -466,3 +466,12 @@ O motor computacional do **`pycircuit-solver`** é continuamente validado por um
 ## 📄 Licença
 
 Distribuído sob a licença [MIT](LICENSE).
+
+
+### Indutores ideais em DC
+
+O ponto DC usa Vp−Vn=0, sem resistência artificial, e resolve uma corrente por enrolamento. Use `sol.I_inductor("L1")`, `sol.I_transformer_primary("T1")` e `sol.I_transformer_secondary("T1")`; os sinais seguem os terminais positivos/pontuados. `P_resistor` retorna dissipação positiva, enquanto `power_audit` representa absorção com sinal negativo.
+
+O vetor DC usa `Circuit.dc_size`; `Circuit.size` mantém a dimensão do bloco comum usado em AC e nos modelos companheiros. A inicialização transitória sem UIC usa as correntes DC resolvidas. Restrições incompatíveis ou correntes indeterminadas são rejeitadas; `DCConstraintError.kind` informa o diagnóstico quando disponível. Condições iniciais explícitas (`uic=True`) podem definir um transitório que não tem ponto DC único.
+
+A auditoria dos antigos descartes está em `AUDITORIA_DC_IDEAL.md`: dez casos não admitem ponto DC e três outros têm correntes não únicas. A suíte verifica a rejeição desses casos, além da concordância dos solvers nos 107 circuitos aleatórios com solução única. A execução atual passou sem testes ignorados.

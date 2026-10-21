@@ -379,84 +379,57 @@ pub fn run_transient(
 
         x_aug.rows(0, n).into_owned()
     } else {
-        // Without UIC: solve DC operating point at t=0
-        let mut a_dc = DMatrix::<f64>::zeros(n, n);
-        for r in &circuit.resistors {
-            stamp_conductance(&mut a_dc, r.node_p_idx, r.node_n_idx, 1.0 / r.resistance);
-        }
-        for vs in &circuit.vsources {
-            let k = vs.aux_idx;
-            if let Some(p) = vs.node_p_idx { a_dc[(p, k)] += 1.0; a_dc[(k, p)] += 1.0; }
-            if let Some(ni) = vs.node_n_idx { a_dc[(ni, k)] -= 1.0; a_dc[(k, ni)] -= 1.0; }
-        }
-        for vcvs in &circuit.vcvs {
-            let k = vcvs.aux_idx;
-            if let Some(p) = vcvs.node_p_idx { a_dc[(p, k)] += 1.0; a_dc[(k, p)] += 1.0; }
-            if let Some(ni) = vcvs.node_n_idx { a_dc[(ni, k)] -= 1.0; a_dc[(k, ni)] -= 1.0; }
-            if let Some(cp) = vcvs.ctrl_p_idx { a_dc[(k, cp)] -= vcvs.gain; }
-            if let Some(cn) = vcvs.ctrl_n_idx { a_dc[(k, cn)] += vcvs.gain; }
-        }
-        for vccs in &circuit.vccs {
-            let gm = vccs.gm;
-            if let (Some(p), Some(cp)) = (vccs.node_p_idx, vccs.ctrl_p_idx) { a_dc[(p, cp)] -= gm; }
-            if let (Some(p), Some(cn)) = (vccs.node_p_idx, vccs.ctrl_n_idx) { a_dc[(p, cn)] += gm; }
-            if let (Some(n), Some(cp)) = (vccs.node_n_idx, vccs.ctrl_p_idx) { a_dc[(n, cp)] += gm; }
-            if let (Some(n), Some(cn)) = (vccs.node_n_idx, vccs.ctrl_n_idx) { a_dc[(n, cn)] -= gm; }
-        }
-        for cccs in &circuit.cccs {
-            let k_vctrl = cccs.vctrl_aux_idx;
-            if let Some(p) = cccs.node_p_idx { a_dc[(p, k_vctrl)] += cccs.gain; }
-            if let Some(n) = cccs.node_n_idx { a_dc[(n, k_vctrl)] -= cccs.gain; }
-        }
-        for ccvs in &circuit.ccvs {
-            let k = ccvs.aux_idx;
-            let k_vctrl = ccvs.vctrl_aux_idx;
-            if let Some(p) = ccvs.node_p_idx { a_dc[(p, k)] += 1.0; a_dc[(k, p)] += 1.0; }
-            if let Some(n) = ccvs.node_n_idx { a_dc[(n, k)] -= 1.0; a_dc[(k, n)] -= 1.0; }
-            a_dc[(k, k_vctrl)] += ccvs.transresistance;
-        }
-        for op in &circuit.opamps {
-            let k = op.aux_idx;
-            if let Some(out) = op.out_idx { a_dc[(out, k)] += 1.0; }
-            if let Some(gnd) = op.gnd_idx { a_dc[(gnd, k)] -= 1.0; }
-            if let Some(inp) = op.in_p_idx { a_dc[(k, inp)] += 1.0; }
-            if let Some(inn) = op.in_n_idx { a_dc[(k, inn)] -= 1.0; }
-        }
-        // Inductors in DC: short circuit (g = 1e6)
+        // Assemble the same ideal DC model used by the Rust DC solvers.
+        // Keep the transient companion matrix at its original size n.
+        let mut windings = Vec::new();
         for ind in &circuit.inductors {
-            stamp_conductance(&mut a_dc, ind.node_p_idx, ind.node_n_idx, 1e6);
+            windings.push(crate::types::RustInductorDC {
+                node_p_idx: ind.node_p_idx, node_n_idx: ind.node_n_idx,
+                aux_idx: n + windings.len(),
+            });
         }
-
-        // At DC, mutual voltage is zero and each winding is a short.
-        // Match the Python DC model: a 1 micro-ohm winding resistance.
         for cp in &circuit.coupled {
-            stamp_conductance(&mut a_dc, cp.p1_idx, cp.n1_idx, 1e6);
-            stamp_conductance(&mut a_dc, cp.p2_idx, cp.n2_idx, 1e6);
+            windings.push(crate::types::RustInductorDC {
+                node_p_idx: cp.p1_idx, node_n_idx: cp.n1_idx,
+                aux_idx: n + windings.len(),
+            });
+            windings.push(crate::types::RustInductorDC {
+                node_p_idx: cp.p2_idx, node_n_idx: cp.n2_idx,
+                aux_idx: n + windings.len(),
+            });
         }
-
-        match a_dc.lu().solve(&z0) {
-            Some(x_dc) => {
-                for (i, c) in circuit.capacitors.iter().enumerate() {
-                    let vp = c.node_p_idx.map(|p| x_dc[p]).unwrap_or(0.0);
-                    let vn = c.node_n_idx.map(|ni| x_dc[ni]).unwrap_or(0.0);
-                    v_c_state[i] = vp - vn;
-                }
-                for (i, ind) in circuit.inductors.iter().enumerate() {
-                    let vp = ind.node_p_idx.map(|p| x_dc[p]).unwrap_or(0.0);
-                    let vn = ind.node_n_idx.map(|ni| x_dc[ni]).unwrap_or(0.0);
-                    i_l_state[i] = (vp - vn) * 1e6;
-                }
-                for (i, cp) in circuit.coupled.iter().enumerate() {
-                    let node_v = |idx: Option<usize>| idx.map(|j| x_dc[j]).unwrap_or(0.0);
-                    let v1 = node_v(cp.p1_idx) - node_v(cp.n1_idx);
-                    let v2 = node_v(cp.p2_idx) - node_v(cp.n2_idx);
-                    v_coupled_state[i] = [v1, v2];
-                    i_coupled_state[i] = [v1 * 1e6, v2 * 1e6];
-                }
-                x_dc
-            }
-            None => return Err("DC operating point initialization failed (singular matrix); specify uic=True to use explicit initial conditions.".to_string()),
+        let dc = crate::types::RustCircuit {
+            n_nodes, size: n + windings.len(),
+            resistors: circuit.resistors.clone(),
+            vsources: circuit.vsources.iter().map(|vs| crate::types::RustVSource {
+                voltage: vs.waveform.eval(0.0), node_p_idx: vs.node_p_idx,
+                node_n_idx: vs.node_n_idx, aux_idx: vs.aux_idx,
+            }).collect(),
+            isources: circuit.isources.iter().map(|src| crate::types::RustISource {
+                current: src.waveform.eval(0.0), node_p_idx: src.node_p_idx,
+                node_n_idx: src.node_n_idx,
+            }).collect(),
+            vcvs: circuit.vcvs.clone(), vccs: circuit.vccs.clone(),
+            cccs: circuit.cccs.clone(), ccvs: circuit.ccvs.clone(),
+            opamps: circuit.opamps.clone(), inductors_dc: windings,
+        };
+        let x_dc = crate::mna_core::solve_mna(&dc, None).ok_or_else(||
+            format!("DC operating point initialization failed: {}; specify uic=True for explicit initial conditions.",
+                    crate::mna_core::dc_failure_reason(&dc))
+        )?;
+        for (i, c) in circuit.capacitors.iter().enumerate() {
+            let vp = c.node_p_idx.map(|p| x_dc[p]).unwrap_or(0.0);
+            let vn = c.node_n_idx.map(|ni| x_dc[ni]).unwrap_or(0.0);
+            v_c_state[i] = vp - vn;
         }
+        for i in 0..circuit.inductors.len() {
+            i_l_state[i] = x_dc[n + i];
+        }
+        for i in 0..circuit.coupled.len() {
+            let offset = n + circuit.inductors.len() + 2 * i;
+            i_coupled_state[i] = [x_dc[offset], x_dc[offset + 1]];
+        }
+        x_dc.rows(0, n).into_owned()
     };
 
     if !x0.iter().all(|v| v.is_finite()) {
@@ -714,7 +687,7 @@ mod tests {
     #[test]
     fn dc_coupled_windings_have_short_circuit_initial_currents() {
         let out = run_transient(&coupled_fixture(), 1e-4, 1e-6, 0, false).unwrap();
-        let expected = 10.0 / (10.0 + 1e-6);
+        let expected = 1.0;
         assert!((out.coupled_currents[0] - expected).abs() < 1e-12);
         assert_eq!(out.coupled_currents[out.time_vec.len()], 0.0);
         assert!((out.energy_stored[0] - 0.01 * expected * expected).abs() < 1e-14);

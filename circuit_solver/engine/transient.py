@@ -388,7 +388,7 @@ def solve_transient(
             dc_sol = solve_dc(Circuit(dc_elements, validate=False))
             if not np.all(np.isfinite(dc_sol._x)):
                 raise ValueError("Non-finite DC operating point.")
-            x0 = dc_sol._x
+            x0 = dc_sol._x[:n].copy()
             for c in capacitors:
                 vp = dc_sol.V(c.node_p) if c.node_p != "0" else 0.0
                 vn = dc_sol.V(c.node_n) if c.node_n != "0" else 0.0
@@ -397,23 +397,20 @@ def solve_transient(
 
             for ind in inductors:
                 v_l_state[ind.name] = 0.0
-                # Current through inductor short at DC
-                vp = dc_sol.V(ind.node_p) if ind.node_p != "0" else 0.0
-                vn = dc_sol.V(ind.node_n) if ind.node_n != "0" else 0.0
-                i_l_state[ind.name] = (vp - vn) * 1e6
+                i_l_state[ind.name] = dc_sol.I_inductor(ind.name)
 
             for pair in coupled_pairs:
-                vp1 = dc_sol.V(pair["p1"]) if pair["p1"] != "0" else 0.0
-                vn1 = dc_sol.V(pair["n1"]) if pair["n1"] != "0" else 0.0
-                vp2 = dc_sol.V(pair["p2"]) if pair["p2"] != "0" else 0.0
-                vn2 = dc_sol.V(pair["n2"]) if pair["n2"] != "0" else 0.0
-                v1 = vp1 - vn1
-                v2 = vp2 - vn2
-                v_coupled_state[pair["name"]] = np.array([v1, v2], dtype=float)
-                i_coupled_state[pair["name"]] = np.array([v1 * 1e6, v2 * 1e6], dtype=float)
+                v_coupled_state[pair["name"]] = np.zeros(2)
+                if pair["is_transformer"]:
+                    currents = [dc_sol.I_transformer_primary(pair["name"]),
+                                dc_sol.I_transformer_secondary(pair["name"])]
+                else:
+                    currents = [dc_sol.I_inductor(pair["ind1_name"]),
+                                dc_sol.I_inductor(pair["ind2_name"])]
+                i_coupled_state[pair["name"]] = np.array(currents, dtype=float)
         except Exception as err:
             raise RuntimeError(
-                "DC operating point initialization failed; specify uic=True to use explicit initial conditions."
+                f"DC operating point initialization failed: {err}. Specify uic=True to use explicit initial conditions."
             ) from err
 
     # Record t=0 results

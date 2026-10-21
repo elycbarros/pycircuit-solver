@@ -20,6 +20,8 @@ import numpy as np
 from circuit_solver.core.circuit import Circuit
 from circuit_solver.core.elements import (
     Resistor,
+    Inductor,
+    Transformer,
     VoltageSource,
     CurrentSource,
     Diode,
@@ -220,6 +222,11 @@ def dc_sweep(
         for el in circuit.elements:
             if isinstance(el, VoltageSource):
                 branch_currents.setdefault(el.name, []).append(sol.I_vsource(el.name))
+            elif isinstance(el, Inductor):
+                branch_currents.setdefault(el.name, []).append(sol.I_inductor(el.name))
+            elif isinstance(el, Transformer):
+                branch_currents.setdefault(f"{el.name}_p", []).append(sol.I_transformer_primary(el.name))
+                branch_currents.setdefault(f"{el.name}_s", []).append(sol.I_transformer_secondary(el.name))
             elif isinstance(el, Resistor):
                 branch_currents.setdefault(el.name, []).append(sol.I_resistor(el.name))
             elif isinstance(el, CurrentSource):

@@ -190,14 +190,15 @@ def _build_rust_descriptors(circuit: Circuit) -> tuple:
             )
 
         elif isinstance(el, Transformer):
-            # Enrolamentos ideais em DC: cada um vira condutância 1e6 (curto)
-            for w_p, w_n in ((el.p1, el.n1), (el.p2, el.n2)):
+            # One exact zero-voltage constraint and current unknown per winding.
+            for winding, w_p, w_n in (("p", el.p1, el.n1), ("s", el.p2, el.n2)):
                 p = node_idx(w_p)
                 n = node_idx(w_n)
                 py_inductors.append(
                     _rust.PyInductorDC(
                         p if p is not None else -1,
                         n if n is not None else -1,
+                        circuit.dc_inductor_index(el.name, winding),
                     )
                 )
 
@@ -208,12 +209,13 @@ def _build_rust_descriptors(circuit: Circuit) -> tuple:
                 _rust.PyInductorDC(
                     p if p is not None else -1,
                     n if n is not None else -1,
+                    circuit.dc_inductor_index(el.name),
                 )
             )
 
     return (
         circuit.n_nodes,  # non-ground nodes
-        circuit.size,     # MNA system size
+        circuit.dc_size,  # DC includes ideal winding current unknowns
         py_resistors,
         py_vsources,
         py_isources,
@@ -327,6 +329,13 @@ def _monte_carlo_rust(
         opamps=opamps,
         inductors_dc=inductors,
     )
+
+    # Empty statistics are not a DC solution. Match the Python backend instead
+    # of returning zero-valued means after every ideal-constraint solve failed.
+    if samples_2d.shape[0] == 0:
+        raise RuntimeError(
+            "All Monte Carlo samples failed to solve. Check ideal DC constraints and circuit conditioning."
+        )
 
     # samples_2d is already a numpy array (zero-copy from Rust)
     return MonteCarloResult(

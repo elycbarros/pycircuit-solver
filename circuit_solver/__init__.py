@@ -28,7 +28,7 @@ from circuit_solver.core.elements import (
 )
 from circuit_solver.core.solution import Solution
 from circuit_solver.core.transient_solution import TransientSolution
-from circuit_solver.engine.mna import solve
+from circuit_solver.engine.mna import solve, DCConstraintError
 from circuit_solver.engine.nonlinear import solve_nonlinear
 from circuit_solver.engine.ac import solve_ac, ACSolution, ac_sweep
 from circuit_solver.engine.transient import solve_transient
@@ -79,6 +79,7 @@ from circuit_solver.visualization.plots import (
 
 __all__ = [
     "Circuit",
+    "DCConstraintError",
     "Resistor",
     "Capacitor",
     "Inductor",

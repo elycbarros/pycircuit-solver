@@ -149,9 +149,11 @@ pub fn build_mna(
         z[k] = 0.0;
     }
 
-    // ---- Inductors in DC (1e6 short) --------------------------------------
+    // ---- Ideal DC winding constraints: vp - vn = 0 -----------------------
     for ind in &circuit.inductors_dc {
-        stamp_conductance(&mut a, ind.node_p_idx, ind.node_n_idx, 1e6);
+        let k = ind.aux_idx;
+        if let Some(p) = ind.node_p_idx { a[(p, k)] += 1.0; a[(k, p)] += 1.0; }
+        if let Some(ni) = ind.node_n_idx { a[(ni, k)] -= 1.0; a[(k, ni)] -= 1.0; }
     }
 
     (a, z)
@@ -187,6 +189,42 @@ pub fn solve_mna(
     // nalgebra full-pivoting LU — numerically stable for ill-conditioned systems
     let lu = a.full_piv_lu();
     lu.solve(&z)
+}
+
+/// Diagnose a failed small DC solve by equilibrated numerical matrix ranks.
+/// Large sparse systems are not densified merely to obtain a diagnostic.
+pub fn dc_failure_reason(circuit: &RustCircuit) -> String {
+    let n = circuit.size;
+    if n > 512 {
+        return "singular DC system; ideal constraints may be inconsistent or underdetermined".to_string();
+    }
+    let (mut a, mut z) = build_mna(circuit, None);
+    if !a.iter().chain(z.iter()).all(|v| v.is_finite()) {
+        return "non-finite DC system".to_string();
+    }
+    for i in 0..n {
+        let scale = (0..n).map(|j| a[(i, j)].abs()).fold(0.0_f64, f64::max);
+        let scale = if scale == 0.0 { 1.0 } else { scale };
+        for j in 0..n { a[(i, j)] /= scale; }
+        z[i] /= scale;
+    }
+    for j in 0..n {
+        let scale = (0..n).map(|i| a[(i, j)].abs()).fold(0.0_f64, f64::max);
+        if scale > 0.0 { for i in 0..n { a[(i, j)] /= scale; } }
+    }
+    let rhs_scale = z.iter().map(|v| v.abs()).fold(0.0_f64, f64::max);
+    if rhs_scale > 0.0 { z /= rhs_scale; }
+    let augmented = DMatrix::from_fn(n, n + 1, |i, j| if j < n { a[(i, j)] } else { z[i] });
+    let eps = 10.0 * f64::EPSILON * (n + 1) as f64;
+    let rank = a.svd(false, false).rank(eps);
+    let augmented_rank = augmented.svd(false, false).rank(eps);
+    if augmented_rank > rank {
+        format!("inconsistent ideal DC constraints: no operating point (scaled ranks {rank}, {augmented_rank}, size {n})")
+    } else if rank < n {
+        format!("underdetermined DC currents/voltages: no unique operating point (scaled rank {rank}, size {n})")
+    } else {
+        "DC factorization failed without a detected constraint rank deficiency".to_string()
+    }
 }
 
 /// Stamp a two-terminal conductance into the sparse triplet list.
@@ -334,9 +372,17 @@ pub fn build_mna_sparse(
         z[k] = 0.0;
     }
 
-    // ---- Inductors in DC (1e6 short) --------------------------------------
+    // ---- Ideal DC winding constraints: vp - vn = 0 -----------------------
     for ind in &circuit.inductors_dc {
-        stamp_conductance_sparse(&mut triplets, ind.node_p_idx, ind.node_n_idx, 1e6);
+        let k = ind.aux_idx;
+        if let Some(p) = ind.node_p_idx {
+            triplets.push(Triplet::new(p, k, 1.0));
+            triplets.push(Triplet::new(k, p, 1.0));
+        }
+        if let Some(ni) = ind.node_n_idx {
+            triplets.push(Triplet::new(ni, k, -1.0));
+            triplets.push(Triplet::new(k, ni, -1.0));
+        }
     }
 
     (triplets, z)
@@ -359,7 +405,59 @@ pub fn solve_mna_sparse(
 
     let mut sol = vec![0.0f64; n];
     for i in 0..n {
+        if !x[i].is_finite() { return None; }
         sol[i] = x[i];
     }
     Some(sol)
+}
+
+#[cfg(test)]
+mod ideal_dc_tests {
+    use super::*;
+    use crate::types::{RustInductorDC, RustResistorStamped, RustVSource};
+
+    fn fixture() -> RustCircuit {
+        RustCircuit {
+            n_nodes: 2, size: 4,
+            resistors: vec![RustResistorStamped { resistance: 10.0, tolerance: 0.0,
+                node_p_idx: Some(0), node_n_idx: Some(1) }],
+            vsources: vec![RustVSource { voltage: 12.0,
+                node_p_idx: Some(0), node_n_idx: None, aux_idx: 2 }],
+            inductors_dc: vec![RustInductorDC { node_p_idx: Some(1), node_n_idx: None, aux_idx: 3 }],
+            isources: vec![], vcvs: vec![], vccs: vec![], cccs: vec![], ccvs: vec![], opamps: vec![],
+        }
+    }
+
+    #[test]
+    fn exact_winding_dense_and_sparse_stamps_and_currents() {
+        let circuit = fixture();
+        let (a, _) = build_mna(&circuit, None);
+        assert_eq!(a[(1, 1)], 0.1);
+        assert_eq!(a[(1, 3)], 1.0);
+        assert_eq!(a[(3, 1)], 1.0);
+        assert_eq!(a[(3, 3)], 0.0);
+        let dense = solve_mna(&circuit, None).unwrap();
+        let sparse = solve_mna_sparse(&circuit, None).unwrap();
+        for (d, s) in dense.iter().zip(&sparse) { assert!((d - s).abs() < 1e-14); }
+        assert_eq!(dense[1], 0.0);
+        assert!((dense[3] - 1.2).abs() < 1e-14);
+    }
+
+    #[test]
+    fn ideal_constraints_diagnose_no_solution_and_nonunique_current() {
+        let mut circuit = fixture();
+        circuit.n_nodes = 1;
+        circuit.size = 3;
+        circuit.resistors.clear();
+        circuit.vsources[0].aux_idx = 1;
+        circuit.inductors_dc[0].node_p_idx = Some(0);
+        circuit.inductors_dc[0].aux_idx = 2;
+        assert!(solve_mna(&circuit, None).is_none());
+        assert!(dc_failure_reason(&circuit).contains("inconsistent"));
+        assert!(solve_mna_sparse(&circuit, None).is_none());
+        circuit.vsources[0].voltage = 0.0;
+        assert!(solve_mna(&circuit, None).is_none());
+        assert!(dc_failure_reason(&circuit).contains("underdetermined"));
+        assert!(solve_mna_sparse(&circuit, None).is_none());
+    }
 }

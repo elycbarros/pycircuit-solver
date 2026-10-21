@@ -15,7 +15,8 @@ Auxiliary variable ordering
 ---------------------------
 After the node block, MNA appends one auxiliary current variable per
 voltage-enforcing element (VoltageSource, VCVS, OpAmp output branch).
-These are tracked via :attr:`auxiliary_map`.
+These are tracked via :attr:`auxiliary_map`. DC additionally appends one
+current per ideal winding using :attr:`dc_inductor_map` and :attr:`dc_size`.
 """
 
 from __future__ import annotations
@@ -78,7 +79,13 @@ class Circuit:
     n_aux : int
         Number of auxiliary current variables.
     size : int
-        Total size of the MNA system: ``n_nodes + n_aux``.
+        Common node/source block size, also used by AC and transient companions:
+        ``n_nodes + n_aux``.
+    dc_size : int
+        DC MNA size including one extra current unknown per ideal winding.
+    dc_inductor_map : dict[tuple[str, str | None], int]
+        Absolute DC current indices keyed by element name and winding (None for
+        an Inductor, "p"/"s" for a Transformer's dotted terminals).
     hierarchy : HierarchyTree | None
         Hierarchy tree containing subcircuit definitions, instances, and
         pedagogical white-box trace.
@@ -169,6 +176,16 @@ class Circuit:
         self.n_nodes: int = len(self.node_map)
         self.n_aux: int = len(self.auxiliary_map)
         self.size: int = self.n_nodes + self.n_aux
+        # DC adds zero-voltage constraints for each winding, after the common
+        # node/source block. AC and companion-model transient keep their size.
+        self.dc_inductor_map: dict[tuple[str, str | None], int] = {}
+        for el in self.elements:
+            if isinstance(el, Inductor):
+                self.dc_inductor_map[(el.name, None)] = self.size + len(self.dc_inductor_map)
+            elif isinstance(el, Transformer):
+                for winding in ("p", "s"):
+                    self.dc_inductor_map[(el.name, winding)] = self.size + len(self.dc_inductor_map)
+        self.dc_size: int = self.size + len(self.dc_inductor_map)
 
     @property
     def has_nonlinear(self) -> bool:
@@ -306,6 +323,10 @@ class Circuit:
     def aux_index(self, name: str) -> int:
         """Return the auxiliary-block index for element ``name``."""
         return self.n_nodes + self.auxiliary_map[name]
+
+    def dc_inductor_index(self, name: str, winding: str | None = None) -> int:
+        """DC current index, positive from p to n (winding 'p'/'s' for a transformer)."""
+        return self.dc_inductor_map[(name, winding)]
 
     @property
     def nodes(self) -> list[str]:

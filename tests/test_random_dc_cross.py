@@ -4,6 +4,8 @@
    Não depende do condicionamento.
 2. Soluções: denso, esparso Python e esparso Rust (se compilado) dão as
    mesmas tensões, com tolerância proporcional ao número de condição.
+3. Casos DC incompatíveis/indeterminados têm rejeição explícita verificada;
+   uma testemunha topológica independente confirma cada diagnóstico.
 """
 from __future__ import annotations
 
@@ -24,13 +26,34 @@ from circuit_solver.core.elements import (
     Transformer,
     VoltageSource,
 )
-from circuit_solver.engine.mna import build_mna, build_mna_sparse
+from circuit_solver.engine.mna import build_mna, build_mna_sparse, DCConstraintError
 from circuit_solver.engine.monte_carlo_rust import RUST_AVAILABLE
 
 N_CASES = 60
 REL_MIN = 1e-6
 ABS = 1e-8
 MAX_COND = 1e12
+
+# Fixed seeds whose exact DC winding constraints have no unique solution.
+# These are rejection regressions, not successful circuit simulations.
+INVALID_DC = {
+    False: {16: "inconsistent", 57: "inconsistent"},
+    True: {8: "inconsistent", 20: "inconsistent", 24: "underdetermined",
+           26: "underdetermined", 27: "inconsistent", 31: "inconsistent",
+           32: "inconsistent", 43: "inconsistent", 47: "inconsistent",
+           51: "underdetermined", 57: "inconsistent"},
+}
+
+
+def _assert_invalid_dc(circuit, seed, transformers):
+    kind = INVALID_DC[transformers].get(seed)
+    if kind is None:
+        return False
+    for solver in (["dense", "sparse", "rust_sparse"] if RUST_AVAILABLE else ["dense", "sparse"]):
+        with pytest.raises(DCConstraintError) as caught:
+            solve(circuit, solver=solver)
+        assert caught.value.kind == kind, f"seed={seed}, transformers={transformers}, solver={solver}"
+    return True
 
 
 def _random_circuit(seed: int, transformers: bool = False):
@@ -136,6 +159,8 @@ def _solve_reference(circ, seed, *, transformers=False):
 @pytest.mark.parametrize("seed", range(N_CASES))
 def test_dc_solvers_agree(seed):
     circ, nodes = _random_circuit(seed)
+    if _assert_invalid_dc(circ, seed, False):
+        return
     ref, cond = _solve_reference(circ, seed)
     rel = max(REL_MIN, 100 * np.finfo(float).eps * cond)
     _assert_same(ref, solve(circ, solver="sparse"), nodes, "sparse", rel)
@@ -150,18 +175,20 @@ def _assert_same(ref, other, nodes, label: str, rel: float) -> None:
         )
 
 
-def test_random_circuits_are_mostly_solvable():
-    solved = 0
-    for seed in range(N_CASES):
-        circ, _ = _random_circuit(seed)
-        try:
-            solve(circ, solver="auto")
-            solved += 1
-        except np.linalg.LinAlgError:
-            cond = float(np.linalg.cond(build_mna(circ)[0]))
-            if not cond > MAX_COND:
-                raise
-    assert solved >= int(0.8 * N_CASES), f"só {solved}/{N_CASES} resolvíveis"
+def test_random_circuits_have_expected_dc_solvability():
+    for transformers in (False, True):
+        solved = 0
+        for seed in range(N_CASES):
+            circ, _ = _random_circuit(seed, transformers=transformers)
+            try:
+                solve(circ, solver="auto")
+                solved += 1
+            except np.linalg.LinAlgError:
+                cond = float(np.linalg.cond(build_mna(circ)[0]))
+                if not cond > MAX_COND:
+                    raise
+        expected = N_CASES - len(INVALID_DC[transformers])
+        assert solved == expected, f"transformers={transformers}: {solved}/{N_CASES}, expected {expected}"
 
 
 @pytest.mark.parametrize("seed", range(N_CASES))
@@ -178,6 +205,8 @@ def test_transformer_stamps_match(seed):
 @pytest.mark.parametrize("seed", range(N_CASES))
 def test_transformer_dc_solvers_agree(seed):
     circ, nodes = _random_circuit(seed, transformers=True)
+    if _assert_invalid_dc(circ, seed, True):
+        return
     ref, cond = _solve_reference(circ, seed, transformers=True)
     rel = max(REL_MIN, 100 * np.finfo(float).eps * cond)
     _assert_same(ref, solve(circ, solver="sparse"), nodes, "sparse", rel)
@@ -187,7 +216,7 @@ def test_transformer_dc_solvers_agree(seed):
 
 @pytest.mark.parametrize("target", [test_dc_solvers_agree,
                                    test_transformer_dc_solvers_agree,
-                                   test_random_circuits_are_mostly_solvable])
+                                   test_random_circuits_have_expected_dc_solvability])
 @pytest.mark.parametrize("error_type", [RuntimeError, KeyError, np.linalg.LinAlgError])
 def test_unexpected_errors_are_never_hidden(monkeypatch, target, error_type):
     def broken_solve(*args, **kwargs):
@@ -197,7 +226,7 @@ def test_unexpected_errors_are_never_hidden(monkeypatch, target, error_type):
     # Even a LinAlgError must propagate if the matrix is well conditioned.
     monkeypatch.setitem(globals(), "build_mna", lambda _: (np.eye(2), np.zeros(2)))
     with pytest.raises(error_type, match="injected regression"):
-        if target is test_random_circuits_are_mostly_solvable:
+        if target is test_random_circuits_have_expected_dc_solvability:
             target()
         else:
             target(0)
@@ -212,3 +241,36 @@ def test_expected_numerical_skip_has_reproducible_diagnostic(monkeypatch, transf
     monkeypatch.setitem(globals(), "build_mna", lambda _: (np.diag([1., 1e-15]), np.zeros(2)))
     with pytest.raises(pytest.skip.Exception, match=rf"seed=42, transformers={transformers}.*cond="):
         _solve_reference(None, 42, transformers=transformers)
+
+
+@pytest.mark.parametrize('transformers,seed,kind', [
+    (flag, seed, kind) for flag, cases in INVALID_DC.items() for seed, kind in cases.items()
+])
+def test_invalid_random_constraints_have_a_topological_witness(transformers, seed, kind):
+    # Independent of matrix ranks: zero-voltage windings merge DC potentials.
+    # A nonzero source inside a merged component is contradictory. A winding
+    # cycle permits an arbitrary circulating DC current.
+    circ, _ = _random_circuit(seed, transformers=transformers)
+    parent = {}
+
+    def find(node):
+        parent.setdefault(node, node)
+        while parent[node] != node:
+            node = parent[node]
+        return node
+
+    cycle = False
+    for el in circ.elements:
+        branches = [(el.node_p, el.node_n)] if isinstance(el, Inductor) else (
+            [(el.p1, el.n1), (el.p2, el.n2)] if isinstance(el, Transformer) else [])
+        for p, n in branches:
+            a, b = find(p), find(n)
+            if a == b:
+                cycle = True
+            else:
+                parent[a] = b
+    conflict = any(isinstance(el, VoltageSource) and el.voltage != 0
+                   and find(el.node_p) == find(el.node_n) for el in circ.elements)
+    assert conflict == (kind == 'inconsistent')
+    if kind == 'underdetermined':
+        assert cycle

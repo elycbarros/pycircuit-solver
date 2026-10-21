@@ -58,10 +58,10 @@ def test_dc_initialization_includes_both_windings(backend, transformer):
     c = coupled_circuit(transformer=transformer)
     pair = c.get_coupled_pairs()[0]
     r = solve_transient(c, t_stop=.001, dt=1e-6, backend=backend)
-    expected = 10 / (10 + 1e-6)  # The engine's declared 1 micro-ohm DC short.
+    expected = 1.0  # Exact ideal winding short: 10 V / 10 ohms.
     assert r.I(pair['ind1_name'])[0] == pytest.approx(expected, rel=1e-9)
     assert r.I(pair['ind2_name'])[0] == pytest.approx(0, abs=1e-12)
-    assert r.V('p')[0] == pytest.approx(expected * 1e-6, abs=1e-12)
+    assert r.V('p')[0] == pytest.approx(0, abs=1e-14)
     assert r.E_stored()[0] == pytest.approx(.5 * .02 * expected**2, rel=1e-9)
     np.testing.assert_allclose(r.I(pair['ind1_name']), 1., atol=3e-7)
     np.testing.assert_allclose(r.I(pair['ind2_name']), 0., atol=3e-7)

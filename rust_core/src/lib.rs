@@ -177,10 +177,12 @@ impl PyOpAmp {
     }
 }
 
-/// Inductor (DC short) descriptor.
+/// Ideal DC winding descriptor. If aux_idx is omitted, append its current
+/// unknown after the supplied system size; no resistance is introduced.
 #[pyclass]
 #[derive(Clone)]
 pub struct PyInductorDC {
+    #[pyo3(get, set)] pub aux_idx: Option<usize>,
     #[pyo3(get, set)] pub node_p_idx: i64,
     #[pyo3(get, set)] pub node_n_idx: i64,
 }
@@ -188,8 +190,9 @@ pub struct PyInductorDC {
 #[pymethods]
 impl PyInductorDC {
     #[new]
-    fn new(node_p_idx: i64, node_n_idx: i64) -> Self {
-        PyInductorDC { node_p_idx, node_n_idx }
+    #[pyo3(signature = (node_p_idx, node_n_idx, aux_idx=None))]
+    fn new(node_p_idx: i64, node_n_idx: i64, aux_idx: Option<usize>) -> Self {
+        PyInductorDC { node_p_idx, node_n_idx, aux_idx }
     }
 }
 
@@ -321,9 +324,21 @@ fn to_rust_circuit(
     opamps: Option<&[PyOpAmp]>,
     inductors_dc: Option<&[PyInductorDC]>,
 ) -> RustCircuit {
+    // Explicit indices preserve the Python DC ordering. Older direct callers
+    // can omit aux_idx; append the winding unknown after their supplied size.
+    let mut next_aux = size;
+    let inductors_dc = inductors_dc.unwrap_or(&[]).iter().map(|ind| {
+        let aux_idx = ind.aux_idx.unwrap_or(next_aux);
+        next_aux = next_aux.max(aux_idx + 1);
+        crate::types::RustInductorDC {
+            node_p_idx: opt_idx(ind.node_p_idx),
+            node_n_idx: opt_idx(ind.node_n_idx),
+            aux_idx,
+        }
+    }).collect();
     RustCircuit {
         n_nodes,
-        size,
+        size: next_aux,
         resistors: resistors.iter().map(|r| RustResistorStamped {
             resistance: r.resistance,
             tolerance: r.tolerance,
@@ -376,10 +391,7 @@ fn to_rust_circuit(
             gnd_idx: opt_idx(op.gnd_idx),
             aux_idx: op.aux_idx,
         }).collect(),
-        inductors_dc: inductors_dc.unwrap_or(&[]).iter().map(|ind| crate::types::RustInductorDC {
-            node_p_idx: opt_idx(ind.node_p_idx),
-            node_n_idx: opt_idx(ind.node_n_idx),
-        }).collect(),
+        inductors_dc,
     }
 }
 
@@ -555,7 +567,7 @@ fn solve_mna_sparse<'py>(
     );
     match mna_core::solve_mna_sparse(&circuit, None) {
         Some(x) => {
-            let v: Vec<f64> = (0..size).map(|i| x[i]).collect();
+            let v: Vec<f64> = (0..circuit.size).map(|i| x[i]).collect();
             Ok(Some(v.into_pyarray(py)))
         }
         None => Ok(None),
