@@ -451,13 +451,13 @@ def parse_netlist_string(text: str, base_dir: Path | None = None) -> list[_Eleme
     return elements
 
 
-def parse_netlist(path: str | Path) -> list[_Element]:
-    """Read and parse a SPICE netlist file.
+def parse_netlist(path_or_text: str | Path) -> list[_Element]:
+    """Read and parse a SPICE netlist file or text string.
 
     Parameters
     ----------
-    path : str or Path
-        Path to the ``.cir`` / ``.net`` / ``.sp`` file.
+    path_or_text : str or Path
+        Path to the ``.cir`` / ``.net`` / ``.sp`` file, or netlist string content.
 
     Returns
     -------
@@ -467,15 +467,21 @@ def parse_netlist(path: str | Path) -> list[_Element]:
     Raises
     ------
     FileNotFoundError
-        If the file does not exist.
+        If a file path was given but the file does not exist.
     SyntaxError
         If a netlist line cannot be parsed.
     """
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"Netlist file not found: '{path}'")
-    elements, _ = parse_netlist_with_hierarchy(p, base_dir=p.parent)
-    return elements
+    path_candidate = _as_existing_file(path_or_text)
+    if path_candidate is not None:
+        elements, _ = parse_netlist_with_hierarchy(path_candidate, base_dir=path_candidate.parent)
+        return elements
+
+    text = str(path_or_text)
+    if "\n" in text or "\r" in text:
+        elements, _ = parse_netlist_with_hierarchy(text)
+        return elements
+
+    raise FileNotFoundError(f"Netlist file not found: '{path_or_text}'")
 
 
 def parse_dc_directive(text_or_path: str | Path) -> dict[str, object] | None:

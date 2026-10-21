@@ -496,17 +496,22 @@ class SubcircuitExpander:
         for formal_pin, conn_node in zip(sub_def.pins, conn_nodes):
             pin_map[formal_pin.lower()] = conn_node
 
-        # Resolve parameters: inherit scope, merge defaults, override with instance params
+        # Resolve parameters: inherit scope, evaluate instance arguments in caller's scope
         instance_param_strs = self.parse_header_params(param_tokens)
+        evaluated_instance_args: dict[str, float] = {}
+        for k, v in instance_param_strs.items():
+            evaluated_instance_args[k.upper()] = evaluate_param_expression(v, scope)
+
         resolved_params: dict[str, float] = dict(scope)
 
-        # Evaluate defaults
+        # Evaluate defaults for parameters not overridden by instance
         for k, v in sub_def.default_params.items():
-            resolved_params[k.upper()] = evaluate_param_expression(v, resolved_params)
+            k_u = k.upper()
+            if k_u not in evaluated_instance_args:
+                resolved_params[k_u] = evaluate_param_expression(v, resolved_params)
 
-        # Evaluate instance overrides
-        for k, v in instance_param_strs.items():
-            resolved_params[k.upper()] = evaluate_param_expression(v, resolved_params)
+        # Apply evaluated instance overrides
+        resolved_params.update(evaluated_instance_args)
 
         instance = SubcircuitInstance(
             name=inst_name,

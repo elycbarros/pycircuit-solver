@@ -7,7 +7,7 @@
 
 O **`pycircuit-solver`** é uma plataforma computacional híbrida (Python + Rust) voltada para a análise, simulação e validação estática de circuitos elétricos lineares. O projeto foi projetado com duplo objetivo:
 1. **Rigor Eletrotécnico:** Implementar os fundamentos clássicos da Teoria de Circuitos baseando-se no método da **Análise Nodal Modificada (MNA — *Modified Nodal Analysis*)**, com suporte integral a elementos passivos, ativos, fontes dependentes, regime permanente senoidal (CA fasorial), Teorema de Tellegen e teoremas de Thévenin/Norton.
-2. **Engenharia de Software de Alto Nível:** Apresentar uma arquitetura desacoplada, tipagem estática rigorosa, validação topológica pré-solver baseada em Teoria dos Grafos, suíte automatizada de **439 testes** e um **núcleo de alta performance em Rust (`rust_core`)** que acelera simulações estatísticas (Monte Carlo) e transientes via multi-threading nativo sem bloqueio de GIL.
+2. **Engenharia de Software de Alto Nível:** Apresentar uma arquitetura desacoplada, tipagem estática rigorosa, validação topológica pré-solver baseada em Teoria dos Grafos, suíte automatizada de **447 testes** e um **núcleo de alta performance em Rust (`rust_core`)** que acelera simulações estatísticas (Monte Carlo) e transientes via multi-threading nativo sem bloqueio de GIL.
 
 ---
 
@@ -434,10 +434,11 @@ pycircuit-solver/
 │       ├── monte_carlo.rs      # Rayon data-parallel worker para simulação Monte Carlo
 │       └── transient.rs        # Motor de integração implícita transiente (>1M passos/s) com UIC resistivo
 │
-└── tests/                      # Suíte de 439 testes automatizados com pytest (429 aprovados, 10 skips estocásticos)
+└── tests/                      # Suíte de 447 testes automatizados com pytest (437 aprovados, 10 skips estocásticos)
     ├── test_textbook_benchmarks.py     # 48 benchmarks analíticos canônicos (Sadiku, Nilsson, Boylestad, Dorf, Sedra, Hayt, Irwin)
     ├── test_two_port.py                # Redes de duas portas (Z, Y, H, ABCD, Zin, Zout e cascata)
     ├── test_three_phase.py             # Sistemas trifásicos Y-Y, Y-Δ e Teorema de Blondel (dois wattímetros)
+    ├── test_stress.py                  # Bateria de stress, carga extrema (400 nós, R-2R 64-bit, 25k Monte Carlo) e fuzzing
     ├── test_random_dc_cross.py         # Teste cruzado aleatório estocástico (denso x esparso x Rust em 60 circuitos)
     ├── test_rust_sparse_transformer.py # Validação de transformadores em DC no backend esparso Rust
     ├── test_transient_convergence.py   # Ordem de convergência Trapezoidal 2ª ordem vs Euler 1ª ordem e UIC em t=0
@@ -462,9 +463,9 @@ pycircuit-solver/
 
 ---
 
-## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (439 Testes)
+## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (447 Testes)
 
-A biblioteca é auditada de ponta a ponta por uma suíte de **439 testes automatizados** (429 aprovados, 10 skips singulares estocásticos esperados) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com soluções analíticas exatas publicadas em 7 das maiores referências bibliográficas mundiais da Engenharia Elétrica e Microeletrônica:
+A biblioteca é auditada de ponta a ponta por uma suíte de **447 testes automatizados** (437 aprovados, 10 skips singulares estocásticos esperados) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com soluções analíticas exatas publicadas em 7 das maiores referências bibliográficas mundiais da Engenharia Elétrica e Microeletrônica:
 
 1. **Alexander & Sadiku (*Fundamentos de Circuitos Elétricos*):**
    * Divisores e reduções série-paralelo (Cap. 2, Ex. 2.8).

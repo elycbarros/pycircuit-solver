@@ -115,10 +115,11 @@ pycircuit-solver/
 │   ├── cap07_transiente_rlc.py          # Resposta ao degrau de RLC de 2ª ordem e overshoot
 │   └── cap09_filtro_rc_fasores.py       # Filtro passa-baixas RC, fasores e Diagrama de Bode
 │
-└── tests/                               # Suíte de testes automatizados (439 testes pytest)
+└── tests/                               # Suíte de testes automatizados (447 testes pytest)
     ├── test_textbook_benchmarks.py      # 48 benchmarks analíticos canônicos (7 referências clássicas)
     ├── test_two_port.py                 # Quadripolos e redes de duas portas (Z, Y, H, ABCD, Zin, Zout)
     ├── test_three_phase.py              # Circuitos trifásicos (Y-Δ) e Método dos Dois Wattímetros (Blondel)
+    ├── test_stress.py                   # Bateria de stress, carga extrema (400 nós, R-2R 64-bit, 25k Monte Carlo) e fuzzing
     ├── test_random_dc_cross.py          # Validação cruzada estocástica (denso x esparso x Rust em 60 circuitos)
     ├── test_rust_sparse_transformer.py  # Suporte a transformadores em DC no backend Rust
     ├── test_transient_convergence.py    # Ordem de convergência temporal Trapezoidal 2ª ordem vs Euler e UIC em t=0
