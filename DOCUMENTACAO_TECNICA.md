@@ -465,7 +465,7 @@ pycircuit-solver/
 
 ## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (447 Testes)
 
-A biblioteca é auditada de ponta a ponta por uma suíte de **510 testes automatizados** (500 aprovados, 10 skips singulares estocásticos esperados) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
+A biblioteca é auditada de ponta a ponta por uma suíte de **521 testes automatizados** (511 aprovados, 10 casos numericamente mal condicionados ignorados com diagnóstico) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com referências analíticas e aproximações explicitadas, inspirados em 7 obras bibliográficas da Engenharia Elétrica e Microeletrônica:
 
 1. **Alexander & Sadiku (*Fundamentos de Circuitos Elétricos*):**
    * Divisores e reduções série-paralelo (Cap. 2, Ex. 2.8).

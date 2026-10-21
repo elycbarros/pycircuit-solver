@@ -110,16 +110,33 @@ def test_stamps_match_dense_and_sparse(seed):
     assert np.allclose(zs, z, rtol=0.0, atol=1e-12 * scale_z)
 
 
+def _solve_reference(circ, seed, *, transformers=False):
+    try:
+        ref = solve(circ, solver="auto")
+    except np.linalg.LinAlgError as exc:
+        cond = float(np.linalg.cond(build_mna(circ)[0]))
+        # A numerical exception on a well-conditioned circuit is a regression.
+        # NaN also fails this comparison and must not become a skip.
+        if not cond > MAX_COND:
+            raise
+        pytest.skip(
+            f"seed={seed}, transformers={transformers}: falha numérica esperada "
+            f"(cond={cond:.2e} > {MAX_COND:.0e}); {exc}"
+        )
+    cond = float(np.linalg.cond(build_mna(circ)[0]))
+    if cond > MAX_COND:
+        pytest.skip(
+            f"seed={seed}, transformers={transformers}: comparação instável "
+            f"(cond={cond:.2e} > {MAX_COND:.0e})"
+        )
+    assert np.isfinite(cond), f"seed={seed}: condicionamento não finito"
+    return ref, cond
+
+
 @pytest.mark.parametrize("seed", range(N_CASES))
 def test_dc_solvers_agree(seed):
     circ, nodes = _random_circuit(seed)
-    try:
-        ref = solve(circ, solver="auto")
-    except Exception:
-        pytest.skip("circuito aleatório singular")
-    cond = np.linalg.cond(build_mna(circ)[0])
-    if cond > MAX_COND:
-        pytest.skip(f"mal condicionado (cond = {cond:.1e})")
+    ref, cond = _solve_reference(circ, seed)
     rel = max(REL_MIN, 100 * np.finfo(float).eps * cond)
     _assert_same(ref, solve(circ, solver="sparse"), nodes, "sparse", rel)
     if RUST_AVAILABLE:
@@ -140,8 +157,10 @@ def test_random_circuits_are_mostly_solvable():
         try:
             solve(circ, solver="auto")
             solved += 1
-        except Exception:
-            pass
+        except np.linalg.LinAlgError:
+            cond = float(np.linalg.cond(build_mna(circ)[0]))
+            if not cond > MAX_COND:
+                raise
     assert solved >= int(0.8 * N_CASES), f"só {solved}/{N_CASES} resolvíveis"
 
 
@@ -159,14 +178,37 @@ def test_transformer_stamps_match(seed):
 @pytest.mark.parametrize("seed", range(N_CASES))
 def test_transformer_dc_solvers_agree(seed):
     circ, nodes = _random_circuit(seed, transformers=True)
-    try:
-        ref = solve(circ, solver="auto")
-    except Exception:
-        pytest.skip("circuito com transformador singular")
-    cond = np.linalg.cond(build_mna(circ)[0])
-    if cond > MAX_COND:
-        pytest.skip(f"mal condicionado (cond = {cond:.1e})")
+    ref, cond = _solve_reference(circ, seed, transformers=True)
     rel = max(REL_MIN, 100 * np.finfo(float).eps * cond)
     _assert_same(ref, solve(circ, solver="sparse"), nodes, "sparse", rel)
     if RUST_AVAILABLE:
         _assert_same(ref, solve(circ, solver="rust_sparse"), nodes, "rust_sparse", rel)
+
+
+@pytest.mark.parametrize("target", [test_dc_solvers_agree,
+                                   test_transformer_dc_solvers_agree,
+                                   test_random_circuits_are_mostly_solvable])
+@pytest.mark.parametrize("error_type", [RuntimeError, KeyError, np.linalg.LinAlgError])
+def test_unexpected_errors_are_never_hidden(monkeypatch, target, error_type):
+    def broken_solve(*args, **kwargs):
+        raise error_type("injected regression")
+
+    monkeypatch.setitem(globals(), "solve", broken_solve)
+    # Even a LinAlgError must propagate if the matrix is well conditioned.
+    monkeypatch.setitem(globals(), "build_mna", lambda _: (np.eye(2), np.zeros(2)))
+    with pytest.raises(error_type, match="injected regression"):
+        if target is test_random_circuits_are_mostly_solvable:
+            target()
+        else:
+            target(0)
+
+
+@pytest.mark.parametrize("transformers", [False, True])
+def test_expected_numerical_skip_has_reproducible_diagnostic(monkeypatch, transformers):
+    def singular_solve(*args, **kwargs):
+        raise np.linalg.LinAlgError("injected numerical failure")
+
+    monkeypatch.setitem(globals(), "solve", singular_solve)
+    monkeypatch.setitem(globals(), "build_mna", lambda _: (np.diag([1., 1e-15]), np.zeros(2)))
+    with pytest.raises(pytest.skip.Exception, match=rf"seed=42, transformers={transformers}.*cond="):
+        _solve_reference(None, 42, transformers=transformers)

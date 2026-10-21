@@ -29,3 +29,17 @@ RSS combina contribuições de primeira ordem; não é automaticamente 3σ. Os d
 - Extensão Rust reconstruída em release e instalada novamente na `.venv`.
 
 Limite explícito: o ponto DC aproxima os enrolamentos por 1 µΩ em ambos os backends. Em falhas, o usuário precisa escolher UIC conscientemente; o solver não toma essa decisão silenciosamente.
+
+
+## Complemento: descartes numéricos auditáveis
+
+A suíte agora só captura `numpy.linalg.LinAlgError` no solver de referência dos testes aleatórios e exige também cond(A)>1e12 para tratar essa exceção como descarte esperado. Uma LinAlgError em matriz bem condicionada e qualquer outro erro propagam como falha. A mesma regra protege a contagem de circuitos resolvíveis.
+
+Foram adicionadas 11 regressões com erros injetados. A suíte completa passou com 511 aprovados e 10 ignorados. Os dez casos continuam fora da comparação de soluções, sem serem contabilizados como aprovação; o relatório agora exibe semente, presença de transformador, condicionamento e exceção original.
+
+Sementes dos descartes nesta execução:
+
+- Sem transformadores: 16 e 57.
+- Com transformadores: 8, 20, 27, 31, 32, 43, 47 e 57.
+
+Esses descartes indicam condicionamento acima do limite de comparação, não uma demonstração de singularidade matemática exata. Os testes de igualdade das estampas densa/esparsa continuam sendo executados para essas sementes.
