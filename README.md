@@ -3,7 +3,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![NumPy](https://img.shields.io/badge/NumPy-1.24%2B-013243.svg)](https://numpy.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-159%20passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-447%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
 **`pycircuit-solver`** é um motor computacional modular em Python para análise sistemática de circuitos elétricos lineares e não-lineares em corrente contínua (CC) e alternada (CA), fundamentado no método da **Análise Nodal Modificada (MNA — *Modified Nodal Analysis*)**.
 
@@ -47,7 +47,10 @@ O motor do **`pycircuit-solver`** foi rigorosamente validado e confrontado contr
 * **Extrator de Thévenin/Norton Dual:** Método híbrido (injeção de tensão e injeção de corrente) que resolve casos degenerados como fontes ideais nos terminais ($R_{th} = 0\ \Omega$) ou terminais abertos ($R_{th} \to \infty$).
 * **Auditoria de Potência (Tellegen):** Verificação de conservação global de energia ($\sum P = 0$) em DC e balanço de potência complexa em CA.
 * **Simulação de Monte Carlo:** Análise estatística de tolerâncias ($1\%, 5\%, 10\%$) em até dezenas de milhares de amostras por segundo.
-* **Parser SPICE:** Leitura de arquivos `.cir`, `.net`, `.sp` com suporte a linhas de continuação (`+`).
+* **Redes de Duas Portas / Quadripolos (`two_port.py`):** Extração completa e conversão analítica das matrizes de parâmetros de Impedância ($Z$), Admitância ($Y$), Híbridos ($H$) e Transmissão ($ABCD$), cálculo de impedâncias de entrada ($Z_{in}$) e saída ($Z_{out}$) sob cargas arbitrárias e cascateamento matricial de redes.
+* **Sistemas Trifásicos e Teorema de Blondel (`three_phase.py`):** Geração de fontes trifásicas simétricas equilibradas ($120^\circ$), modelagem de cargas em estrela ($Y$) e triângulo ($\Delta$) equilibradas ou desequilibradas, e medição rigorosa de potência ativa ($P_{3\phi}$), reativa ($Q_{3\phi}$) e fator de potência via Método dos Dois Wattímetros.
+* **Conformidade Estrita SPICE e Parser Robusto:** Suporte a netlists como texto bruto em memória sem necessidade de arquivo físico, sentido padrão SPICE para fontes de corrente ($I$) e VCCS ($G$), ponto de operação DC derivado em $t=0$ para formas de onda transitórias (`PULSE`, `SIN`) e expansão hierárquica robusta de subcircuitos aninhados com parâmetros matemáticos em cadeia.
+* **Bateria de Stress, Carga Extrema e Fuzzing:** 447 testes cobrindo malhas 2D de até 400 nós com conferência de LKC nó por nó, escadas R-2R de 64 bits até o limite numérico de $10^{-20}\text{ V}$, pontes com span de impedâncias de $10^{14}$ ($1\ \mu\Omega$ a $100\ \text{M}\Omega$), subcircuitos em 12 níveis e simulações com 25.000 iterações em Rust com Rayon.
 * **Visualização:** Curvas de máxima potência, histogramas de Monte Carlo e diagramas de Bode.
 
 ---
@@ -363,13 +366,19 @@ print(f"Energia armazenada final: {res.stored_energy[-1] * 1e6:.2f} µJ")
 
 ## 🧪 Executando os Testes Automatizados
 
+Para rodar toda a suíte de **447 testes automatizados** com listagem explícita de testes ignorados:
 ```bash
-pytest
+pytest -rs
 ```
 
-Com relatório de cobertura de código:
+Para rodar com relatório completo de cobertura de código:
 ```bash
-pytest --cov=circuit_solver --cov-report=term-missing
+pytest --cov=circuit_solver --cov-report=term-missing -rs
+```
+
+Para executar especificamente a bateria de testes de stress, carga e fuzzing:
+```bash
+pytest tests/test_stress.py -v
 ```
 
 ---
