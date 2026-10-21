@@ -7,7 +7,7 @@
 
 O **`pycircuit-solver`** é uma plataforma computacional híbrida (Python + Rust) voltada para a análise, simulação e validação estática de circuitos elétricos lineares. O projeto foi projetado com duplo objetivo:
 1. **Rigor Eletrotécnico:** Implementar os fundamentos clássicos da Teoria de Circuitos baseando-se no método da **Análise Nodal Modificada (MNA — *Modified Nodal Analysis*)**, com suporte integral a elementos passivos, ativos, fontes dependentes, regime permanente senoidal (CA fasorial), Teorema de Tellegen e teoremas de Thévenin/Norton.
-2. **Engenharia de Software de Alto Nível:** Apresentar uma arquitetura desacoplada, tipagem estática rigorosa, validação topológica pré-solver baseada em Teoria dos Grafos, suíte automatizada de 68 testes e um **núcleo de alta performance em Rust (`rust_core`)** que acelera simulações estatísticas (Monte Carlo) via multi-threading nativo sem bloqueio de GIL.
+2. **Engenharia de Software de Alto Nível:** Apresentar uma arquitetura desacoplada, tipagem estática rigorosa, validação topológica pré-solver baseada em Teoria dos Grafos, suíte automatizada de **439 testes** e um **núcleo de alta performance em Rust (`rust_core`)** que acelera simulações estatísticas (Monte Carlo) e transientes via multi-threading nativo sem bloqueio de GIL.
 
 ---
 
@@ -52,6 +52,8 @@ Impõe a equação $v_p - v_n = V$:
 A corrente fixa entra no nó $p$ e sai de $n$:
 * $\mathbf{z}[p] \mathrel{+}= I$
 * $\mathbf{z}[n] \mathrel{-}= I$
+
+> 💡 **Convenção SPICE:** Em netlists SPICE no formato `I1 n+ n- [DC val]`, a convenção padrão estipula que a corrente flui do terminal positivo `n+` para o negativo `n-` através da fonte (ou seja, ela entra no nó `n-` do circuito). O parser traduz isso automaticamente mapeando `n-` para o `node_p` do elemento `CurrentSource`, onde o solver estampa a injeção $+I$. O mesmo critério estrito de sentido aplica-se à fonte controlada VCCS ($G$). Se nenhum valor DC explícito for informado para fontes variante no tempo (`PULSE` ou `SIN`), o ponto de operação estático DC adota o valor da forma de onda em $t=0$ ($v_1$ para PULSE, $v_o$ para SIN).
 
 #### D. Fontes Dependentes / Controladas (Elementos SPICE E, G, F, H):
 1. **VCVS ($E$, ganho $\mu$):** Tensão de saída controlada por tensão $v_p - v_n = \mu (v_{cp} - v_{cn})$.
@@ -404,21 +406,21 @@ pycircuit-solver/
 │   │   ├── subcircuit.py       # Expansão hierárquica e introspecção White-Box de subcircuitos
 │   │   └── builtin_library.py  # Macromodelos didáticos embutidos (LM741, CMOS, Sallen-Key)
 │   ├── engine/
-│   │   ├── mna.py              # Montagem matricial MNA densa e esparsa e solução linear DC
+│   │   ├── mna.py              # Montagem MNA unificada (estampas compartilhadas via _dc_stamp_entries para denso/esparso)
 │   │   ├── ac.py               # Formulação fasorial em complex128 e resposta em frequência
 │   │   ├── small_signal.py     # Análise CA de pequenos sinais com linearização de semicondutores
 │   │   ├── sensitivity.py      # Análise de Sensibilidade Analítica (Rede Adjunta), WCA e EVA
-│   │   ├── transient.py        # Motor de análise transitória com auto-dispatch para Rust
-│   │   ├── transient_rust.py   # Ponte Python ↔ Rust para simulação transiente ultra-rápida
+│   │   ├── transient.py        # Motor transiente com cálculo UIC t=0 resistivo e auto-dispatch para Rust
+│   │   ├── transient_rust.py   # Ponte Python ↔ Rust para simulação transiente ultra-rápida (>1M passos/s)
 │   │   ├── nonlinear.py        # Semicondutores e solver não-linear Newton-Raphson com amortecimento
 │   │   ├── dc_sweep.py         # Varredura paramétrica DC (.dc sweep) de fontes e resistências
 │   │   ├── thevenin.py         # Algoritmo de injeção dual de Thévenin/Norton e P_max
 │   │   ├── two_port.py         # Quadripolos / Redes de Duas Portas (Matrizes Z, Y, H, ABCD e cascata)
 │   │   ├── three_phase.py      # Sistemas Trifásicos (Y-Δ) e Método dos Dois Wattímetros (Blondel)
 │   │   ├── monte_carlo.py      # Implementação de referência Monte Carlo em Python puro
-│   │   └── monte_carlo_rust.py # Ponte de alta performance para o crate Rust (Rayon)
+│   │   └── monte_carlo_rust.py # Ponte de alta performance para o crate Rust (Rayon) com suporte a transformador DC
 │   ├── io/
-│   │   └── parser.py           # Parser de netlists padrão SPICE (.subckt, .include, PULSE, SIN e '+')
+│   │   └── parser.py           # Parser SPICE flexível (suporta arquivos e strings brutas, convenção I/G e PULSE/SIN)
 │   ├── visualization/
 │   │   └── plots.py            # Gráficos de Monte Carlo, Thévenin, Diagramas de Bode, Transiente e DC Sweep
 │   └── cli.py                  # Interface CLI (solve, thevenin, ac, monte-carlo, tran, op, wca, explain, hierarchy, dc)
@@ -430,12 +432,17 @@ pycircuit-solver/
 │       ├── types.rs            # Structs pré-resolvidas sem overhead de strings
 │       ├── mna_core.rs         # Montagem e decomposição LU densa e esparsa (Faer)
 │       ├── monte_carlo.rs      # Rayon data-parallel worker para simulação Monte Carlo
-│       └── transient.rs        # Motor de integração implícita transiente (>1M passos/s) com balanço Joule
+│       └── transient.rs        # Motor de integração implícita transiente (>1M passos/s) com UIC resistivo
 │
-└── tests/                      # Suíte de 173 testes automatizados com pytest (100% aprovados)
+└── tests/                      # Suíte de 439 testes automatizados com pytest (429 aprovados, 10 skips estocásticos)
     ├── test_textbook_benchmarks.py     # 48 benchmarks analíticos canônicos (Sadiku, Nilsson, Boylestad, Dorf, Sedra, Hayt, Irwin)
     ├── test_two_port.py                # Redes de duas portas (Z, Y, H, ABCD, Zin, Zout e cascata)
     ├── test_three_phase.py             # Sistemas trifásicos Y-Y, Y-Δ e Teorema de Blondel (dois wattímetros)
+    ├── test_random_dc_cross.py         # Teste cruzado aleatório estocástico (denso x esparso x Rust em 60 circuitos)
+    ├── test_rust_sparse_transformer.py # Validação de transformadores em DC no backend esparso Rust
+    ├── test_transient_convergence.py   # Ordem de convergência Trapezoidal 2ª ordem vs Euler 1ª ordem e UIC em t=0
+    ├── test_spice_convention.py        # Convenção SPICE para I e G e derivação do ponto de operação DC de PULSE/SIN
+    ├── test_netlist_input.py           # Suporte a netlist como texto bruto em memória e caminhos de arquivo
     ├── test_sensitivity_wca.py        # Sensibilidade analítica (Rede Adjunta), EVA, Taylor e RSS
     ├── test_rust_transient.py          # Transiente em Rust, conservação de energia e speedup
     ├── test_small_signal_ac.py         # Análise de pequenos sinais com Diodos, BJT e MOSFET
@@ -455,9 +462,9 @@ pycircuit-solver/
 
 ---
 
-## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (173 Testes)
+## 5. 📊 Matriz de Validação Multi-Livros e Suíte de Testes (439 Testes)
 
-A biblioteca é auditada de ponta a ponta por uma suíte de **173 testes automatizados** executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com soluções analíticas exatas publicadas em 7 das maiores referências bibliográficas mundiais da Engenharia Elétrica e Microeletrônica:
+A biblioteca é auditada de ponta a ponta por uma suíte de **439 testes automatizados** (429 aprovados, 10 skips singulares estocásticos esperados) executados via `pytest`, cobrindo **48 exercícios canônicos clássicos** com soluções analíticas exatas publicadas em 7 das maiores referências bibliográficas mundiais da Engenharia Elétrica e Microeletrônica:
 
 1. **Alexander & Sadiku (*Fundamentos de Circuitos Elétricos*):**
    * Divisores e reduções série-paralelo (Cap. 2, Ex. 2.8).

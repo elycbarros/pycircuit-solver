@@ -115,23 +115,31 @@ pycircuit-solver/
 │   ├── cap07_transiente_rlc.py          # Resposta ao degrau de RLC de 2ª ordem e overshoot
 │   └── cap09_filtro_rc_fasores.py       # Filtro passa-baixas RC, fasores e Diagrama de Bode
 │
-└── tests/                               # Suíte de testes automatizados (136 testes pytest)
-    ├── test_sensitivity_wca.py         # Testes de sensibilidade analítica (Rede Adjunta), WCA e EVA
-    ├── test_rust_transient.py           # Testes do motor transiente em Rust, conservação de energia e speedup
-    ├── test_small_signal_ac.py          # Testes de pequenos sinais com diodos, BJT e MOSFET
-    ├── test_subcircuits.py              # Testes de subcircuitos SPICE (.subckt), parâmetros e introspecção
-    ├── test_textbook_benchmarks.py      # Validação analítica multi-livros (Sadiku, Nilsson, Boylestad, Dorf)
+└── tests/                               # Suíte de testes automatizados (439 testes pytest)
+    ├── test_textbook_benchmarks.py      # 48 benchmarks analíticos canônicos (7 referências clássicas)
+    ├── test_two_port.py                 # Quadripolos e redes de duas portas (Z, Y, H, ABCD, Zin, Zout)
+    ├── test_three_phase.py              # Circuitos trifásicos (Y-Δ) e Método dos Dois Wattímetros (Blondel)
+    ├── test_random_dc_cross.py          # Validação cruzada estocástica (denso x esparso x Rust em 60 circuitos)
+    ├── test_rust_sparse_transformer.py  # Suporte a transformadores em DC no backend Rust
+    ├── test_transient_convergence.py    # Ordem de convergência temporal Trapezoidal 2ª ordem vs Euler e UIC em t=0
+    ├── test_spice_convention.py         # Conformidade estrita SPICE para correntes I e G e ponto DC de PULSE/SIN
+    ├── test_netlist_input.py            # Parser flexível: netlists como string bruta ou arquivo
+    ├── test_sensitivity_wca.py          # Sensibilidade analítica (Rede Adjunta), WCA e EVA
+    ├── test_rust_transient.py           # Transiente em Rust (>1M passos/s), balanço Joule e speedup
+    ├── test_small_signal_ac.py          # Pequenos sinais com diodos, BJT e MOSFET
+    ├── test_subcircuits.py              # Subcircuitos SPICE (.subckt), parâmetros e fórmulas
     ├── test_coupled_inductors.py        # Acoplamento magnético mútuo, transformador e Sadiku Cap. 13
     ├── test_nonlinear.py                # Semicondutores não-lineares e Newton-Raphson (Diodo, Zener, BJT, MOSFET)
     ├── test_dc_sweep.py                 # Varredura paramétrica DC (.dc sweep), curvas IV e famílias 2D
-    ├── test_transient.py                # Testes analíticos de transitório RC, RL, RLC e formas de onda
-    ├── test_rust_monte_carlo.py         # Testes de correção, reprodutibilidade e speedup do motor Rust
-    ├── test_sparse_and_rust.py          # Testes de MNA esparso (Faer / SciPy) e grandes circuitos
-    ├── test_robustness_edge_cases.py    # Testes de robustez, BFS, loops KVL, R_th=0 e parser
-    ├── test_validator.py                # Testes de validação topológica e sufixos
-    ├── test_mna_engine.py               # Testes analíticos do motor MNA e 4 fontes dependentes
-    ├── test_ac_engine.py                # Testes de análise CA, ressonância e corte
-    └── test_cli.py                      # Testes da interface de terminal pycircuit
+    ├── test_transient.py                # Transitório analítico RC, RL, RLC e formas de onda PULSE/SIN
+    ├── test_rust_monte_carlo.py         # Correção, reprodutibilidade e speedup do motor Rust (Rayon)
+    ├── test_sparse_and_rust.py          # MNA esparso (Faer / SciPy) e grandes circuitos (>1000 nós)
+    ├── test_robustness_edge_cases.py    # Robustez, BFS/DFS, loops KVL, R_th=0 e parser
+    ├── test_validator.py                # Validação topológica, terra '0' e sufixos de engenharia
+    ├── test_mna_engine.py               # Motor MNA estático e 4 fontes dependentes (E, G, F, H)
+    ├── test_ac_engine.py                # Análise CA fasorial, ressonância e Diagrama de Bode
+    ├── test_thevenin.py                 # Equivalente de Thévenin/Norton e máxima transferência
+    └── test_cli.py                      # Validação de todos os subcomandos da CLI pycircuit
 
 ```
 

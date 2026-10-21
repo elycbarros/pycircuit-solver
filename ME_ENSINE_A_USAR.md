@@ -646,6 +646,9 @@ print(f"P_total = {wm.P_total:.1f} W, Q_total = {wm.Q_total:.1f} VAR, FP = {wm.p
 | **CCVS** | `H` | `CCVS("H1", "p", "n", vctrl_name="V1", transresistance=100.0)` | Tensão controlada por corrente |
 | **Op-Amp** | `U` ou `A` | `OpAmp("U1", in_p="0", in_n="vn", out="vout", gnd="0")` | Amplificador Operacional ideal |
 
+> 💡 **Nota sobre Fontes de Corrente em SPICE (`I` e `G`):**  
+> Na convenção padrão SPICE (`I1 n+ n- 2.0`), a corrente sai do terminal positivo `n+`, atravessa a fonte e entra no terminal `n-` (ou seja, ela é injetada no nó `n-` do resto do circuito). O parser do `pycircuit` traduz isso automaticamente mapeando `n-` para o polo `node_p` do objeto `CurrentSource`.
+
 ---
 
 ## ⚠️ 20. Erros Comuns e Como Evitá-los
