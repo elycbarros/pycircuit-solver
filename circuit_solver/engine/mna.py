@@ -60,8 +60,113 @@ from circuit_solver.core.solution import Solution
 __all__ = ["build_mna", "build_mna_sparse", "solve"]
 
 
+def _dc_stamp_entries(circuit: Circuit):
+    """Gera as entradas (linha, coluna, valor) da matriz MNA DC e o vetor z.
+
+    Fonte única das estampas DC: ``build_mna`` (denso) e ``build_mna_sparse``
+    (esparso) derivam daqui, para que não divirjam.
+    """
+    n = circuit.size
+    idx = circuit.node_index
+    aux = circuit.aux_index
+
+    rows: list[int] = []
+    cols: list[int] = []
+    vals: list[float] = []
+    z = np.zeros(n, dtype=float)
+
+    def add(r, c, v: float) -> None:
+        if r is not None and c is not None:
+            rows.append(r)
+            cols.append(c)
+            vals.append(v)
+
+    def stamp_g(p, q, g: float) -> None:
+        add(p, p, g)
+        add(q, q, g)
+        add(p, q, -g)
+        add(q, p, -g)
+
+    for el in circuit.elements:
+        if isinstance(el, Resistor):
+            stamp_g(idx(el.node_p), idx(el.node_n), 1.0 / el.resistance)
+
+        elif isinstance(el, VoltageSource):
+            k = aux(el.name)
+            p, q = idx(el.node_p), idx(el.node_n)
+            add(p, k, 1.0)
+            add(k, p, 1.0)
+            add(q, k, -1.0)
+            add(k, q, -1.0)
+            z[k] = el.voltage
+
+        elif isinstance(el, CurrentSource):
+            p, q = idx(el.node_p), idx(el.node_n)
+            if p is not None:
+                z[p] += el.current
+            if q is not None:
+                z[q] -= el.current
+
+        elif isinstance(el, VCVS):
+            k = aux(el.name)
+            p, q = idx(el.node_p), idx(el.node_n)
+            cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
+            add(p, k, 1.0)
+            add(k, p, 1.0)
+            add(q, k, -1.0)
+            add(k, q, -1.0)
+            add(k, cp, -el.gain)
+            add(k, cn, el.gain)
+            z[k] = 0.0
+
+        elif isinstance(el, VCCS):
+            gm = el.transconductance
+            p, q = idx(el.node_p), idx(el.node_n)
+            cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
+            add(p, cp, -gm)
+            add(p, cn, gm)
+            add(q, cp, gm)
+            add(q, cn, -gm)
+
+        elif isinstance(el, CCCS):
+            kv = aux(el.vctrl_name)
+            p, q = idx(el.node_p), idx(el.node_n)
+            add(p, kv, el.gain)
+            add(q, kv, -el.gain)
+
+        elif isinstance(el, CCVS):
+            k = aux(el.name)
+            kv = aux(el.vctrl_name)
+            p, q = idx(el.node_p), idx(el.node_n)
+            add(p, k, 1.0)
+            add(k, p, 1.0)
+            add(q, k, -1.0)
+            add(k, q, -1.0)
+            add(k, kv, el.transresistance)
+            z[k] = 0.0
+
+        elif isinstance(el, OpAmp):
+            k = aux(el.name)
+            out, gnd = idx(el.out), idx(el.gnd)
+            in_p, in_n = idx(el.in_p), idx(el.in_n)
+            add(out, k, 1.0)
+            add(gnd, k, -1.0)
+            add(k, in_p, 1.0)
+            add(k, in_n, -1.0)
+            z[k] = 0.0
+
+        elif isinstance(el, Inductor):
+            stamp_g(idx(el.node_p), idx(el.node_n), 1e6)
+
+        elif isinstance(el, Transformer):
+            stamp_g(idx(el.p1), idx(el.n1), 1e6)
+            stamp_g(idx(el.p2), idx(el.n2), 1e6)
+
+    return rows, cols, vals, z
+
+
 def build_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
-    """Stamp all elements into the MNA matrix A and RHS vector z.
+    """Stamp all elements into the dense MNA matrix A and RHS vector z.
 
     Parameters
     ----------
@@ -76,197 +181,18 @@ def build_mna(circuit: Circuit) -> tuple[np.ndarray, np.ndarray]:
         The right-hand side (current injections + voltage constraints).
     """
     n = circuit.size
+    rows, cols, vals, z = _dc_stamp_entries(circuit)
     A = np.zeros((n, n), dtype=float)
-    z = np.zeros(n, dtype=float)
-
-    def idx(node: str) -> int | None:
-        return circuit.node_index(node)
-
-    def aux(name: str) -> int:
-        return circuit.aux_index(name)
-
-    for el in circuit.elements:
-
-        # ------------------------------------------------------------------
-        # Resistor: conductance stamp
-        # ------------------------------------------------------------------
-        if isinstance(el, Resistor):
-            g = 1.0 / el.resistance
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                A[p, p] += g
-            if n_node is not None:
-                A[n_node, n_node] += g
-            if p is not None and n_node is not None:
-                A[p, n_node] -= g
-                A[n_node, p] -= g
-
-        # ------------------------------------------------------------------
-        # Independent Voltage Source
-        # ------------------------------------------------------------------
-        elif isinstance(el, VoltageSource):
-            k = aux(el.name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            # B columns
-            if p is not None:
-                A[p, k] += 1.0
-            if n_node is not None:
-                A[n_node, k] -= 1.0
-            # C rows
-            if p is not None:
-                A[k, p] += 1.0
-            if n_node is not None:
-                A[k, n_node] -= 1.0
-            # RHS
-            z[k] = el.voltage
-
-        # ------------------------------------------------------------------
-        # Independent Current Source
-        # ------------------------------------------------------------------
-        elif isinstance(el, CurrentSource):
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                z[p] += el.current
-            if n_node is not None:
-                z[n_node] -= el.current
-
-        # ------------------------------------------------------------------
-        # VCVS (E element)
-        # ------------------------------------------------------------------
-        elif isinstance(el, VCVS):
-            k = aux(el.name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
-            # Output branch (same as V-source)
-            if p is not None:
-                A[p, k] += 1.0
-            if n_node is not None:
-                A[n_node, k] -= 1.0
-            # Constraint row: V(p) - V(n) - mu*(V(cp) - V(cn)) = 0
-            if p is not None:
-                A[k, p] += 1.0
-            if n_node is not None:
-                A[k, n_node] -= 1.0
-            if cp is not None:
-                A[k, cp] -= el.gain
-            if cn is not None:
-                A[k, cn] += el.gain
-            z[k] = 0.0
-
-        # ------------------------------------------------------------------
-        # VCCS (G element)
-        # ------------------------------------------------------------------
-        elif isinstance(el, VCCS):
-            gm = el.transconductance
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
-            # Controlled current into node_p from ctrl voltage
-            if p is not None and cp is not None:
-                A[p, cp] -= gm
-            if p is not None and cn is not None:
-                A[p, cn] += gm
-            if n_node is not None and cp is not None:
-                A[n_node, cp] += gm
-            if n_node is not None and cn is not None:
-                A[n_node, cn] -= gm
-
-        # ------------------------------------------------------------------
-        # CCCS (F element)
-        # ------------------------------------------------------------------
-        elif isinstance(el, CCCS):
-            k_vctrl = aux(el.vctrl_name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            # Generator convention for controlling source:
-            # I(vctrl) exits node_p of vctrl, so I(vctrl) = -j_vctrl.
-            # I_out = gain * I(vctrl) = -gain * j_vctrl injected into node_p.
-            # KCL row p (currents leaving): - I_out = + gain * j_vctrl => A[p, k_vctrl] += gain.
-            if p is not None:
-                A[p, k_vctrl] += el.gain
-            if n_node is not None:
-                A[n_node, k_vctrl] -= el.gain
-
-        # ------------------------------------------------------------------
-        # CCVS (H element)
-        # ------------------------------------------------------------------
-        elif isinstance(el, CCVS):
-            k = aux(el.name)
-            k_vctrl = aux(el.vctrl_name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            # Output branch incidence
-            if p is not None:
-                A[p, k] += 1.0
-            if n_node is not None:
-                A[n_node, k] -= 1.0
-            # Constraint row: V(p) - V(n) - rm * I(vctrl) = 0
-            # Since I(vctrl) = -j_vctrl: V(p) - V(n) + rm * j_vctrl = 0.
-            if p is not None:
-                A[k, p] += 1.0
-            if n_node is not None:
-                A[k, n_node] -= 1.0
-            A[k, k_vctrl] += el.transresistance
-            z[k] = 0.0
-
-        # ------------------------------------------------------------------
-        # Ideal Op-Amp
-        # ------------------------------------------------------------------
-        elif isinstance(el, OpAmp):
-            k = aux(el.name)
-            out = idx(el.out)
-            gnd = idx(el.gnd)
-            in_p = idx(el.in_p)
-            in_n = idx(el.in_n)
-            # Output branch: current j flows from out to gnd (or into circuit)
-            if out is not None:
-                A[out, k] += 1.0
-            if gnd is not None:
-                A[gnd, k] -= 1.0
-            # Constraint: V(in_p) - V(in_n) = 0  (virtual short)
-            if in_p is not None:
-                A[k, in_p] += 1.0
-            if in_n is not None:
-                A[k, in_n] -= 1.0
-            z[k] = 0.0
-
-        # ------------------------------------------------------------------
-        # Inductor in DC Steady-State (Ideal short circuit)
-        # ------------------------------------------------------------------
-        elif isinstance(el, Inductor):
-            # Model as high conductance (1 uOhm equivalent parasitic wire)
-            g = 1e6
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                A[p, p] += g
-            if n_node is not None:
-                A[n_node, n_node] += g
-            if p is not None and n_node is not None:
-                A[p, n_node] -= g
-                A[n_node, p] -= g
-
-        # ------------------------------------------------------------------
-        # Transformer in DC Steady-State (Windings are ideal shorts)
-        # ------------------------------------------------------------------
-        elif isinstance(el, Transformer):
-            g = 1e6
-            p1, n1 = idx(el.p1), idx(el.n1)
-            p2, n2 = idx(el.p2), idx(el.n2)
-            if p1 is not None: A[p1, p1] += g
-            if n1 is not None: A[n1, n1] += g
-            if p1 is not None and n1 is not None:
-                A[p1, n1] -= g
-                A[n1, p1] -= g
-            if p2 is not None: A[p2, p2] += g
-            if n2 is not None: A[n2, n2] += g
-            if p2 is not None and n2 is not None:
-                A[p2, n2] -= g
-                A[n2, p2] -= g
-
+    np.add.at(
+        A,
+        (np.asarray(rows, dtype=int), np.asarray(cols, dtype=int)),
+        np.asarray(vals, dtype=float),
+    )
     return A, z
 
 
 def build_mna_sparse(circuit: Circuit):
     """Stamp all elements into a sparse CSC matrix and RHS vector z.
-
-    Highly memory- and time-efficient for large circuits (> 500 to 1,000+ nodes).
 
     Parameters
     ----------
@@ -283,119 +209,8 @@ def build_mna_sparse(circuit: Circuit):
     import scipy.sparse as sp
 
     n = circuit.size
-    idx = circuit.node_index
-    aux = circuit.aux_index
-
-    rows: list[int] = []
-    cols: list[int] = []
-    data: list[float] = []
-    z = np.zeros(n, dtype=float)
-
-    def stamp_g(p, n_node, g):
-        if p is not None:
-            rows.append(p); cols.append(p); data.append(g)
-        if n_node is not None:
-            rows.append(n_node); cols.append(n_node); data.append(g)
-        if p is not None and n_node is not None:
-            rows.append(p); cols.append(n_node); data.append(-g)
-            rows.append(n_node); cols.append(p); data.append(-g)
-
-    for el in circuit.elements:
-        if isinstance(el, Resistor):
-            stamp_g(idx(el.node_p), idx(el.node_n), 1.0 / el.resistance)
-
-        elif isinstance(el, VoltageSource):
-            k = aux(el.name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                rows.append(p); cols.append(k); data.append(1.0)
-                rows.append(k); cols.append(p); data.append(1.0)
-            if n_node is not None:
-                rows.append(n_node); cols.append(k); data.append(-1.0)
-                rows.append(k); cols.append(n_node); data.append(-1.0)
-            z[k] = el.voltage
-
-        elif isinstance(el, CurrentSource):
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                z[p] += el.current
-            if n_node is not None:
-                z[n_node] -= el.current
-
-        elif isinstance(el, VCVS):
-            k = aux(el.name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
-            if p is not None:
-                rows.append(p); cols.append(k); data.append(1.0)
-                rows.append(k); cols.append(p); data.append(1.0)
-            if n_node is not None:
-                rows.append(n_node); cols.append(k); data.append(-1.0)
-                rows.append(k); cols.append(n_node); data.append(-1.0)
-            if cp is not None:
-                rows.append(k); cols.append(cp); data.append(-el.gain)
-            if cn is not None:
-                rows.append(k); cols.append(cn); data.append(el.gain)
-            z[k] = 0.0
-
-        elif isinstance(el, VCCS):
-            gm = el.transconductance
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            cp, cn = idx(el.ctrl_p), idx(el.ctrl_n)
-            if p is not None and cp is not None:
-                rows.append(p); cols.append(cp); data.append(-gm)
-            if p is not None and cn is not None:
-                rows.append(p); cols.append(cn); data.append(gm)
-            if n_node is not None and cp is not None:
-                rows.append(n_node); cols.append(cp); data.append(gm)
-            if n_node is not None and cn is not None:
-                rows.append(n_node); cols.append(cn); data.append(-gm)
-
-        elif isinstance(el, CCCS):
-            k_vctrl = aux(el.vctrl_name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                rows.append(p); cols.append(k_vctrl); data.append(el.gain)
-            if n_node is not None:
-                rows.append(n_node); cols.append(k_vctrl); data.append(-el.gain)
-
-        elif isinstance(el, CCVS):
-            k = aux(el.name)
-            k_vctrl = aux(el.vctrl_name)
-            p, n_node = idx(el.node_p), idx(el.node_n)
-            if p is not None:
-                rows.append(p); cols.append(k); data.append(1.0)
-                rows.append(k); cols.append(p); data.append(1.0)
-            if n_node is not None:
-                rows.append(n_node); cols.append(k); data.append(-1.0)
-                rows.append(k); cols.append(n_node); data.append(-1.0)
-            rows.append(k); cols.append(k_vctrl); data.append(el.transresistance)
-            z[k] = 0.0
-
-        elif isinstance(el, OpAmp):
-            k = aux(el.name)
-            out = idx(el.out)
-            gnd = idx(el.gnd)
-            in_p = idx(el.in_p)
-            in_n = idx(el.in_n)
-            if out is not None:
-                rows.append(out); cols.append(k); data.append(1.0)
-            if gnd is not None:
-                rows.append(gnd); cols.append(k); data.append(-1.0)
-            if in_p is not None:
-                rows.append(k); cols.append(in_p); data.append(1.0)
-            if in_n is not None:
-                rows.append(k); cols.append(in_n); data.append(-1.0)
-            z[k] = 0.0
-
-        elif isinstance(el, Inductor):
-            stamp_g(idx(el.node_p), idx(el.node_n), 1e6)
-
-        elif isinstance(el, Transformer):
-            stamp_g(idx(el.p1), idx(el.n1), 1e6)
-            stamp_g(idx(el.p2), idx(el.n2), 1e6)
-
-    A_coo = sp.coo_matrix((data, (rows, cols)), shape=(n, n), dtype=float)
+    rows, cols, vals, z = _dc_stamp_entries(circuit)
+    A_coo = sp.coo_matrix((vals, (rows, cols)), shape=(n, n), dtype=float)
     return A_coo.tocsc(), z
 
 
